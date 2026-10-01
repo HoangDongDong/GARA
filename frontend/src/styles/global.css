@@ -676,6 +676,34 @@ table.table {
   gap: 8px;
 }
 
+/* --- Thanh tiến trình sửa chữa (Repair Process Stepper) --- */
+.repair-process-stepper {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.repair-process-step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.step-label-short {
+  display: none;
+}
+.step-label-full {
+  display: inline;
+  white-space: nowrap;
+}
+
 /* --- Responsive 2-column flex layout (sidebar + main) --- */
 .responsive-2col {
   display: flex;
@@ -922,6 +950,67 @@ table.table {
   .mlk-create-items {
     width: 100% !important;
     flex: none !important;
+  }
+
+  /* Thanh tiến trình sửa chữa hiển thị trọn vẹn 100% không cần trượt trên mobile */
+  .repair-process-stepper {
+    padding: 6px 4px !important;
+    overflow-x: hidden !important;
+    justify-content: space-between !important;
+  }
+
+  .repair-process-step {
+    flex: 1 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+  }
+
+  .step-label-full {
+    display: none !important;
+  }
+
+  .step-label-short {
+    display: inline !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+  }
+
+  .repair-process-step .step-circle {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 9.5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .repair-process-step .step-arrow {
+    margin: 0 1px !important;
+    width: 9px !important;
+    height: 9px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .repair-process-step .step-content {
+    gap: 3px !important;
+  }
+
+  @media (max-width: 480px) {
+    .repair-process-step .step-content {
+      flex-direction: column !important;
+      gap: 2px !important;
+      align-items: center !important;
+      text-align: center !important;
+    }
+    .repair-process-step .step-arrow {
+      margin: 0 1px !important;
+      align-self: center !important;
+      margin-bottom: 12px !important;
+    }
+    .step-label-short {
+      font-size: 9.5px !important;
+      line-height: 1.1 !important;
+    }
   }
 
   /* Filter bar converts to mobile grid */

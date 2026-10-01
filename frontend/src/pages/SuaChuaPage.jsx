@@ -363,6 +363,7 @@ export default function SuaChuaPage() {
   const businessStage = Math.max(0, Math.min(4, Number(repairFlow.workflowState ?? 0)));
   const isFlowCompleted = Number(repairFlow.workflowState) === 4;
   const processLabels = ['Tiếp nhận & Báo giá', 'Xác nhận sửa chữa', 'Đang sửa', 'Giao xe', 'Hoàn thành'];
+  const shortProcessLabels = ['Báo giá', 'Xác nhận', 'Đang sửa', 'Giao xe', 'Hoàn tất'];
 
   const selectVehicle = async (vehicleId, source = vehicleOptions) => {
     const selected = source.find((item) => item.ID === vehicleId);
@@ -896,19 +897,20 @@ export default function SuaChuaPage() {
         </h1>
       </div>
 
-      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', flexShrink: 0, overflowX: 'auto' }}>
+      <div className="repair-process-stepper">
         {processLabels.map((label, index) => {
           const stepCompleted = index < businessStage || (isFlowCompleted && index === businessStage);
           const stepActive = index === businessStage && !isFlowCompleted;
           return (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 135 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: stepCompleted ? '#2E7D32' : stepActive ? '#E65100' : '#94A3B8', fontWeight: stepCompleted || stepActive ? 800 : 600, whiteSpace: 'nowrap' }}>
-              <span style={{ width: 20, height: 20, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: stepCompleted ? '#2E7D32' : stepActive ? '#E65100' : '#F1F5F9', color: stepCompleted || stepActive ? '#fff' : '#94A3B8', fontSize: 10 }}>
+          <div key={label} className="repair-process-step">
+            <div className="step-content" style={{ display: 'flex', alignItems: 'center', gap: 5, color: stepCompleted ? '#2E7D32' : stepActive ? '#E65100' : '#94A3B8', fontWeight: stepCompleted || stepActive ? 800 : 600 }}>
+              <span className="step-circle" style={{ width: 20, height: 20, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: stepCompleted ? '#2E7D32' : stepActive ? '#E65100' : '#F1F5F9', color: stepCompleted || stepActive ? '#fff' : '#94A3B8', fontSize: 10, flexShrink: 0 }}>
                 {stepCompleted ? <Check size={12} /> : index + 1}
               </span>
-              {label}
+              <span className="step-label-full">{label}</span>
+              <span className="step-label-short">{shortProcessLabels[index]}</span>
             </div>
-            {index < processLabels.length - 1 && <ChevronDown size={13} style={{ margin: '0 8px', transform: 'rotate(-90deg)', color: index < businessStage ? '#2E7D32' : '#CBD5E1' }} />}
+            {index < processLabels.length - 1 && <ChevronDown size={13} className="step-arrow" style={{ margin: '0 8px', transform: 'rotate(-90deg)', color: index < businessStage ? '#2E7D32' : '#CBD5E1', flexShrink: 0 }} />}
           </div>
           );
         })}
