@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { customers, vehicles } from '../services';
 import VehicleProfileModal from '../components/VehicleProfileModal';
+import './HoSoXePage.css';
 
 // CƠ SỞ DỮ LIỆU ĐA XE THEO BIỂN SỐ XE
 const VEHICLES_DATABASE = [
@@ -890,10 +891,10 @@ export default function HoSoXePage() {
         </div>
 
         {/* Cụm tìm kiếm và nút thao tác */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1 1 620px', minWidth: 0 }}>
+        <div className="hsx-top-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1 1 620px', minWidth: 0 }}>
           
           {/* Ô tìm kiếm biển số xe với Dropdown gợi ý */}
-          <div ref={searchBoxRef} style={{ position: 'relative', width: 'clamp(220px, 20vw, 290px)', flex: '1 1 200px' }}>
+          <div ref={searchBoxRef} className="hsx-search-wrap" style={{ position: 'relative', width: 'clamp(220px, 20vw, 290px)', flex: '1 1 200px' }}>
             <input
               type="text"
               placeholder="Gõ biển số (51A, 30H...), số khung, tên xe..."
@@ -993,96 +994,99 @@ export default function HoSoXePage() {
             )}
           </div>
 
-          {/* Nút mở danh sách tất cả các xe */}
-          <button
-            type="button"
-            onClick={() => setIsCarModalOpen(true)}
-            style={{
-              height: 'clamp(24px, 3vh, 28px)',
-              padding: '0 8px',
-              background: '#FFFFFF',
-              color: '#1565C0',
-              border: '1px solid #90CAF9',
-              borderRadius: 4,
-              fontSize: '11px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Car size={13} />
-            Danh sách xe ({vehicleList.length})
-          </button>
+          {/* Nhóm nút thao tác */}
+          <div className="hsx-btn-group" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/* Nút mở danh sách tất cả các xe */}
+            <button
+              type="button"
+              onClick={() => setIsCarModalOpen(true)}
+              style={{
+                height: 'clamp(24px, 3vh, 28px)',
+                padding: '0 8px',
+                background: '#FFFFFF',
+                color: '#1565C0',
+                border: '1px solid #90CAF9',
+                borderRadius: 4,
+                fontSize: '11px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Car size={13} />
+              Danh sách xe ({vehicleList.length})
+            </button>
 
-          <button
-            type="button"
-            onClick={openCreateVehicleForm}
-            style={{
-              height: 'clamp(24px, 3vh, 28px)',
-              padding: '0 10px',
-              background: '#E65100',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              fontWeight: 600,
-              fontSize: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Plus size={13} />
-            Tạo hồ sơ xe
-          </button>
+            <button
+              type="button"
+              onClick={openCreateVehicleForm}
+              style={{
+                height: 'clamp(24px, 3vh, 28px)',
+                padding: '0 10px',
+                background: '#E65100',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                fontWeight: 600,
+                fontSize: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={13} />
+              Tạo hồ sơ xe
+            </button>
 
-          <button
-            type="button"
-            onClick={() => showToast('Import hồ sơ từ Excel')}
-            style={{
-              height: 'clamp(24px, 3vh, 28px)',
-              padding: '0 8px',
-              background: '#fff',
-              color: '#334155',
-              border: '1px solid #CBD5E1',
-              borderRadius: 4,
-              fontSize: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <FileSpreadsheet size={13} color="#2E7D32" />
-            Import Excel
-          </button>
+            <button
+              type="button"
+              onClick={() => showToast('Import hồ sơ từ Excel')}
+              style={{
+                height: 'clamp(24px, 3vh, 28px)',
+                padding: '0 8px',
+                background: '#fff',
+                color: '#334155',
+                border: '1px solid #CBD5E1',
+                borderRadius: 4,
+                fontSize: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <FileSpreadsheet size={13} color="#2E7D32" />
+              Import Excel
+            </button>
 
-          <button
-            type="button"
-            onClick={() => showToast('Đã xuất dữ liệu ra file Excel')}
-            style={{
-              height: 'clamp(24px, 3vh, 28px)',
-              padding: '0 8px',
-              background: '#fff',
-              color: '#334155',
-              border: '1px solid #CBD5E1',
-              borderRadius: 4,
-              fontSize: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <FileSpreadsheet size={13} color="#1565C0" />
-            Xuất Excel
-          </button>
+            <button
+              type="button"
+              onClick={() => showToast('Đã xuất dữ liệu ra file Excel')}
+              style={{
+                height: 'clamp(24px, 3vh, 28px)',
+                padding: '0 8px',
+                background: '#fff',
+                color: '#334155',
+                border: '1px solid #CBD5E1',
+                borderRadius: 4,
+                fontSize: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <FileSpreadsheet size={13} color="#1565C0" />
+              Xuất Excel
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1165,73 +1169,59 @@ export default function HoSoXePage() {
         width: '100%'
       }}>
         {/* Card thông tin xe tổng quan trên cùng */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          border: '1px solid #E0E0E0',
-          padding: 'clamp(4px, 0.7vh, 8px) clamp(6px, 0.8vw, 10px)',
-          display: 'flex',
-          gap: 'clamp(8px, 1vw, 14px)',
-          flexShrink: 0,
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          {/* Ảnh xe và 4 thumbnail */}
-          <div style={{ width: 'clamp(110px, 10vw, 140px)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{
-              width: '100%',
-              height: 'clamp(60px, 8vh, 76px)',
-              borderRadius: 4,
-              overflow: 'hidden',
-              background: '#F1F5F9'
-            }}>
-              <img
-                src={currentVehicle.avatar}
-                alt={currentVehicle.modelName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </div>
-            <div className="responsive-grid-4" style={{ gap: 2 }}>
-              {currentVehicle.thumbnails.map((thumb, idx) => (
+        <div className="hsx-vehicle-card">
+          <div className="hsx-mobile-top-block">
+            {/* Ảnh xe và 4 thumbnail */}
+            <div className="hsx-media-col">
+              <div className="hsx-main-avatar">
                 <img
-                  key={idx}
-                  src={thumb}
-                  alt={idx + 1}
-                  style={{ width: '100%', height: 'clamp(18px, 2.4vh, 22px)', objectFit: 'cover', borderRadius: 2 }}
+                  src={currentVehicle.avatar}
+                  alt={currentVehicle.modelName}
                 />
-              ))}
+              </div>
+              <div className="hsx-thumbnails-row">
+                {currentVehicle.thumbnails.map((thumb, idx) => (
+                  <img
+                    key={idx}
+                    src={thumb}
+                    alt={idx + 1}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Thông số kỹ thuật & Biển số xe ở giữa */}
+            <div className="hsx-specs-col">
+              <div className="hsx-model-title">
+                {currentVehicle.modelName}
+              </div>
+
+              <div className="hsx-plate-badge-row">
+                <div className="hsx-plate-badge">
+                  {currentVehicle.plate}
+                </div>
+                <span style={{ background: '#E8F5E9', color: '#2E7D32', padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
+                  Đăng ký
+                </span>
+                <span style={{ background: currentVehicle.statusBg || '#E8F5E9', color: currentVehicle.statusColor || '#2E7D32', padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
+                  {currentVehicle.status || 'Đang hoạt động'}
+                </span>
+              </div>
+
+              {/* Thông tin chủ xe tóm tắt trên mobile */}
+              <div className="hsx-mobile-owner-summary" style={{ fontSize: '11px', color: '#475569', marginTop: 2 }}>
+                <span>Chủ xe: <b style={{ color: '#1565C0' }}>{currentVehicle.owner?.name || 'Chưa có'}</b></span>
+                {currentVehicle.owner?.phone && <span>SĐT: <b>{currentVehicle.owner.phone}</b></span>}
+              </div>
             </div>
           </div>
 
-          {/* Thông số kỹ thuật & Biển số xe ở giữa */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ fontSize: 'clamp(12px, 0.95vw, 14px)', fontWeight: 800, color: '#1565C0', textTransform: 'uppercase' }}>
-              {currentVehicle.modelName}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '1px 0' }}>
-              <div style={{
-                fontSize: 'clamp(12px, 0.95vw, 14px)',
-                fontWeight: 800,
-                color: '#1976D2',
-                border: '1px solid #1976D2',
-                padding: '1px 6px',
-                borderRadius: 4,
-                letterSpacing: 0.5,
-                background: '#F0F7FF'
-              }}>
-                {currentVehicle.plate}
-              </div>
-              <span style={{ background: '#E8F5E9', color: '#2E7D32', padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
-                Đăng ký
-              </span>
-            </div>
-
-            {/* Số khung & số máy */}
-            <div style={{ display: 'flex', gap: 12, fontSize: '10.5px', color: '#475569', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span>Số khung:</span>
-                <b style={{ color: '#0F172A' }}>{currentVehicle.vin}</b>
+          {/* Dòng Số khung & Số máy */}
+          <div className="hsx-vin-row">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span>Số khung:</span>
+              <b style={{ color: '#0F172A' }}>{currentVehicle.vin || '—'}</b>
+              {currentVehicle.vin && (
                 <Copy
                   size={11}
                   color="#1976D2"
@@ -1239,10 +1229,12 @@ export default function HoSoXePage() {
                   onClick={() => handleCopy(currentVehicle.vin, 'Số khung')}
                   title="Sao chép số khung"
                 />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span>Số máy:</span>
-                <b style={{ color: '#0F172A' }}>{currentVehicle.engine}</b>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span>Số máy:</span>
+              <b style={{ color: '#0F172A' }}>{currentVehicle.engine || '—'}</b>
+              {currentVehicle.engine && (
                 <Copy
                   size={11}
                   color="#1976D2"
@@ -1250,55 +1242,40 @@ export default function HoSoXePage() {
                   onClick={() => handleCopy(currentVehicle.engine, 'Số máy')}
                   title="Sao chép số máy"
                 />
-              </div>
-            </div>
-
-            {/* Thông số kỹ thuật nhanh */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))',
-              gap: 4,
-              borderTop: '1px dashed #E2E8F0',
-              paddingTop: 3,
-              fontSize: '10px'
-            }}>
-              <div>
-                <div style={{ color: '#64748B' }}>Hãng xe</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.brand}</div>
-              </div>
-              <div>
-                <div style={{ color: '#64748B' }}>Dòng xe</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.model}</div>
-              </div>
-              <div>
-                <div style={{ color: '#64748B' }}>Phiên bản</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.variant}</div>
-              </div>
-              <div>
-                <div style={{ color: '#64748B' }}>Năm SX</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.year}</div>
-              </div>
-              <div>
-                <div style={{ color: '#64748B' }}>Màu xe</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.color}</div>
-              </div>
-              <div>
-                <div style={{ color: '#64748B' }}>Nhiên liệu</div>
-                <div style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.fuel}</div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Chủ xe & địa chỉ bên phải */}
-          <div style={{
-            width: 'clamp(140px, 14vw, 185px)',
-            borderLeft: '1px solid #E2E8F0',
-            paddingLeft: 'clamp(6px, 0.8vw, 10px)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            flexShrink: 0
-          }}>
+          {/* Thông số kỹ thuật nhanh */}
+          <div className="hsx-specs-grid">
+            <div className="hsx-spec-item">
+              <div className="spec-label">Hãng xe</div>
+              <div className="spec-value">{currentVehicle.brand || '—'}</div>
+            </div>
+            <div className="hsx-spec-item">
+              <div className="spec-label">Dòng xe</div>
+              <div className="spec-value">{currentVehicle.model || '—'}</div>
+            </div>
+            <div className="hsx-spec-item">
+              <div className="spec-label">Phiên bản</div>
+              <div className="spec-value">{currentVehicle.variant || '—'}</div>
+            </div>
+            <div className="hsx-spec-item">
+              <div className="spec-label">Năm SX</div>
+              <div className="spec-value">{currentVehicle.year || '—'}</div>
+            </div>
+            <div className="hsx-spec-item">
+              <div className="spec-label">Màu xe</div>
+              <div className="spec-value">{currentVehicle.color || '—'}</div>
+            </div>
+            <div className="hsx-spec-item">
+              <div className="spec-label">Nhiên liệu</div>
+              <div className="spec-value">{currentVehicle.fuel || '—'}</div>
+            </div>
+          </div>
+
+          {/* Chủ xe & địa chỉ bên phải (Desktop) */}
+          <div className="hsx-owner-col">
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
               <span style={{ background: currentVehicle.statusBg, color: currentVehicle.statusColor, padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
                 {currentVehicle.status}
@@ -1306,37 +1283,26 @@ export default function HoSoXePage() {
             </div>
             <div>
               <span style={{ fontSize: '9.5px', color: '#64748B' }}>Chủ xe: </span>
-              <span style={{ fontWeight: 700, color: '#1565C0', fontSize: '11px' }}>{currentVehicle.owner.name}</span>
+              <span style={{ fontWeight: 700, color: '#1565C0', fontSize: '11px' }}>{currentVehicle.owner?.name || '—'}</span>
             </div>
             <div>
               <span style={{ fontSize: '9.5px', color: '#64748B' }}>SĐT: </span>
-              <span style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.owner.phone}</span>
+              <span style={{ fontWeight: 600, color: '#1E293B' }}>{currentVehicle.owner?.phone || '—'}</span>
             </div>
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: '9.5px', color: '#64748B' }}>Khách hàng: </span>
-              <span style={{ fontWeight: 500, color: '#334155' }}>{currentVehicle.company.name}</span>
+              <span style={{ fontWeight: 500, color: '#334155' }}>{currentVehicle.company?.name || 'Khách lẻ'}</span>
             </div>
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px', color: '#64748B' }}>
-              {currentVehicle.owner.address}
+              {currentVehicle.owner?.address || '—'}
             </div>
           </div>
         </div>
 
         {/* Dải Tabs & Nút tác vụ nhanh */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 6,
-          flexShrink: 0,
-          flexWrap: 'wrap',
-          background: '#F8FAFC',
-          padding: '3px 4px',
-          borderRadius: 6,
-          border: '1px solid #E2E8F0'
-        }}>
-          {/* 6 Tabs */}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: '1 1 auto' }}>
+        <div className="hsx-tabs-bar">
+          {/* 6 Tabs trượt ngang mượt mà */}
+          <div className="hsx-tabs-scroll">
             {tabs.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1345,6 +1311,7 @@ export default function HoSoXePage() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
+                  className="hsx-tab-btn"
                   style={{
                     padding: 'clamp(4px, 0.55vh, 6px) clamp(8px, 0.8vw, 12px)',
                     background: isActive ? '#E65100' : '#FFFFFF',
@@ -1359,7 +1326,8 @@ export default function HoSoXePage() {
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease',
-                    boxShadow: isActive ? '0 1px 3px rgba(230, 81, 0, 0.25)' : 'none'
+                    boxShadow: isActive ? '0 1px 3px rgba(230, 81, 0, 0.25)' : 'none',
+                    flexShrink: 0
                   }}
                 >
                   <Icon size={13} color={isActive ? '#FFFFFF' : '#E65100'} />
@@ -1382,7 +1350,7 @@ export default function HoSoXePage() {
           </div>
 
           {/* Các nút hành động nhanh bên phải thanh tab */}
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+          <div className="hsx-tab-actions">
             <button
               type="button"
               onClick={() => showToast('Đang gửi lệnh in phiếu hồ sơ xe ' + currentVehicle.plate + '...')}
