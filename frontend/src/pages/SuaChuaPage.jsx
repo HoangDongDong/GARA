@@ -1239,29 +1239,6 @@ export default function SuaChuaPage() {
                 <XCircle size={14} />
                 Bỏ chọn tất cả
               </button>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                style={{
-                  height: 'clamp(24px, 3vh, 28px)',
-                  padding: '0 10px',
-                  background: '#FFFFFF',
-                  color: '#E65100',
-                  border: '1px solid #E65100',
-                  borderRadius: 4,
-                  fontSize: 'inherit',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <RotateCcw size={13} />
-                Làm mới
-              </button>
             </div>
           </div>
 
