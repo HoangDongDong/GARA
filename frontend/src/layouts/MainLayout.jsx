@@ -42,6 +42,14 @@ const NAV = [
   { to: '/cau-hinh',       icon: <Settings size={18} />, label: 'Cấu hình' },
 ];
 
+const MOBILE_BOTTOM_NAV = [
+  { to: '/sua-chua', icon: <Wrench size={20} />, label: 'Sửa chữa' },
+  { to: '/ban-hang', icon: <ShoppingCart size={20} />, label: 'Bán hàng' },
+  { to: '/', icon: <Home size={22} />, label: 'Trang chủ', isCenter: true },
+  { to: '/ho-so-xe', icon: <CarFront size={20} />, label: 'Hồ sơ xe' },
+  { to: '/bao-hanh', icon: <ShieldCheck size={20} />, label: 'Bảo hành' },
+];
+
 export default function MainLayout() {
   const nav = useNavigate();
   const loc = useLocation();
@@ -94,17 +102,7 @@ export default function MainLayout() {
       {/* ===== TOP HEADER BAR ===== */}
       <header className="app-header">
         <div className="header-left">
-          {/* Nút Hamburger menu - chỉ hiện trên mobile */}
-          <button 
-            type="button" 
-            className="mobile-menu-btn" 
-            onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            aria-label="Mở danh mục menu"
-          >
-            <Menu size={22} color="white" />
-          </button>
-
-          <div className="header-logo">
+          <div className="header-logo" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
             <div className="logo-icon">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" strokeWidth="2">
                 <rect x="2" y="7" width="20" height="10" rx="2"/>
@@ -161,6 +159,16 @@ export default function MainLayout() {
               </div>
             )}
           </div>
+
+          {/* Nút Hamburger menu - vị trí góc phải trên mobile giống moonphim */}
+          <button 
+            type="button" 
+            className="mobile-menu-btn" 
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            aria-label="Mở danh mục menu"
+          >
+            <Menu size={22} color="white" />
+          </button>
         </div>
       </header>
 
@@ -227,6 +235,25 @@ export default function MainLayout() {
           )}
         </div>
       </div>
+
+      {/* ===== MOBILE BOTTOM DOCK (5 CHỨC NĂNG CHÍNH - GIỐNG MOONPHIM) ===== */}
+      <nav className="mobile-bottom-nav">
+        {MOBILE_BOTTOM_NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === '/'}
+            className={({ isActive }) =>
+              `mobile-bottom-item ${item.isCenter ? 'center-item' : ''} ${isActive ? 'active' : ''}`
+            }
+          >
+            <div className="mobile-bottom-icon-wrap">
+              {item.icon}
+            </div>
+            <span className="mobile-bottom-label">{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
