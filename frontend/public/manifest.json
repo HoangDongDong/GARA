@@ -1,0 +1,23 @@
+{
+  "name": "KAZUKO AUTO - Quản Lý Gara Ô Tô",
+  "short_name": "Kazuko Auto",
+  "description": "Hệ thống quản lý sửa chữa ô tô - phụ tùng KAZUKO",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101726",
+  "theme_color": "#E65100",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
