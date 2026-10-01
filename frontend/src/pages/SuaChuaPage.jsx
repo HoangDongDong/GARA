@@ -926,8 +926,8 @@ export default function SuaChuaPage() {
         flexShrink: 0,
         boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        {/* Lưới 9 trường thông tin phiếu xe (3 cột trên desktop, 1 cột thẳng hàng tăm tắp trên mobile) */}
-        <div className="responsive-grid-3" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Lưới 8 trường thông tin phiếu xe (4 cột trên desktop, 2 cột trên tablet, 1 cột thẳng hàng trên mobile) */}
+        <div className="responsive-grid-4" style={{ alignItems: 'center', gap: 8 }}>
           {/* 1. Biển số xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -979,34 +979,6 @@ export default function SuaChuaPage() {
                 boxSizing: 'border-box'
               }}
             />
-          </div>
-
-          {/* 3. Tình trạng xe */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              Tình trạng xe
-            </label>
-            <select
-              value={vehicleInfo.status}
-              onChange={(e) => setVehicleInfo({ ...vehicleInfo, status: e.target.value })}
-              style={{
-                flex: 1, minWidth: 0,
-                height: 'clamp(28px, 3.2vh, 31px)',
-                padding: '0 8px',
-                border: '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: 'inherit',
-                outline: 'none',
-                background: '#FFFFFF',
-                cursor: 'pointer',
-                boxSizing: 'border-box'
-              }}
-            >
-              <option value="Đang kiểm tra">Đang kiểm tra</option>
-              <option value="Đang sửa chữa">Đang sửa chữa</option>
-              <option value="Chờ phụ tùng">Chờ phụ tùng</option>
-              <option value="Đã hoàn thành">Đã hoàn thành</option>
-            </select>
           </div>
 
           {/* 4. Khách hàng */}
