@@ -926,38 +926,41 @@ export default function SuaChuaPage() {
         flexShrink: 0,
         boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        {/* Hàng 1: Biển số xe, Ngày tiếp nhận, Tình trạng xe */}
-        <div className="responsive-grid-3" style={{ alignItems: 'center' }}>
+        {/* Lưới 9 trường thông tin phiếu xe (3 cột trên desktop, 1 cột thẳng hàng tăm tắp trên mobile) */}
+        <div className="responsive-grid-3" style={{ alignItems: 'center', gap: 8 }}>
+          {/* 1. Biển số xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 85, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Biển số xe
             </label>
             <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 6 }}>
-            <select
-              value={vehicleInfo.vehicleId}
-              onChange={(e) => selectVehicle(e.target.value)}
-              style={{
-                flex: 1, minWidth: 0,
-                height: 'clamp(25px, 3.2vh, 29px)',
-                padding: '0 8px',
-                border: '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: 'inherit',
-                outline: 'none',
-                background: '#FFFFFF', cursor: 'pointer'
-              }}
-            >
-              <option value="">-- Chọn xe --</option>
-              {vehicleOptions.map((vehicle) => (
-                <option key={vehicle.ID} value={vehicle.ID}>{vehicle.BIENSO} - {vehicle.TEN_KH || 'Chưa có chủ xe'}</option>
-              ))}
-            </select>
-            <button type="button" onClick={openAddVehicle} style={{ height: 'clamp(25px, 3.2vh, 29px)', padding: '0 11px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 'inherit', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button>
+              <select
+                value={vehicleInfo.vehicleId}
+                onChange={(e) => selectVehicle(e.target.value)}
+                style={{
+                  flex: 1, minWidth: 0,
+                  height: 'clamp(28px, 3.2vh, 31px)',
+                  padding: '0 8px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: 'inherit',
+                  outline: 'none',
+                  background: '#FFFFFF', cursor: 'pointer',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="">-- Chọn xe --</option>
+                {vehicleOptions.map((vehicle) => (
+                  <option key={vehicle.ID} value={vehicle.ID}>{vehicle.BIENSO} - {vehicle.TEN_KH || 'Chưa có chủ xe'}</option>
+                ))}
+              </select>
+              <button type="button" onClick={openAddVehicle} style={{ height: 'clamp(28px, 3.2vh, 31px)', padding: '0 11px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 'inherit', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>＋ Thêm</button>
             </div>
           </div>
 
+          {/* 2. Ngày tiếp nhận */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 95, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Ngày tiếp nhận
             </label>
             <input
@@ -965,35 +968,38 @@ export default function SuaChuaPage() {
               value={vehicleInfo.date}
               onChange={(e) => setVehicleInfo({ ...vehicleInfo, date: e.target.value })}
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
-                padding: '0 6px',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
+                padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 outline: 'none',
-                background: '#FFFFFF'
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
+          {/* 3. Tình trạng xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 90, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Tình trạng xe
             </label>
             <select
               value={vehicleInfo.status}
               onChange={(e) => setVehicleInfo({ ...vehicleInfo, status: e.target.value })}
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
-                padding: '0 6px',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
+                padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 outline: 'none',
                 background: '#FFFFFF',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxSizing: 'border-box'
               }}
             >
               <option value="Đang kiểm tra">Đang kiểm tra</option>
@@ -1002,28 +1008,27 @@ export default function SuaChuaPage() {
               <option value="Đã hoàn thành">Đã hoàn thành</option>
             </select>
           </div>
-        </div>
 
-        {/* Hàng 2: Khách hàng, NV tiếp nhận, Km hiện tại */}
-        <div className="responsive-grid-3" style={{ alignItems: 'center' }}>
+          {/* 4. Khách hàng */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 85, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Khách hàng
             </label>
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
               <input
                 type="text"
                 value={vehicleInfo.customer}
                 readOnly
                 style={{
                   width: '100%',
-                  height: 'clamp(25px, 3.2vh, 29px)',
-                  padding: '0 24px 0 8px',
+                  height: 'clamp(28px, 3.2vh, 31px)',
+                  padding: '0 26px 0 8px',
                   border: '1px solid #CBD5E1',
                   borderRadius: 4,
                   fontSize: 'inherit',
                   outline: 'none',
-                  boxSizing: 'border-box', background: '#F8FAFC'
+                  boxSizing: 'border-box',
+                  background: '#F8FAFC'
                 }}
               />
               <Search
@@ -1034,35 +1039,38 @@ export default function SuaChuaPage() {
             </div>
           </div>
 
+          {/* 5. NV tiếp nhận */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 95, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               NV tiếp nhận
             </label>
             <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 6 }}>
-            <select
-              value={vehicleInfo.staff}
-              onChange={(e) => setVehicleInfo({ ...vehicleInfo, staff: e.target.value })}
-              style={{
-                flex: 1, minWidth: 0,
-                height: 'clamp(25px, 3.2vh, 29px)',
-                padding: '0 6px',
-                border: '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: 'inherit',
-                outline: 'none',
-                background: '#FFFFFF',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">-- Chọn nhân viên --</option>
-              {employeeOptions.map((employee) => <option key={employee.ID} value={employee.ID}>{employee.NAME}</option>)}
-            </select>
-            <button type="button" onClick={openAddEmployee} style={{ height: 'clamp(25px, 3.2vh, 29px)', padding: '0 11px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 'inherit', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button>
+              <select
+                value={vehicleInfo.staff}
+                onChange={(e) => setVehicleInfo({ ...vehicleInfo, staff: e.target.value })}
+                style={{
+                  flex: 1, minWidth: 0,
+                  height: 'clamp(28px, 3.2vh, 31px)',
+                  padding: '0 8px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: 'inherit',
+                  outline: 'none',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="">-- Chọn nhân viên --</option>
+                {employeeOptions.map((employee) => <option key={employee.ID} value={employee.ID}>{employee.NAME}</option>)}
+              </select>
+              <button type="button" onClick={openAddEmployee} style={{ height: 'clamp(28px, 3.2vh, 31px)', padding: '0 11px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 'inherit', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>＋ Thêm</button>
             </div>
           </div>
 
+          {/* 6. Km hiện tại */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 90, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Km hiện tại
             </label>
             <input
@@ -1070,23 +1078,22 @@ export default function SuaChuaPage() {
               value={vehicleInfo.currentKm}
               onChange={(e) => setVehicleInfo({ ...vehicleInfo, currentKm: e.target.value })}
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
                 padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 outline: 'none',
-                background: '#FFFFFF'
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
               }}
             />
           </div>
-        </div>
 
-        {/* Hàng 3: Loại xe, Số phiếu, Ghi chú */}
-        <div className="responsive-grid-3" style={{ alignItems: 'center' }}>
+          {/* 7. Loại xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 85, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Loại xe
             </label>
             <input
@@ -1094,20 +1101,22 @@ export default function SuaChuaPage() {
               value={vehicleInfo.carModel}
               readOnly
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
-                padding: '0 6px',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
+                padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 outline: 'none',
-                background: '#F8FAFC'
+                background: '#F8FAFC',
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
+          {/* 8. Số phiếu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 95, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Số phiếu
             </label>
             <input
@@ -1115,21 +1124,23 @@ export default function SuaChuaPage() {
               value={vehicleInfo.receiptCode}
               readOnly
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
                 padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 background: '#F8FAFC',
                 color: '#64748B',
-                outline: 'none'
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
+          {/* 9. Ghi chú */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 90, flexShrink: 0, color: '#334155', fontWeight: 500 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Ghi chú
             </label>
             <input
@@ -1138,14 +1149,15 @@ export default function SuaChuaPage() {
               value={vehicleInfo.note}
               onChange={(e) => setVehicleInfo({ ...vehicleInfo, note: e.target.value })}
               style={{
-                flex: 1,
-                height: 'clamp(25px, 3.2vh, 29px)',
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
                 padding: '0 8px',
                 border: '1px solid #CBD5E1',
                 borderRadius: 4,
                 fontSize: 'inherit',
                 outline: 'none',
-                background: '#FFFFFF'
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
               }}
             />
           </div>
