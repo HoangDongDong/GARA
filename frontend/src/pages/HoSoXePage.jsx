@@ -851,7 +851,7 @@ export default function HoSoXePage() {
       )}
 
       {/* Header thanh công cụ (Page Header) */}
-      <div style={{
+      <div className="hsx-header-bar" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -891,36 +891,38 @@ export default function HoSoXePage() {
         </div>
 
         {/* Cụm tìm kiếm và nút thao tác */}
-        <div className="hsx-top-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1 1 620px', minWidth: 0 }}>
+        <div className="hsx-top-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, minWidth: 0 }}>
           
           {/* Ô tìm kiếm biển số xe với Dropdown gợi ý */}
-          <div ref={searchBoxRef} className="hsx-search-wrap" style={{ position: 'relative', width: 'clamp(220px, 20vw, 290px)', flex: '1 1 200px' }}>
-            <input
-              type="text"
-              placeholder="Gõ biển số (51A, 30H...), số khung, tên xe..."
-              value={searchPlateQuery}
-              onChange={(e) => {
-                setSearchPlateQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              style={{
-                width: '100%',
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 24px 0 8px',
-                border: isSearchOpen ? '1px solid #E65100' : '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: '11px',
-                outline: 'none',
-                boxSizing: 'border-box',
-                background: '#FFFFFF'
-              }}
-            />
-            <Search
-              size={13}
-              color="#64748B"
-              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-            />
+          <div ref={searchBoxRef} className="hsx-search-wrap" style={{ position: 'relative', width: 'clamp(220px, 20vw, 290px)' }}>
+            <div style={{ position: 'relative', width: '100%', height: 'clamp(26px, 3vh, 30px)' }}>
+              <input
+                type="text"
+                placeholder="Gõ biển số (51A, 30H...), số khung, tên xe..."
+                value={searchPlateQuery}
+                onChange={(e) => {
+                  setSearchPlateQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => setIsSearchOpen(true)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  padding: '0 26px 0 8px',
+                  border: isSearchOpen ? '1px solid #E65100' : '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: '11px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: '#FFFFFF'
+                }}
+              />
+              <Search
+                size={13}
+                color="#64748B"
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+              />
+            </div>
 
             {/* Dropdown danh sách gợi ý xe */}
             {isSearchOpen && (
