@@ -1,0 +1,167 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+
+router.get('/', async (req, res) => {
+  try {
+    const rows = await db.query(`
+      SELECT FIRST 100 NK.ID, NK.NAME, NK.NOTE, NK.NGAY,
+             NK.DNHACUNGCAPID, NCC.NAME AS TEN_NCC,
+             NK.DKHOHANGID, K.NAME AS TEN_KHO,
+             NK.DNHANVIENID, NV.NAME AS TEN_NHANVIEN,
+             NK.TIENHANG, NK.TILEGIAMGIA, NK.TIENGIAMGIA,
+             NK.TONGCONG, NK.LOAI, NK.CONGNO, NK.DATHANHTOAN,
+             NK.SOLOHANG, NK.STATUS
+        FROM TNHAPKHO NK
+        LEFT JOIN DNHACUNGCAP NCC ON NCC.ID = NK.DNHACUNGCAPID
+        LEFT JOIN DKHOHANG K ON K.ID = NK.DKHOHANGID
+        LEFT JOIN DNHANVIEN NV ON NV.ID = NK.DNHANVIENID
+       WHERE NK.STATUS = 1
+       ORDER BY NK.NGAY DESC, NK.TIMECREATED DESC
+    `);
+    res.json({ data: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const headers = await db.query(`
+      SELECT NK.ID, NK.NAME, NK.NOTE, NK.NGAY,
+             NK.DNHACUNGCAPID, NCC.NAME AS TEN_NCC,
+             NK.DKHOHANGID, K.NAME AS TEN_KHO,
+             NK.DNHANVIENID, NV.NAME AS TEN_NHANVIEN,
+             NK.TIENHANG, NK.TILEGIAMGIA, NK.TIENGIAMGIA,
+             NK.TONGCONG, NK.LOAI, NK.CONGNO, NK.DATHANHTOAN,
+             NK.SOLOHANG, NK.STATUS
+        FROM TNHAPKHO NK
+        LEFT JOIN DNHACUNGCAP NCC ON NCC.ID = NK.DNHACUNGCAPID
+        LEFT JOIN DKHOHANG K ON K.ID = NK.DKHOHANGID
+        LEFT JOIN DNHANVIEN NV ON NV.ID = NK.DNHANVIENID
+       WHERE NK.ID = ? AND NK.STATUS = 1
+    `, [req.params.id]);
+    if (!headers.length) return res.status(404).json({ error: 'Khong tim thay phieu nhap kho' });
+
+    const items = await db.query(`
+      SELECT CT.ID, CT.DMATHANGID, M.CODE, M.NAME AS TEN_MATHANG,
+             CT.DDONVITINHID, DVT.NAME AS TEN_DVT,
+             CT.SOLUONG, CT.DONGIA, CT.THANHTIEN, CT.GIAVON,
+             CT.HANSUDUNG, CT.DKHOHANGID, CT.NOTE
+        FROM TNHAPKHOCHITIET CT
+        LEFT JOIN DMATHANG M ON M.ID = CT.DMATHANGID
+        LEFT JOIN DDONVITINH DVT ON DVT.ID = CT.DDONVITINHID
+       WHERE CT.TNHAPKHOID = ? AND CT.STATUS = 1
+       ORDER BY CT.TIMECREATED, CT.ID
+    `, [req.params.id]);
+    res.json({ data: { receipt: headers[0], items } });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/', async (req, res) => {
+  try {
+    const {
+      NAME, NGAY, NOTE, SOLOHANG,
+      DNHACUNGCAPID, DKHOHANGID, DNHANVIENID,
+      TIENHANG, TIENGIAMGIA, TONGCONG, DATHANHTOAN, items,
+    } = req.body;
+    const code = String(NAME || '').trim();
+    if (!code) return res.status(400).json({ error: 'So phieu khong duoc trong' });
+    if (!DNHACUNGCAPID) return res.status(400).json({ error: 'Vui long chon nha cung cap' });
+    if (!DKHOHANGID) return res.status(400).json({ error: 'Vui long chon kho nhap' });
+    if (!DNHANVIENID) return res.status(400).json({ error: 'Vui long chon nhan vien nhap' });
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Phieu nhap chua co mat hang' });
+
+    const paid = Number(DATHANHTOAN) === 1;
+    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    const result = await db.transaction(async (query, execute, uuidv4) => {
+      const duplicates = await query(`SELECT FIRST 1 ID FROM TNHAPKHO WHERE NAME = ? AND STATUS = 1`, [code]);
+      if (duplicates.length) {
+        const error = new Error('So phieu nhap da ton tai');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const receiptId = uuidv4();
+      const goods = Number(TIENHANG || 0);
+      const discount = Number(TIENGIAMGIA || 0);
+      const total = Number(TONGCONG || 0);
+      await execute(`
+        INSERT INTO TNHAPKHO
+          (ID, NAME, NOTE, STATUS, USERCREATEDID, TIMECREATED, NGAY,
+           DNHACUNGCAPID, DKHOHANGID, DNHANVIENID, TIENHANG,
+           TILEGIAMGIA, TIENGIAMGIA, TONGCONG, LOAI, CONGNO,
+           DATHANHTOAN, SOLOHANG)
+        VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?, ?)`,
+        [receiptId, code, NOTE || null, actor, NGAY ? new Date(NGAY) : new Date(),
+          DNHACUNGCAPID, DKHOHANGID, DNHANVIENID, goods,
+          discount, total, paid ? 0 : total, paid ? 1 : 0, SOLOHANG || null]
+      );
+
+      for (const item of items) {
+        const quantity = Number(item.SOLUONG || 0);
+        const price = Number(item.DONGIA || 0);
+        const amount = Number(item.THANHTIEN ?? quantity * price);
+        if (!item.DMATHANGID || quantity <= 0) {
+          throw new Error('Chi tiet mat hang khong hop le');
+        }
+        await execute(`
+          INSERT INTO TNHAPKHOCHITIET
+            (ID, STATUS, USERCREATEDID, TIMECREATED, TNHAPKHOID,
+             DMATHANGID, DDONVITINHID, SOLUONG, DONGIA, THANHTIEN,
+             GIAVON, DKHOHANGID)
+          VALUES (?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [uuidv4(), actor, receiptId, item.DMATHANGID, item.DDONVITINHID || null,
+            quantity, price, amount, price, DKHOHANGID]
+        );
+      }
+      return { id: receiptId, debt: paid ? 0 : total, paid };
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(e.statusCode || 500).json({ error: e.message });
+  }
+});
+
+router.patch('/:id/pay', async (req, res) => {
+  try {
+    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    await db.execute(
+      `UPDATE TNHAPKHO
+          SET CONGNO=0, DATHANHTOAN=1,
+              USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
+        WHERE ID=? AND STATUS=1`,
+      [actor, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    await db.transaction(async (query, execute) => {
+      await execute(
+        `UPDATE TNHAPKHO
+            SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
+          WHERE ID=?`,
+        [actor, req.params.id]
+      );
+      await execute(
+        `UPDATE TNHAPKHOCHITIET
+            SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
+          WHERE TNHAPKHOID=?`,
+        [actor, req.params.id]
+      );
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;
