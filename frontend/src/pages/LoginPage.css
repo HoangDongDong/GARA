@@ -1,0 +1,333 @@
+/* ============================================
+   KAZUKO AUTO - Responsive LoginPage CSS
+   ============================================ */
+
+.login-page-container {
+  min-height: 100vh;
+  display: flex;
+  background: linear-gradient(135deg, #BF360C 0%, #E65100 30%, #F57C00 65%, #FF9800 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Left - Branding section */
+.login-branding {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 60px;
+  color: white;
+  box-sizing: border-box;
+}
+
+.branding-content {
+  text-align: center;
+  max-width: 480px;
+}
+
+.branding-car-icon {
+  font-size: 54px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.25));
+}
+
+.branding-title {
+  font-size: 38px;
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.branding-title-sub {
+  color: #FFD54F;
+  font-style: italic;
+}
+
+.branding-slogan {
+  font-size: 16px;
+  opacity: 0.95;
+  margin-top: 8px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.branding-info-box {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.branding-features {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.branding-feature-item {
+  text-align: center;
+  opacity: 0.9;
+}
+
+.branding-feature-icon {
+  font-size: 26px;
+  margin-bottom: 4px;
+}
+
+.branding-feature-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Right - Form section */
+.login-form-wrapper {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border-radius: 18px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+
+.login-card-header {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.login-card-header .lock-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.login-card-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #212121;
+}
+
+.login-card-header p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: #757575;
+}
+
+.login-input-group {
+  margin-bottom: 18px;
+}
+
+.login-input-group label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #424242;
+  margin-bottom: 6px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 9px;
+  border: 1.5px solid #E0E0E0;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  border-color: #E65100;
+  box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.12);
+}
+
+.login-row-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+  font-size: 12.5px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #616161;
+  user-select: none;
+}
+
+.login-forgot {
+  color: #E65100;
+  font-weight: 600;
+  text-decoration: none;
+}
+.login-forgot:hover {
+  text-decoration: underline;
+}
+
+.login-error-alert {
+  background: #FFEBEE;
+  color: #C62828;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #FFCDD2;
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #E65100 0%, #F57C00 100%);
+  color: white;
+  border: none;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.35);
+}
+
+.login-submit-btn:hover {
+  background: linear-gradient(135deg, #D84315 0%, #E65100 100%);
+  box-shadow: 0 6px 18px rgba(230, 81, 0, 0.45);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.login-card-footer {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 11px;
+  color: #9E9E9E;
+}
+
+/* ===== TABLET & MOBILE RESPONSIVE (≤ 768px) ===== */
+@media (max-width: 768px) {
+  .login-page-container {
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 24px 16px !important;
+    min-height: 100vh;
+  }
+
+  .login-branding {
+    flex: none !important;
+    width: 100% !important;
+    padding: 10px 0 20px 0 !important;
+  }
+
+  .branding-content {
+    max-width: 100% !important;
+  }
+
+  .branding-car-icon {
+    font-size: 40px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .branding-title {
+    font-size: 26px !important;
+  }
+
+  .branding-slogan {
+    font-size: 13px !important;
+    margin-top: 4px !important;
+  }
+
+  /* Ẩn các box dài trên mobile để form không bị đẩy xuống dưới */
+  .branding-info-box {
+    display: none !important;
+  }
+
+  .branding-features {
+    display: none !important;
+  }
+
+  .login-form-wrapper {
+    width: 100% !important;
+    max-width: 420px !important;
+    padding: 0 !important;
+  }
+
+  .login-card {
+    padding: 26px 20px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .login-card-header {
+    margin-bottom: 20px !important;
+  }
+
+  .login-card-header .lock-icon {
+    font-size: 26px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .login-card-header h2 {
+    font-size: 19px !important;
+  }
+}
+
+/* ===== PHONE (≤ 480px) ===== */
+@media (max-width: 480px) {
+  .login-page-container {
+    padding: 16px 12px !important;
+  }
+
+  .branding-title {
+    font-size: 22px !important;
+  }
+
+  .branding-slogan {
+    font-size: 12px !important;
+  }
+
+  .login-card {
+    padding: 22px 16px !important;
+  }
+
+  .login-input {
+    padding: 11px 12px !important;
+    font-size: 13.5px !important;
+  }
+
+  .login-submit-btn {
+    padding: 12px !important;
+    font-size: 14px !important;
+  }
+}
