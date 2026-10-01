@@ -926,8 +926,8 @@ export default function SuaChuaPage() {
         flexShrink: 0,
         boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        {/* Lưới 8 trường thông tin phiếu xe (4 cột trên desktop, 2 cột trên tablet, 1 cột thẳng hàng trên mobile) */}
-        <div className="responsive-grid-4" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Lưới thông tin phiếu xe (3 cột trên desktop như cũ, 1 cột thẳng hàng tăm tắp trên mobile) */}
+        <div className="responsive-grid-3" style={{ alignItems: 'center', gap: 8 }}>
           {/* 1. Biển số xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
