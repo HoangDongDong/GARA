@@ -550,7 +550,7 @@
     transform: scale(0.95);
   }
 
-  /* ===== MOBILE BOTTOM DOCK (5 CHỨC NĂNG CHÍNH - GIỐNG MOONPHIM) ===== */
+  /* ===== MOBILE BOTTOM DOCK (5 CHỨC NĂNG CHÍNH - HIỆU ỨNG POPUP NỔI ACTIVE) ===== */
   .mobile-bottom-nav {
     display: flex !important;
     position: fixed;
@@ -558,7 +558,7 @@
     left: 10px;
     right: 10px;
     height: 60px;
-    background: rgba(15, 23, 42, 0.92);
+    background: rgba(15, 23, 42, 0.94);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -570,6 +570,7 @@
     padding: 0 6px;
   }
 
+  /* Mục mặc định (chưa active) */
   .mobile-bottom-item {
     display: flex;
     flex-direction: column;
@@ -582,8 +583,7 @@
     flex: 1;
     height: 100%;
     position: relative;
-    transition: all 0.2s ease;
-    padding-top: 4px;
+    transition: all 0.25s ease;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
@@ -592,54 +592,59 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
     margin-bottom: 2px;
-    transition: transform 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    color: #94A3B8;
   }
 
+  .mobile-bottom-item .mobile-bottom-label {
+    font-size: 10px;
+    font-weight: 500;
+    transition: color 0.2s ease, font-weight 0.2s ease;
+    white-space: nowrap;
+  }
+
+  /* KHI BẤM CHỌN BẤT KỲ MỤC NÀO TRONG 5 CHỨC NĂNG:
+     MỤC ĐÓ TỰ ĐỘNG NỔI HÌNH TRÒN PHÁT SÁNG LÊN TRÊN (GIỐNG HỆT MOONPHIM) */
   .mobile-bottom-item.active {
-    color: #FF9800;
-  }
-  .mobile-bottom-item.active .mobile-bottom-icon-wrap {
-    transform: translateY(-2px);
-    color: #FF9800;
-  }
-  .mobile-bottom-item.active .mobile-bottom-label {
-    font-weight: 700;
-    color: #FFB74D;
+    color: #FFA726;
   }
 
-  /* NÚT TRUNG TÂM NỔI LÊN (TRANG CHỦ / TỔNG QUAN) - MÀU CAM THEO HỆ THỐNG KAZUKO */
-  .mobile-bottom-item.center-item {
-    position: relative;
-  }
-  .mobile-bottom-item.center-item .mobile-bottom-icon-wrap {
+  .mobile-bottom-item.active .mobile-bottom-icon-wrap {
     width: 48px;
     height: 48px;
     border-radius: 50%;
     background: linear-gradient(135deg, #D84315 0%, #E65100 50%, #FF9800 100%);
-    color: white;
+    color: #FFFFFF !important;
     margin-top: -24px;
-    box-shadow: 0 6px 18px rgba(230, 81, 0, 0.55), 0 0 0 4px #0F172A;
-    border: 2px solid rgba(255, 213, 79, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 8px 22px rgba(230, 81, 0, 0.65), 0 0 0 4px #0F172A;
+    border: 2px solid rgba(255, 213, 79, 0.95);
+    animation: popUpBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .mobile-bottom-item.center-item.active .mobile-bottom-icon-wrap {
-    background: linear-gradient(135deg, #BF360C 0%, #D84315 50%, #FF9800 100%);
-    box-shadow: 0 8px 22px rgba(230, 81, 0, 0.75), 0 0 0 4px #0F172A;
-    transform: scale(1.1) translateY(-2px);
-    border-color: #FFFFFF;
-  }
-  .mobile-bottom-item.center-item .mobile-bottom-label {
-    margin-top: 2px;
-    font-weight: 600;
-    color: #FFB74D;
-  }
-  .mobile-bottom-item.center-item.active .mobile-bottom-label {
-    color: #FFA726;
+
+  .mobile-bottom-item.active .mobile-bottom-label {
     font-weight: 700;
+    color: #FFB74D;
+    font-size: 10.5px;
+    margin-top: 2px;
+  }
+
+  @keyframes popUpBounce {
+    0% {
+      transform: scale(0.65) translateY(4px);
+      opacity: 0.8;
+    }
+    60% {
+      transform: scale(1.15) translateY(-4px);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
   }
 }
 
@@ -688,7 +693,7 @@
     bottom: 6px;
     height: 56px;
   }
-  .mobile-bottom-item.center-item .mobile-bottom-icon-wrap {
+  .mobile-bottom-item.active .mobile-bottom-icon-wrap {
     width: 44px;
     height: 44px;
     margin-top: -20px;

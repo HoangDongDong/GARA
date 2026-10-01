@@ -45,9 +45,9 @@ const NAV = [
 const MOBILE_BOTTOM_NAV = [
   { to: '/sua-chua', icon: <Wrench size={20} />, label: 'Sửa chữa' },
   { to: '/ban-hang', icon: <ShoppingCart size={20} />, label: 'Bán hàng' },
-  { to: '/', icon: <Home size={22} />, label: 'Trang chủ', isCenter: true },
-  { to: '/ho-so-xe', icon: <CarFront size={20} />, label: 'Hồ sơ xe' },
-  { to: '/bao-hanh', icon: <ShieldCheck size={20} />, label: 'Bảo hành' },
+  { to: '/',         icon: <Home size={20} />,         label: 'Trang chủ' },
+  { to: '/ho-so-xe', icon: <CarFront size={20} />,     label: 'Hồ sơ xe' },
+  { to: '/bao-hanh', icon: <ShieldCheck size={20} />,  label: 'Bảo hành' },
 ];
 
 export default function MainLayout() {
@@ -244,7 +244,7 @@ export default function MainLayout() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `mobile-bottom-item ${item.isCenter ? 'center-item' : ''} ${isActive ? 'active' : ''}`
+              `mobile-bottom-item ${isActive ? 'active' : ''}`
             }
           >
             <div className="mobile-bottom-icon-wrap">
