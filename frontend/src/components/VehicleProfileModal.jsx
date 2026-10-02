@@ -12,6 +12,33 @@ const fieldLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize:
 const fieldInput = { height: 34, border: '1px solid #CBD5E1', borderRadius: 5, padding: '0 10px', fontSize: 12, outlineColor: '#E65100' };
 const addButtonStyle = { height: 34, padding: '0 12px', border: 0, borderRadius: 5, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
+const prepareVehicleImage = (source, name = 'anh-ho-so-xe.jpg') => new Promise((resolve, reject) => {
+  if (source instanceof Blob && !source.type.startsWith('image/')) return reject(new Error('Tệp đã chọn không phải hình ảnh.'));
+  const objectUrl = source instanceof Blob ? URL.createObjectURL(source) : null;
+  const image = new Image();
+  image.onload = () => {
+    try {
+      const maxSide = 1600;
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      const data = canvas.toDataURL('image/jpeg', 0.82);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      resolve({ name: name.replace(/\.[^.]+$/, '') + '.jpg', data });
+    } catch (error) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      reject(error);
+    }
+  };
+  image.onerror = () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    reject(new Error('Không thể đọc ảnh đã chọn.'));
+  };
+  image.src = objectUrl || source;
+});
+
 export default function VehicleProfileModal({ open, onClose, onCreated, onUpdated, notify = () => {}, editingVehicle = null }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [customersList, setCustomersList] = useState([]);
@@ -32,9 +59,11 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStatus, setScanStatus] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [vehicleImage, setVehicleImage] = useState(null);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const vehicleImageInputRef = useRef(null);
 
   const isEditing = Boolean(editingVehicle);
 
@@ -58,6 +87,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     setError('');
     setSubForm(null);
     setCustomerForm(null);
+    setVehicleImage(null);
 
     let active = true;
     (async () => {
@@ -181,6 +211,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
         NAMSANXUAT: form.NAMSANXUAT ? Number(form.NAMSANXUAT) : null,
         ODO: Math.max(0, Number(form.ODO) || 0),
         MUCNHIENLIEU: Math.max(0, Math.min(100, Number(form.MUCNHIENLIEU) || 0)),
+        ...(vehicleImage?.data ? { ANHXE: vehicleImage.data } : {}),
       };
       if (isEditing) {
         const vehicleId = editingVehicle.id || editingVehicle.ID || editingVehicle.rawVehicle?.ID;
@@ -473,6 +504,8 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
     const image = canvas.toDataURL('image/jpeg', 0.92);
     stopCamera();
+    try { setVehicleImage(await prepareVehicleImage(image, 'anh-quet-bien-so.jpg')); }
+    catch (error) { notify(error.message || 'Không thể thêm ảnh chụp vào hồ sơ xe.'); }
     await scanVehicleImage(image);
   };
 
@@ -481,7 +514,21 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     event.target.value = '';
     if (!file) return;
     stopCamera();
+    try { setVehicleImage(await prepareVehicleImage(file, file.name)); }
+    catch (error) { notify(error.message || 'Không thể thêm ảnh vào hồ sơ xe.'); }
     await scanVehicleImage(file);
+  };
+
+  const chooseProfileImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setVehicleImage(await prepareVehicleImage(file, file.name));
+      notify('Đã thêm ảnh vào hồ sơ xe.');
+    } catch (error) {
+      notify(error.message || 'Không thể thêm ảnh vào hồ sơ xe.');
+    }
   };
 
   return <>
@@ -496,6 +543,28 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
             <label style={fieldLabel}>Khách hàng / Chủ xe <span style={{ color: '#94A3B8', fontWeight: 400 }}>(không bắt buộc)</span><div style={{display:'flex',gap:6}}><select value={form.DKHACHHANGID} onChange={(e)=>update('DKHACHHANGID',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chưa có chủ xe --</option>{customersList.map(x=><option key={x.ID} value={x.ID}>{x.MAKHACH?`${x.MAKHACH} - `:''}{x.NAME}{x.DIENTHOAI?` - ${x.DIENTHOAI}`:''}</option>)}</select><button type="button" onClick={openCustomer} style={addButtonStyle}>＋ Thêm</button></div></label>
           </div>
           {(scanning || scanStatus) && <div style={{margin:'-7px 0 12px',padding:'7px 9px',borderRadius:5,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#9A3412',fontSize:11}}><div style={{display:'flex',alignItems:'center',gap:6,fontWeight:700}}><ScanLine size={14}/>{scanStatus || 'Đang nhận dạng...'}</div>{scanning&&<div style={{height:4,marginTop:6,borderRadius:4,background:'#FFEDD5',overflow:'hidden'}}><div style={{width:`${scanProgress}%`,height:'100%',background:'#E65100',transition:'width .2s'}}/></div>}</div>}
+          <div style={{ color: '#C2410C', fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><ImageUp size={14}/> Ảnh hồ sơ xe</span>
+            <button type="button" onClick={() => vehicleImageInputRef.current?.click()} style={{...addButtonStyle,display:'flex',alignItems:'center',gap:5,height:30}}><ImageUp size={14}/> {vehicleImage ? 'Thay ảnh' : 'Thêm ảnh'}</button>
+            <input ref={vehicleImageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" onChange={chooseProfileImage} hidden />
+          </div>
+          <div style={{ marginBottom: 15, minHeight: 74, border: '1px dashed #FDBA74', borderRadius: 6, background: '#FFF7ED', padding: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+            {vehicleImage ? (
+              <>
+                <div style={{ position: 'relative', width: 116, height: 70, flexShrink: 0 }}>
+                  <img src={vehicleImage.data} alt="Ảnh hồ sơ xe" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 5, border: '1px solid #FED7AA' }} />
+                  <button type="button" onClick={() => setVehicleImage(null)} title="Xóa ảnh đã chọn" style={{ position: 'absolute', top: -6, right: -6, width: 21, height: 21, borderRadius: '50%', border: '2px solid #fff', background: '#DC2626', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' }}><XCircle size={14}/></button>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{vehicleImage.name}</div>
+                  <div style={{ fontSize: 10.5, color: '#64748B', marginTop: 3 }}>Ảnh này sẽ được lưu làm ảnh đại diện của hồ sơ xe.</div>
+                  <div style={{ fontSize: 10.5, color: '#2E7D32', marginTop: 2 }}>Ảnh dùng để quét biển số cũng tự động xuất hiện tại đây.</div>
+                </div>
+              </>
+            ) : (
+              <div style={{ width: '100%', textAlign: 'center', color: '#94A3B8', fontSize: 11 }}>Chưa chọn ảnh hồ sơ xe. Bấm “Thêm ảnh” hoặc chọn ảnh để quét biển số.</div>
+            )}
+          </div>
           <div style={{ color: '#C2410C', fontWeight: 800, marginBottom: 8, display: 'flex', gap: 5 }}><Wrench size={14}/> Thông số kỹ thuật</div>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:11 }}>
             <label style={fieldLabel}>Hãng xe *<div style={{display:'flex',gap:6}}><select value={form.DHANGXEID} onChange={(e)=>update('DHANGXEID',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chọn hãng xe --</option>{brands.map(x=><option key={x.ID} value={x.ID}>{x.NAME}</option>)}</select><button type="button" onClick={()=>openMaster('brand')} style={addButtonStyle}>＋ Thêm</button></div></label>

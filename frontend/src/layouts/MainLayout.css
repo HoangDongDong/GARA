@@ -571,6 +571,16 @@
     align-items: center;
     justify-content: space-around;
     padding: 0 6px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease !important;
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Khi cuộn xuống xem nội dung phía dưới (trang Sửa chữa): ẩn thanh điều khiển xuống dưới */
+  .mobile-bottom-nav.nav-hidden {
+    transform: translateY(calc(100% + 25px)) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* Mục mặc định (chưa active) */
