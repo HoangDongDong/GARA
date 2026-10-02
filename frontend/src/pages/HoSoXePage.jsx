@@ -443,6 +443,42 @@ const VEHICLES_DATABASE = [
   }
 ];
 
+// Danh sách 7 ảnh xe chuẩn theo mockup giao diện
+const DEFAULT_VEHICLE_GALLERY = [
+  { id: 1, label: 'Toàn xe', url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80' },
+  { id: 2, label: 'Biển số', url: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=300&auto=format&fit=crop&q=80' },
+  { id: 3, label: 'Số khung', url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&auto=format&fit=crop&q=80' },
+  { id: 4, label: 'Số máy', url: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=300&auto=format&fit=crop&q=80' },
+  { id: 5, label: 'Trầy xước hàng', url: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=300&auto=format&fit=crop&q=80' },
+  { id: 6, label: 'Trầy xước / Hư hỏng', url: 'https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80' },
+  { id: 7, label: 'Trước - Sau sửa chữa', url: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=300&auto=format&fit=crop&q=80' },
+];
+
+// Lịch hẹn & nhắc việc chuẩn theo mockup
+const DEFAULT_APPOINTMENTS = [
+  { id: 1, date: '02/10/2025', service: 'Bảo dưỡng định kỳ', content: 'Kiểm tra tổng thể', status: 'Chờ xử lý', statusColor: '#E65100', statusBg: '#FFF3E0' },
+  { id: 2, date: '15/10/2025', service: 'Thay dầu', content: 'Thay dầu máy + lọc dầu', status: 'Đã xác nhận', statusColor: '#2E7D32', statusBg: '#E8F5E9' },
+  { id: 3, date: '30/10/2025', service: 'Kiểm tra phanh', content: 'Kiểm tra má phanh', status: 'Chưa đến', statusColor: '#0288D1', statusBg: '#E1F5FE' },
+];
+
+// Ghi chú chuẩn theo mockup
+const DEFAULT_NOTES = [
+  {
+    id: 1,
+    author: 'admin',
+    date: '30/09/2025 14:20',
+    avatarBg: '#E65100',
+    content: 'Xe đang hoạt động tốt, lần bảo dưỡng gần nhất ngày 15/09/2025.'
+  },
+  {
+    id: 2,
+    author: 'Kỹ thuật viên',
+    date: '25/09/2025 10:15',
+    avatarBg: '#C62828',
+    content: 'Cần kiểm tra lại hệ thống phanh sau 60.000km.'
+  }
+];
+
 const EMPTY_VEHICLE_PROFILE = {
   id: '', plate: '—', modelName: 'CHƯA CÓ HỒ SƠ XE', brand: '—', model: '—', variant: '—',
   year: '—', color: '—', fuel: '—', vin: '—', engine: '—', odo: '0 km',
@@ -607,11 +643,11 @@ export default function HoSoXePage() {
       const params = new URLSearchParams(window.location.search);
       return params.get('plate') || '';
     } catch (e) {}
-    return '';
+    return '51A-123.45';
   });
   const [vehicleList, setVehicleList] = useState([]);
-  const [currentVehicle, setCurrentVehicle] = useState(EMPTY_VEHICLE_PROFILE);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [currentVehicle, setCurrentVehicle] = useState(VEHICLES_DATABASE[0]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState('thong-tin-chung');
   const [copiedCode, setCopiedCode] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -684,7 +720,6 @@ export default function HoSoXePage() {
 
   useEffect(() => {
     const load = async () => {
-      setLoadingProfile(true);
       try {
         const [rows, meta, customerRows] = await Promise.all([
           vehicles.list(),
@@ -696,12 +731,17 @@ export default function HoSoXePage() {
         setVehicleBrands(Array.isArray(meta?.brands) ? meta.brands : []);
         setVehicleModels(Array.isArray(meta?.models) ? meta.models : []);
         setCustomerOptions(Array.isArray(customerRows) ? customerRows : []);
-        const requestedPlate = selectedPlate.toLowerCase();
-        const selected = mapped.find((vehicle) => vehicle.plate.toLowerCase() === requestedPlate) || mapped[0];
-        if (selected) await loadVehicleProfile(selected);
-        else setCurrentVehicle(EMPTY_VEHICLE_PROFILE);
+        const requestedPlate = (selectedPlate || '51A-123.45').toLowerCase();
+        const selected = mapped.find((vehicle) => vehicle.plate.toLowerCase() === requestedPlate);
+        if (selected) {
+          await loadVehicleProfile(selected);
+        } else {
+          setCurrentVehicle(VEHICLES_DATABASE[0]);
+          setSelectedPlate(VEHICLES_DATABASE[0].plate);
+        }
       } catch (error) {
         showToast(error?.response?.data?.error || error.message || 'Không thể tải danh sách xe.');
+      } finally {
         setLoadingProfile(false);
       }
     };
@@ -875,6 +915,7 @@ export default function HoSoXePage() {
       )}
 
       {/* Header thanh công cụ (Page Header) */}
+      {/* Header thanh công cụ (Page Header) */}
       <div className="hsx-header-bar" style={{
         display: 'flex',
         alignItems: 'center',
@@ -885,44 +926,33 @@ export default function HoSoXePage() {
         minHeight: 'clamp(28px, 3.6vh, 32px)'
       }}>
         {/* Tiêu đề trang */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <div style={{
-            width: 24,
-            height: 24,
-            borderRadius: 4,
+            width: 26,
+            height: 26,
+            borderRadius: 5,
             background: '#E65100',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#fff'
           }}>
-            <Car size={14} />
+            <Car size={16} />
           </div>
-          <h1 style={{ margin: 0, fontSize: 'clamp(14px, 1.1vw, 16px)', fontWeight: 700, color: '#1E293B' }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(15px, 1.1vw, 17px)', fontWeight: 800, color: '#1E293B' }}>
             Hồ sơ xe
           </h1>
-          <span style={{
-            background: '#FFF3E0',
-            color: '#E65100',
-            border: '1px solid #FFB74D',
-            padding: '1px 6px',
-            borderRadius: 4,
-            fontSize: '11px',
-            fontWeight: 700
-          }}>
-            {currentVehicle.plate}
-          </span>
         </div>
 
         {/* Cụm tìm kiếm và nút thao tác */}
         <div className="hsx-top-actions" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, minWidth: 0 }}>
           
           {/* Ô tìm kiếm biển số xe với Dropdown gợi ý */}
-          <div ref={searchBoxRef} className="hsx-search-wrap" style={{ position: 'relative', width: 'clamp(220px, 20vw, 290px)' }}>
+          <div ref={searchBoxRef} className="hsx-search-wrap" style={{ position: 'relative', width: 'clamp(240px, 22vw, 320px)' }}>
             <div style={{ position: 'relative', width: '100%', height: 'clamp(26px, 3vh, 30px)' }}>
               <input
                 type="text"
-                placeholder="Gõ biển số (51A, 30H...), số khung, tên xe..."
+                placeholder="Biển số xe, số khung, số máy, VIN..."
                 value={searchPlateQuery}
                 onChange={(e) => {
                   setSearchPlateQuery(e.target.value);
@@ -932,9 +962,9 @@ export default function HoSoXePage() {
                 style={{
                   width: '100%',
                   height: '100%',
-                  padding: '0 26px 0 8px',
+                  padding: '0 26px 0 10px',
                   border: isSearchOpen ? '1px solid #E65100' : '1px solid #CBD5E1',
-                  borderRadius: 4,
+                  borderRadius: 5,
                   fontSize: '11px',
                   outline: 'none',
                   boxSizing: 'border-box',
@@ -1022,50 +1052,27 @@ export default function HoSoXePage() {
 
           {/* Nhóm nút thao tác */}
           <div className="hsx-btn-group" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {/* Nút mở danh sách tất cả các xe */}
-            <button
-              type="button"
-              onClick={() => setIsCarModalOpen(true)}
-              style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 8px',
-                background: '#FFFFFF',
-                color: '#1565C0',
-                border: '1px solid #90CAF9',
-                borderRadius: 4,
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <Car size={13} />
-              Danh sách xe ({vehicleList.length})
-            </button>
-
             <button
               type="button"
               onClick={openCreateVehicleForm}
               style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 10px',
+                height: 'clamp(26px, 3.2vh, 30px)',
+                padding: '0 12px',
                 background: '#E65100',
                 color: '#fff',
                 border: 'none',
-                borderRadius: 4,
-                fontWeight: 600,
+                borderRadius: 5,
+                fontWeight: 700,
                 fontSize: 'inherit',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
                 cursor: 'pointer',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 3px rgba(230, 81, 0, 0.3)'
               }}
             >
-              <Plus size={13} />
+              <Plus size={14} />
               Tạo hồ sơ xe
             </button>
 
@@ -1073,16 +1080,16 @@ export default function HoSoXePage() {
               type="button"
               onClick={() => showToast('Import hồ sơ từ Excel')}
               style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 8px',
+                height: 'clamp(26px, 3.2vh, 30px)',
+                padding: '0 10px',
                 background: '#fff',
                 color: '#334155',
                 border: '1px solid #CBD5E1',
-                borderRadius: 4,
+                borderRadius: 5,
                 fontSize: 'inherit',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap'
               }}
@@ -1095,16 +1102,16 @@ export default function HoSoXePage() {
               type="button"
               onClick={() => showToast('Đã xuất dữ liệu ra file Excel')}
               style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 8px',
+                height: 'clamp(26px, 3.2vh, 30px)',
+                padding: '0 10px',
                 background: '#fff',
                 color: '#334155',
                 border: '1px solid #CBD5E1',
-                borderRadius: 4,
+                borderRadius: 5,
                 fontSize: 'inherit',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap'
               }}
@@ -1112,82 +1119,40 @@ export default function HoSoXePage() {
               <FileSpreadsheet size={13} color="#1565C0" />
               Xuất Excel
             </button>
+
+            {/* Nút tùy chọn thêm (...) */}
+            <button
+              type="button"
+              onClick={() => setIsCarModalOpen(true)}
+              title="Danh sách xe / Thêm tùy chọn"
+              style={{
+                height: 'clamp(26px, 3.2vh, 30px)',
+                width: 'clamp(26px, 3.2vh, 30px)',
+                padding: 0,
+                background: '#fff',
+                color: '#475569',
+                border: '1px solid #CBD5E1',
+                borderRadius: 5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+            >
+              <MoreHorizontal size={15} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Dải NÚT CHỌN NHANH BIỂN SỐ XE (QUICK SELECTOR CHIPS) */}
-      <div className="hsx-quick-selector-bar" style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        background: '#FFF8E1',
-        border: '1px solid #FFE0B2',
-        borderRadius: 6,
-        padding: '3px 8px',
-        flexShrink: 0,
-        overflowX: 'auto',
-        whiteSpace: 'nowrap'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '10.5px', fontWeight: 700, color: '#BF360C', flexShrink: 0 }}>
-          <Car size={13} />
-          <span>Chọn nhanh xe:</span>
-        </div>
-        <div className="hsx-quick-chips-scroll" style={{ display: 'flex', gap: 4, flex: '1 1 auto', overflowX: 'auto' }}>
-          {vehicleList.slice(0, 5).map(v => {
-            const isSelected = v.id === currentVehicle.id;
-            return (
-              <button
-                key={v.id || v.plate}
-                type="button"
-                onClick={() => handleSelectVehicle(v)}
-                style={{
-                  padding: '2px 8px',
-                  background: isSelected ? '#E65100' : '#FFFFFF',
-                  color: isSelected ? '#FFFFFF' : '#334155',
-                  border: isSelected ? '1px solid #E65100' : '1px solid #FFCC80',
-                  borderRadius: 4,
-                  fontSize: '11px',
-                  fontWeight: isSelected ? 700 : 500,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  boxShadow: isSelected ? '0 1px 3px rgba(230, 81, 0, 0.3)' : 'none'
-                }}
-              >
-                <b>{v.plate}</b>
-                <span style={{ fontSize: '10px', opacity: isSelected ? 0.95 : 0.75 }}>({v.brand} {v.model})</span>
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsCarModalOpen(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#E65100',
-            fontSize: '10.5px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            padding: '2px 4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flexShrink: 0
-          }}
-        >
-          Xem tất cả <ChevronRight size={12} />
-        </button>
-      </div>
-
-      {/* Vùng nội dung chính của Hồ sơ xe */}
+      {/* Vùng nội dung chính của Hồ sơ xe dạng 2 cột */}
       <div className="hsx-main-content">
-        {/* Card thông tin xe tổng quan trên cùng */}
-        <div className="hsx-vehicle-card">
+        <div className="hsx-two-col-layout">
+          {/* CỘT TRÁI: THÔNG TIN XE, TABS & BẢNG NỘI DUNG */}
+          <div className="hsx-col-main">
+            {/* Card thông tin xe tổng quan trên cùng */}
+            <div className="hsx-vehicle-card">
           <div className="hsx-mobile-top-block">
             {/* Ảnh xe và 4 thumbnail */}
             <div className="hsx-media-col">
@@ -1221,9 +1186,64 @@ export default function HoSoXePage() {
                 <span style={{ background: '#E8F5E9', color: '#2E7D32', padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
                   Đăng ký
                 </span>
-                <span style={{ background: currentVehicle.statusBg || '#E8F5E9', color: currentVehicle.statusColor || '#2E7D32', padding: '1px 6px', borderRadius: 10, fontSize: '10px', fontWeight: 600 }}>
-                  {currentVehicle.status || 'Đang hoạt động'}
-                </span>
+              </div>
+
+              {/* Dòng Số khung & Số máy */}
+              <div className="hsx-vin-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span>Số khung:</span>
+                  <b style={{ color: '#0F172A' }}>{currentVehicle.vin || '—'}</b>
+                  {currentVehicle.vin && (
+                    <Copy
+                      size={11}
+                      color="#1976D2"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleCopy(currentVehicle.vin, 'Số khung')}
+                      title="Sao chép số khung"
+                    />
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span>Số máy:</span>
+                  <b style={{ color: '#0F172A' }}>{currentVehicle.engine || '—'}</b>
+                  {currentVehicle.engine && (
+                    <Copy
+                      size={11}
+                      color="#1976D2"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleCopy(currentVehicle.engine, 'Số máy')}
+                      title="Sao chép số máy"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Thông số kỹ thuật nhanh */}
+              <div className="hsx-specs-grid">
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Hãng xe</div>
+                  <div className="spec-value">{currentVehicle.brand || '—'}</div>
+                </div>
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Dòng xe</div>
+                  <div className="spec-value">{currentVehicle.model || '—'}</div>
+                </div>
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Phiên bản</div>
+                  <div className="spec-value">{currentVehicle.variant || '—'}</div>
+                </div>
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Năm SX</div>
+                  <div className="spec-value">{currentVehicle.year || '—'}</div>
+                </div>
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Màu xe</div>
+                  <div className="spec-value">{currentVehicle.color || '—'}</div>
+                </div>
+                <div className="hsx-spec-item">
+                  <div className="spec-label">Nhiên liệu</div>
+                  <div className="spec-value">{currentVehicle.fuel || '—'}</div>
+                </div>
               </div>
 
               {/* Thông tin chủ xe tóm tắt trên mobile */}
@@ -1231,64 +1251,6 @@ export default function HoSoXePage() {
                 <span>Chủ xe: <b style={{ color: '#1565C0' }}>{currentVehicle.owner?.name || 'Chưa có'}</b></span>
                 {currentVehicle.owner?.phone && <span>SĐT: <b>{currentVehicle.owner.phone}</b></span>}
               </div>
-            </div>
-          </div>
-
-          {/* Dòng Số khung & Số máy */}
-          <div className="hsx-vin-row">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span>Số khung:</span>
-              <b style={{ color: '#0F172A' }}>{currentVehicle.vin || '—'}</b>
-              {currentVehicle.vin && (
-                <Copy
-                  size={11}
-                  color="#1976D2"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleCopy(currentVehicle.vin, 'Số khung')}
-                  title="Sao chép số khung"
-                />
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span>Số máy:</span>
-              <b style={{ color: '#0F172A' }}>{currentVehicle.engine || '—'}</b>
-              {currentVehicle.engine && (
-                <Copy
-                  size={11}
-                  color="#1976D2"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleCopy(currentVehicle.engine, 'Số máy')}
-                  title="Sao chép số máy"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Thông số kỹ thuật nhanh */}
-          <div className="hsx-specs-grid">
-            <div className="hsx-spec-item">
-              <div className="spec-label">Hãng xe</div>
-              <div className="spec-value">{currentVehicle.brand || '—'}</div>
-            </div>
-            <div className="hsx-spec-item">
-              <div className="spec-label">Dòng xe</div>
-              <div className="spec-value">{currentVehicle.model || '—'}</div>
-            </div>
-            <div className="hsx-spec-item">
-              <div className="spec-label">Phiên bản</div>
-              <div className="spec-value">{currentVehicle.variant || '—'}</div>
-            </div>
-            <div className="hsx-spec-item">
-              <div className="spec-label">Năm SX</div>
-              <div className="spec-value">{currentVehicle.year || '—'}</div>
-            </div>
-            <div className="hsx-spec-item">
-              <div className="spec-label">Màu xe</div>
-              <div className="spec-value">{currentVehicle.color || '—'}</div>
-            </div>
-            <div className="hsx-spec-item">
-              <div className="spec-label">Nhiên liệu</div>
-              <div className="spec-value">{currentVehicle.fuel || '—'}</div>
             </div>
           </div>
 
@@ -1366,72 +1328,16 @@ export default function HoSoXePage() {
               );
             })}
           </div>
-
-          {/* Các nút hành động nhanh bên phải thanh tab */}
-          <div className="hsx-tab-actions">
-            <button
-              type="button"
-              onClick={() => showToast('Đang gửi lệnh in phiếu hồ sơ xe ' + currentVehicle.plate + '...')}
-              style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 8px',
-                background: '#FFFFFF',
-                color: '#E65100',
-                border: '1px solid #FFCC80',
-                borderRadius: 4,
-                fontWeight: 600,
-                fontSize: '10.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <Printer size={12} />
-              In phiếu
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingVehicle(currentVehicle);
-                setIsCreateVehicleOpen(true);
-              }}
-              style={{
-                height: 'clamp(24px, 3vh, 28px)',
-                padding: '0 8px',
-                background: '#FFFFFF',
-                color: '#1565C0',
-                border: '1px solid #90CAF9',
-                borderRadius: 4,
-                fontWeight: 600,
-                fontSize: '10.5px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <Edit size={12} />
-              Sửa
-            </button>
-          </div>
         </div>
 
         {/* TAB 1: THÔNG TIN CHUNG */}
         {activeTab === 'thong-tin-chung' && (
           <>
-            {/* 4 Cards dạng lưới */}
-            <div className="hsx-cards-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(270px, 100%), 1fr))',
-              gap: 'clamp(4px, 0.6vh, 6px)',
-              flexShrink: 0
-            }}>
+            {/* 4 Cards dạng lưới 2x2 */}
+            <div className="hsx-cards-grid">
               {/* Card 1: Thông tin xe */}
               <div style={{ background: '#FFFFFF', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden' }}>
-                <div style={{ padding: '3px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <Car size={13} color="#E65100" />
                   <span style={{ fontWeight: 700, fontSize: '11px', color: '#1E293B' }}>Thông tin xe</span>
                 </div>
@@ -1450,7 +1356,7 @@ export default function HoSoXePage() {
                       <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.variant}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', color: '#64748B' }}>Năm SX</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B' }}>Năm sản xuất</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.year}</td>
                       <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Màu xe</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.color}</td>
@@ -1458,7 +1364,7 @@ export default function HoSoXePage() {
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Số khung (VIN)</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {currentVehicle.vin.substring(0, 10)}...
+                        {currentVehicle.vin}
                       </td>
                       <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Số máy</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.engine}</td>
@@ -1466,7 +1372,7 @@ export default function HoSoXePage() {
                     <tr>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>ODO hiện tại</td>
                       <td style={{ padding: '3px 6px', fontWeight: 700, color: '#E65100' }}>{currentVehicle.odo}</td>
-                      <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Nhiên liệu</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Nhiên liệu / Pin</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.fuel}</td>
                     </tr>
                   </tbody>
@@ -1475,14 +1381,14 @@ export default function HoSoXePage() {
 
               {/* Card 2: Chủ sở hữu */}
               <div style={{ background: '#FFFFFF', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden' }}>
-                <div style={{ padding: '3px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <User size={13} color="#E65100" />
                   <span style={{ fontWeight: 700, fontSize: '11px', color: '#1E293B' }}>Chủ sở hữu</span>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', color: '#64748B', width: '30%' }}>Họ tên</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', width: '25%' }}>Họ tên</td>
                       <td style={{ padding: '3px 6px', fontWeight: 700, color: '#1565C0' }}>{currentVehicle.owner.name}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -1507,31 +1413,29 @@ export default function HoSoXePage() {
 
               {/* Card 3: Khách hàng */}
               <div style={{ background: '#FFFFFF', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden' }}>
-                <div style={{ padding: '3px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <Building2 size={13} color="#E65100" />
                   <span style={{ fontWeight: 700, fontSize: '11px', color: '#1E293B' }}>Khách hàng</span>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', color: '#64748B', width: '30%' }}>Tên công ty</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1E293B' }}>{currentVehicle.company?.name || '—'}</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', color: '#64748B' }}>Mã số thuế</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.company?.taxCode || '—'}</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', width: '25%' }}>Tên công ty</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1E293B', width: '25%' }}>{currentVehicle.company?.name || '—'}</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', width: '25%', borderLeft: '1px solid #F1F5F9' }}>Mã số thuế</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 600, width: '25%' }}>{currentVehicle.company?.taxCode || '—'}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Địa chỉ</td>
                       <td style={{ padding: '3px 6px', color: '#1E293B' }}>{currentVehicle.company?.address || '—'}</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', color: '#64748B' }}>Điện thoại</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Điện thoại</td>
                       <td style={{ padding: '3px 6px' }}>{currentVehicle.company?.phone || '—'}</td>
                     </tr>
                     <tr>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Người liên hệ</td>
                       <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1565C0' }}>{currentVehicle.company?.contact || '—'}</td>
+                      <td style={{ padding: '3px 6px', color: '#64748B', borderLeft: '1px solid #F1F5F9' }}>Ghi chú</td>
+                      <td style={{ padding: '3px 6px', color: '#2E7D32', fontWeight: 600 }}>{currentVehicle.owner?.note || '—'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1539,15 +1443,22 @@ export default function HoSoXePage() {
 
               {/* Card 4: Lịch sử chủ xe */}
               <div style={{ background: '#FFFFFF', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden' }}>
-                <div style={{ padding: '3px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ padding: '4px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <History size={13} color="#E65100" />
                   <span style={{ fontWeight: 700, fontSize: '11px', color: '#1E293B' }}>Lịch sử chủ xe</span>
                 </div>
-                <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: '10.5px' }}>
+                <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: '10.5px' }}>
                   {currentVehicle.ownerHistory.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.active ? '#E65100' : '#CBD5E1', flexShrink: 0 }} />
-                      <div style={{ color: item.active ? '#E65100' : '#64748B', fontWeight: item.active ? 700 : 500, width: 80, flexShrink: 0 }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        border: '2px solid #E65100',
+                        background: item.active ? '#E65100' : '#FFFFFF',
+                        flexShrink: 0
+                      }} />
+                      <div style={{ color: item.active ? '#E65100' : '#64748B', fontWeight: item.active ? 700 : 500, width: 85, flexShrink: 0 }}>
                         {item.period}
                       </div>
                       <div style={{ color: item.active ? '#1565C0' : '#334155', fontWeight: item.active ? 600 : 400 }}>
@@ -2545,6 +2456,197 @@ export default function HoSoXePage() {
             </div>
           </div>
         )}
+          </div> {/* End hsx-col-main */}
+
+          {/* CỘT PHẢI: HÌNH ẢNH XE, LỊCH HẸN & NHẮC VIỆC, GHI CHÚ, NÚT TÁC VỤ */}
+          <div className="hsx-col-side">
+            {/* Card 1: Hình ảnh xe */}
+            <div className="hsx-side-card">
+              <div className="hsx-side-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <ImageIcon size={13} color="#E65100" />
+                  <span className="hsx-side-card-title">Hình ảnh xe</span>
+                </div>
+                <button
+                  type="button"
+                  className="hsx-side-btn-outline"
+                  onClick={() => setActiveTab('hinh-anh')}
+                >
+                  + Thêm ảnh
+                </button>
+              </div>
+              <div className="hsx-side-gallery">
+                <div className="hsx-gallery-row-top">
+                  {DEFAULT_VEHICLE_GALLERY.slice(0, 3).map((img) => (
+                    <div
+                      key={img.id}
+                      className="hsx-gallery-thumb"
+                      onClick={() => setPreviewImage(img.url)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.label}
+                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80'; }}
+                      />
+                      <span>{img.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="hsx-gallery-row-bottom">
+                  {DEFAULT_VEHICLE_GALLERY.slice(3, 7).map((img) => (
+                    <div
+                      key={img.id}
+                      className="hsx-gallery-thumb"
+                      onClick={() => setPreviewImage(img.url)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.label}
+                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80'; }}
+                      />
+                      <span>{img.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Lịch hẹn & nhắc việc */}
+            <div className="hsx-side-card">
+              <div className="hsx-side-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Calendar size={13} color="#E65100" />
+                  <span className="hsx-side-card-title">Lịch hẹn & nhắc việc</span>
+                </div>
+                <button
+                  type="button"
+                  className="hsx-side-btn-outline"
+                  onClick={() => showToast('Mở tạo mới lịch hẹn')}
+                >
+                  + Thêm lịch hẹn
+                </button>
+              </div>
+              <div className="hsx-side-table-wrap">
+                <table className="hsx-side-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '22%' }}>Ngày hẹn</th>
+                      <th style={{ width: '26%' }}>Loại dịch vụ</th>
+                      <th style={{ width: '32%' }}>Nội dung</th>
+                      <th style={{ width: '20%', textAlign: 'center' }}>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DEFAULT_APPOINTMENTS.map((item) => (
+                      <tr key={item.id}>
+                        <td style={{ color: '#334155' }}>{item.date}</td>
+                        <td style={{ fontWeight: 600, color: '#1E293B' }}>{item.service}</td>
+                        <td style={{ color: '#64748B' }}>{item.content}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{
+                            background: item.statusBg,
+                            color: item.statusColor,
+                            padding: '1px 5px',
+                            borderRadius: 6,
+                            fontSize: '9px',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Card 3: Ghi chú */}
+            <div className="hsx-side-card">
+              <div className="hsx-side-card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Edit3 size={13} color="#E65100" />
+                  <span className="hsx-side-card-title">Ghi chú</span>
+                </div>
+                <button
+                  type="button"
+                  className="hsx-side-btn-outline"
+                  onClick={() => setActiveTab('ghi-chu')}
+                >
+                  + Thêm ghi chú
+                </button>
+              </div>
+              <div className="hsx-side-notes-list">
+                {DEFAULT_NOTES.map((n) => (
+                  <div key={n.id} className="hsx-side-note-item">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: n.avatarBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '8.5px',
+                        fontWeight: 700
+                      }}>
+                        {n.author.charAt(0).toUpperCase()}
+                      </div>
+                      <b style={{ fontSize: '10.5px', color: '#1E293B' }}>{n.author}</b>
+                      <span style={{ fontSize: '9px', color: '#94A3B8' }}>{n.date}</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#334155', lineHeight: 1.35 }}>
+                      {n.content}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cụm 4 nút tác vụ */}
+            <div className="hsx-side-actions">
+              <button
+                type="button"
+                className="hsx-side-action-btn"
+                onClick={() => showToast('Đang gửi lệnh in phiếu xe ' + currentVehicle.plate)}
+              >
+                <Printer size={12} color="#E65100" />
+                <span>In phiếu xe</span>
+              </button>
+              <button
+                type="button"
+                className="hsx-side-action-btn"
+                onClick={() => {
+                  setEditingVehicle(currentVehicle);
+                  setIsCreateVehicleOpen(true);
+                }}
+              >
+                <Edit size={12} color="#E65100" />
+                <span>Sửa thông tin</span>
+              </button>
+              <button
+                type="button"
+                className="hsx-side-action-btn"
+                onClick={() => showToast('Chức năng xóa hồ sơ')}
+              >
+                <Trash2 size={12} color="#C62828" />
+                <span>Xóa hồ sơ</span>
+              </button>
+              <button
+                type="button"
+                className="hsx-side-action-btn-primary"
+                onClick={() => showToast('Mở lập phiếu tiếp nhận sửa chữa')}
+              >
+                <span>Lập phiếu tiếp nhận</span>
+              </button>
+            </div>
+          </div> {/* End hsx-col-side */}
+        </div> {/* End hsx-two-col-layout */}
       </div>
 
       <VehicleProfileModal
