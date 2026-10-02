@@ -1,12 +1,12 @@
 /* ========================================================
-   KAZUKO POS - Modern Responsive Login Page (Desktop & Mobile)
+   KAZUKO AUTO - Modern Responsive Login Page (Desktop & Mobile)
    ======================================================== */
 
 .kazuko-login-page {
   display: flex;
   min-height: 100vh;
   width: 100vw;
-  background-color: #D9B793;
+  background-color: #E2CEBD;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   margin: 0;
   padding: 0;
@@ -14,23 +14,180 @@
   overflow-x: hidden;
 }
 
-/* ===== BANNER BÊN TRÁI (DESKTOP) ===== */
+/* ========================================================
+   CỘT TRÁI (DESKTOP): BẢNG GIỚI THIỆU THƯƠNG HIỆU & TÍNH NĂNG GARA
+   ======================================================== */
 .login-left-banner {
-  flex: 1 1 63%;
-  background: #FFF7ED;
+  flex: 1 1 62%;
+  min-height: 100vh;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(240, 90, 40, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(217, 119, 6, 0.1) 0%, transparent 45%),
+    linear-gradient(135deg, #FDFBF7 0%, #F5ECE3 50%, #EDE0D4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  padding: 40px;
+  box-sizing: border-box;
   position: relative;
-  min-height: 100vh;
 }
 
-.login-desktop-img {
+.banner-glass-container {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  max-width: 660px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 24px;
+  padding: 36px 38px 28px;
+  box-shadow: 0 15px 35px rgba(180, 130, 90, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* HEADER CỘT TRÁI */
+.banner-header {
+  text-align: center;
+}
+
+.brand-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.car-badge-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #FFF3E0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(230, 81, 0, 0.15);
+}
+
+.brand-badge-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.brand-main {
+  font-size: 26px;
+  font-weight: 900;
+  color: #1E293B;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+
+.brand-accent {
+  color: #E65100;
+  font-style: italic;
+}
+
+.brand-sub {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  letter-spacing: 2px;
+}
+
+.banner-main-title {
+  margin: 6px 0 4px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.3px;
+}
+
+.banner-sub-title {
+  margin: 0;
+  font-size: 14.5px;
+  color: #64748B;
+  font-weight: 500;
+}
+
+/* LƯỚI 6 TÍNH NĂNG (3 CỘT X 2 HÀNG) */
+.banner-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.feature-tile-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.feature-tile-card:hover {
+  transform: translateY(-2px);
+  background: #FFFFFF;
+  box-shadow: 0 8px 20px rgba(230, 81, 0, 0.08);
+}
+
+.feature-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feature-text-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.feature-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.feature-desc {
+  font-size: 11px;
+  color: #64748B;
+  line-height: 1.3;
+}
+
+/* SLOGAN DƯỚI CÙNG */
+.banner-bottom-slogan {
+  text-align: center;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(203, 213, 225, 0.7);
+}
+
+.slogan-script {
+  font-size: 21px;
+  font-style: italic;
+  font-weight: 600;
+  color: #1E293B;
+  font-family: 'Georgia', 'Playfair Display', serif;
+  margin-bottom: 4px;
+}
+
+.slogan-caps {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  letter-spacing: 2px;
 }
 
 /* Banner Mobile ẩn trên Desktop */
@@ -38,27 +195,28 @@
   display: none;
 }
 
-/* ===== PANEL FORM BÊN PHẢI (DESKTOP) ===== */
+/* ========================================================
+   CỘT PHẢI (DESKTOP): THẺ ĐĂNG NHẬP (CARD)
+   ======================================================== */
 .login-right-panel {
-  flex: 0 0 37%;
+  flex: 0 0 38%;
   min-width: 420px;
   max-width: 480px;
-  background-color: #D9B793;
+  background-color: #E2CEBD;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
+  padding: 30px 24px;
   box-sizing: border-box;
 }
 
-/* THẺ ĐĂNG NHẬP (CARD) */
 .login-card {
   width: 100%;
   max-width: 390px;
   background: #FFFFFF;
   border-radius: 28px;
   padding: 32px 30px 24px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 18px 45px rgba(160, 110, 70, 0.18);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -73,9 +231,14 @@
   margin-bottom: 8px;
 }
 
-.cart-icon {
-  color: #F05A28;
-  flex-shrink: 0;
+.card-car-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #FFF3E0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .brand-text-col {
@@ -85,20 +248,20 @@
 }
 
 .brand-name {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 19px;
+  font-weight: 900;
   color: #1E293B;
   letter-spacing: 0.5px;
   line-height: 1.1;
 }
 
 .brand-pos {
-  color: #F05A28;
+  color: #E65100;
 }
 
 .brand-sub {
-  font-size: 9.5px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   color: #64748B;
   letter-spacing: 1.5px;
 }
@@ -143,9 +306,9 @@
 }
 
 .login-input-field:focus-within {
-  border-color: #F05A28;
+  border-color: #E65100;
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(240, 90, 40, 0.12);
+  box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.12);
 }
 
 .field-icon {
@@ -204,7 +367,7 @@
 .remember-box input[type="checkbox"] {
   width: 15px;
   height: 15px;
-  accent-color: #F05A28;
+  accent-color: #E65100;
   cursor: pointer;
 }
 
@@ -234,7 +397,7 @@
   font-size: 14.5px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(240, 90, 40, 0.35);
+  box-shadow: 0 4px 14px rgba(230, 81, 0, 0.32);
   transition: all 0.2s ease;
   margin-top: 4px;
 }
@@ -242,7 +405,7 @@
 .login-submit-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #E64A19 0%, #D84315 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(240, 90, 40, 0.45);
+  box-shadow: 0 6px 18px rgba(230, 81, 0, 0.42);
 }
 
 .login-submit-button:disabled {
@@ -379,7 +542,7 @@
 @media (max-width: 768px) {
   .kazuko-login-page {
     flex-direction: column;
-    background-color: #926C51;
+    background-color: #E2CEBD;
     min-height: 100vh;
     align-items: center;
     justify-content: flex-start;
@@ -391,32 +554,99 @@
     display: none !important;
   }
 
+  /* BANNER TRÊN CÙNG MOBILE */
   .login-mobile-banner {
     display: block !important;
     width: 100%;
     max-width: 420px;
+    padding: 24px 16px 0;
+    box-sizing: border-box;
   }
 
-  .login-mobile-img {
-    width: 100%;
-    height: auto;
-    display: block;
+  .mobile-banner-glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 20px;
+    padding: 18px 16px 16px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(180, 130, 90, 0.12);
   }
 
+  .mobile-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .mobile-brand-title {
+    font-size: 22px;
+    font-weight: 900;
+    color: #1E293B;
+  }
+
+  .mobile-sub-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748B;
+    letter-spacing: 1.5px;
+  }
+
+  .mobile-script {
+    font-size: 17px;
+    font-style: italic;
+    font-family: 'Georgia', serif;
+    color: #1E293B;
+    margin: 4px 0 14px;
+  }
+
+  /* 4 Icon tròn trên mobile */
+  .mobile-quick-features {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+  }
+
+  .mobile-feature-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .circle-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+  }
+
+  .mobile-feature-item span {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  /* KHUNG DƯỚI FORM ĐĂNG NHẬP */
   .login-right-panel {
     width: 100%;
     max-width: 420px;
     min-width: unset;
-    padding: 0 16px;
+    padding: 14px 16px 0;
     background: transparent;
-    margin-top: -20px;
     z-index: 2;
   }
 
   .login-card {
-    border-radius: 28px;
+    border-radius: 24px;
     padding: 24px 20px 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 12px 35px rgba(160, 110, 70, 0.15);
   }
 
   .desktop-header {
@@ -437,7 +667,7 @@
   }
 
   .title-dot {
-    color: #F05A28;
+    color: #E65100;
     font-size: 20px;
     vertical-align: middle;
   }
