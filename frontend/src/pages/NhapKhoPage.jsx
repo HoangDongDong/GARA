@@ -703,10 +703,10 @@ export default function NhapKhoPage() {
           gap: 'clamp(3px, 0.5vh, 6px)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
-          {/* Hàng 1: Ngày *, Số phiếu *, Nhân viên nhập * */}
-          <div className="responsive-grid-3" style={{ alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+          <div className="nk-form-grid">
+            {/* Cột 1: Ngày * */}
+            <div className="nk-field-col1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Ngày <span style={{ color: '#E53935' }}>*</span>
               </label>
               <input
@@ -715,6 +715,7 @@ export default function NhapKhoPage() {
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, date: e.target.value })}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 'clamp(26px, 3.2vh, 30px)',
                   padding: '0 6px',
                   border: '1px solid #CBD5E1',
@@ -726,8 +727,9 @@ export default function NhapKhoPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            {/* Cột 2: Số phiếu * */}
+            <div className="nk-field-col2" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 68, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Số phiếu <span style={{ color: '#E53935' }}>*</span>
               </label>
               <input
@@ -736,6 +738,7 @@ export default function NhapKhoPage() {
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, code: e.target.value })}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 'clamp(26px, 3.2vh, 30px)',
                   padding: '0 8px',
                   border: '1px solid #CBD5E1',
@@ -748,15 +751,17 @@ export default function NhapKhoPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                Nhân viên nhập <span style={{ color: '#E53935' }}>*</span>
+            {/* Cột 3: Nhân viên nhập * */}
+            <div className="nk-field-col3" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                Nhân viên <span style={{ color: '#E53935' }}>*</span>
               </label>
               <select
                 value={receiptInfo.staff}
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, staff: e.target.value })}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 'clamp(26px, 3.2vh, 30px)',
                   padding: '0 8px',
                   border: '1px solid #CBD5E1',
@@ -771,20 +776,19 @@ export default function NhapKhoPage() {
                 {staffOptions.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
             </div>
-          </div>
 
-          {/* Hàng 2: Nhà cung cấp * (+), Diễn giải */}
-          <div className="nk-form-row-2" style={{ alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            {/* Cột 1 & 2: Nhà cung cấp * (+ Thêm) */}
+            <div className="nk-field-col1-2" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Nhà cung cấp <span style={{ color: '#E53935' }}>*</span>
               </label>
-              <div style={{ display: 'flex', gap: 4, flex: 1, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 4, flex: 1, minWidth: 0, alignItems: 'center' }}>
                 <select
                   value={receiptInfo.supplier}
                   onChange={(e) => setReceiptInfo({ ...receiptInfo, supplier: e.target.value })}
                   style={{
                     flex: 1,
+                    minWidth: 0,
                     height: 'clamp(26px, 3.2vh, 30px)',
                     padding: '0 6px',
                     border: '1px solid #CBD5E1',
@@ -810,15 +814,15 @@ export default function NhapKhoPage() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '0 12px',
+                    gap: 4,
+                    padding: '0 10px',
                     height: 'clamp(26px, 3.2vh, 30px)',
                     background: '#E65100',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 4,
                     fontWeight: 700,
-                    fontSize: 13,
+                    fontSize: 12,
                     cursor: 'pointer',
                     flexShrink: 0,
                     whiteSpace: 'nowrap',
@@ -829,33 +833,9 @@ export default function NhapKhoPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ width: 60, flexShrink: 0, color: '#333', fontWeight: 500 }}>
-                Diễn giải
-              </label>
-              <input
-                type="text"
-                value={receiptInfo.description}
-                onChange={(e) => setReceiptInfo({ ...receiptInfo, description: e.target.value })}
-                placeholder="Nhập diễn giải phiếu..."
-                style={{
-                  flex: 1,
-                  height: 'clamp(26px, 3.2vh, 30px)',
-                  padding: '0 8px',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 4,
-                  fontSize: 'inherit',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Hàng 3: Kho nhập *, Ghi chú */}
-          <div className="nk-form-row-2-short" style={{ alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500 }}>
+            {/* Cột 3: Kho nhập * */}
+            <div className="nk-field-col3" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Kho nhập <span style={{ color: '#E53935' }}>*</span>
               </label>
               <select
@@ -863,6 +843,7 @@ export default function NhapKhoPage() {
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, warehouse: e.target.value })}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 'clamp(26px, 3.2vh, 30px)',
                   padding: '0 6px',
                   border: '1px solid #CBD5E1',
@@ -878,17 +859,19 @@ export default function NhapKhoPage() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ width: 60, flexShrink: 0, color: '#333', fontWeight: 500 }}>
-                Ghi chú
+            {/* Cột 1 & 2: Diễn giải */}
+            <div className="nk-field-col1-2" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                Diễn giải
               </label>
               <input
                 type="text"
-                value={receiptInfo.note}
-                onChange={(e) => setReceiptInfo({ ...receiptInfo, note: e.target.value })}
-                placeholder="Nhập ghi chú..."
+                value={receiptInfo.description}
+                onChange={(e) => setReceiptInfo({ ...receiptInfo, description: e.target.value })}
+                placeholder="Nhập diễn giải phiếu..."
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 'clamp(26px, 3.2vh, 30px)',
                   padding: '0 8px',
                   border: '1px solid #CBD5E1',
@@ -899,78 +882,102 @@ export default function NhapKhoPage() {
                 }}
               />
             </div>
-          </div>
 
-          {/* Hàng 4: Các nút tác vụ nhanh */}
-          <div className="nk-top-actions">
-            <button
-              type="button"
-              onClick={async () => {
-                const saved = await saveReceipt(false);
-                if (saved) setShowBarcodeModal(true);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 14px',
-                height: 'clamp(26px, 3.2vh, 30px)',
-                background: '#E65100',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: 'inherit'
-              }}
-            >
-              <Barcode size={15} />
-              Lưu và in mã vạch
-            </button>
+            {/* Cột 3: Ghi chú */}
+            <div className="nk-field-col3" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                Ghi chú
+              </label>
+              <input
+                type="text"
+                value={receiptInfo.note}
+                onChange={(e) => setReceiptInfo({ ...receiptInfo, note: e.target.value })}
+                placeholder="Nhập ghi chú..."
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  height: 'clamp(26px, 3.2vh, 30px)',
+                  padding: '0 8px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: 'inherit',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-            <button
-              type="button"
-              onClick={() => showToast('Đã xuất dữ liệu phiếu nhập ra file Excel!')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 12px',
-                height: 'clamp(26px, 3.2vh, 30px)',
-                background: '#FFFFFF',
-                color: '#E65100',
-                border: '1px solid #E65100',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 500,
-                fontSize: 'inherit'
-              }}
-            >
-              <FileSpreadsheet size={15} color="#E65100" />
-              Xuất Excel
-            </button>
+            {/* Hàng 4: Các nút tác vụ nhanh */}
+            <div className="nk-field-actions nk-top-actions" style={{ marginTop: 2 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const saved = await saveReceipt(false);
+                  if (saved) setShowBarcodeModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0 14px',
+                  height: 'clamp(26px, 3.2vh, 30px)',
+                  background: '#E65100',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 'inherit'
+                }}
+              >
+                <Barcode size={15} />
+                Lưu và in mã vạch
+              </button>
 
-            <button
-              type="button"
-              onClick={() => showToast('Đang mở chức năng chia kho chi tiết...')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 12px',
-                height: 'clamp(26px, 3.2vh, 30px)',
-                background: '#FFFFFF',
-                color: '#E65100',
-                border: '1px solid #E65100',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 500,
-                fontSize: 'inherit'
-              }}
-            >
-              <GitFork size={15} color="#E65100" />
-              Chia kho
-            </button>
+              <button
+                type="button"
+                onClick={() => showToast('Đã xuất dữ liệu phiếu nhập ra file Excel!')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0 12px',
+                  height: 'clamp(26px, 3.2vh, 30px)',
+                  background: '#FFFFFF',
+                  color: '#E65100',
+                  border: '1px solid #E65100',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  fontSize: 'inherit'
+                }}
+              >
+                <FileSpreadsheet size={15} color="#E65100" />
+                Xuất Excel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => showToast('Đang mở chức năng chia kho chi tiết...')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '0 12px',
+                  height: 'clamp(26px, 3.2vh, 30px)',
+                  background: '#FFFFFF',
+                  color: '#E65100',
+                  border: '1px solid #E65100',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  fontSize: 'inherit'
+                }}
+              >
+                <GitFork size={15} color="#E65100" />
+                Chia kho
+              </button>
+            </div>
           </div>
         </div>
 
