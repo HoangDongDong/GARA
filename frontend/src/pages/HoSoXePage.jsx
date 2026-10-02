@@ -1093,7 +1093,7 @@ export default function HoSoXePage() {
       </div>
 
       {/* Dải NÚT CHỌN NHANH BIỂN SỐ XE (QUICK SELECTOR CHIPS) */}
-      <div style={{
+      <div className="hsx-quick-selector-bar" style={{
         display: 'flex',
         alignItems: 'center',
         gap: 6,
@@ -1109,7 +1109,7 @@ export default function HoSoXePage() {
           <Car size={13} />
           <span>Chọn nhanh xe:</span>
         </div>
-        <div style={{ display: 'flex', gap: 4, flex: '1 1 auto', overflow: 'hidden' }}>
+        <div className="hsx-quick-chips-scroll" style={{ display: 'flex', gap: 4, flex: '1 1 auto', overflowX: 'auto' }}>
           {vehicleList.slice(0, 5).map(v => {
             const isSelected = v.id === currentVehicle.id;
             return (
@@ -1161,15 +1161,7 @@ export default function HoSoXePage() {
       </div>
 
       {/* Vùng nội dung chính của Hồ sơ xe */}
-      <div style={{
-        flex: 1,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'clamp(4px, 0.6vh, 6px)',
-        overflow: 'hidden',
-        width: '100%'
-      }}>
+      <div className="hsx-main-content">
         {/* Card thông tin xe tổng quan trên cùng */}
         <div className="hsx-vehicle-card">
           <div className="hsx-mobile-top-block">
@@ -1587,7 +1579,7 @@ export default function HoSoXePage() {
                 </button>
               </div>
 
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <div className="hsx-table-responsive" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                     <tr style={{ background: '#FFE0B2', color: '#BF360C', fontWeight: 700 }}>
@@ -1760,7 +1752,7 @@ export default function HoSoXePage() {
               </div>
 
               {/* Bảng dữ liệu phiếu sửa chữa */}
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <div className="hsx-table-responsive" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                     <tr style={{ background: '#FFE0B2', color: '#BF360C', fontWeight: 700 }}>
@@ -1956,7 +1948,7 @@ export default function HoSoXePage() {
                 </button>
               </div>
 
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              <div className="hsx-table-responsive" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                     <tr style={{ background: '#FFE0B2', color: '#BF360C', fontWeight: 700 }}>
