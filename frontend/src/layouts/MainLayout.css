@@ -609,44 +609,28 @@
     white-space: nowrap;
   }
 
-  /* KHI BẤM CHỌN BẤT KỲ MỤC NÀO TRONG 5 CHỨC NĂNG:
-     MỤC ĐÓ TỰ ĐỘNG NỔI HÌNH TRÒN PHÁT SÁNG LÊN TRÊN (GIỐNG HỆT MOONPHIM) */
+  /* Khi bấm chọn: Chỉ hiện màu cam nổi hơn nhẹ nhàng, không trồi lên khỏi thanh */
   .mobile-bottom-item.active {
-    color: #FFA726;
+    color: #FF9800;
   }
 
   .mobile-bottom-item.active .mobile-bottom-icon-wrap {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #D84315 0%, #E65100 50%, #FF9800 100%);
-    color: #FFFFFF !important;
-    margin-top: -24px;
-    box-shadow: 0 8px 22px rgba(230, 81, 0, 0.65), 0 0 0 4px #0F172A;
-    border: 2px solid rgba(255, 213, 79, 0.95);
-    animation: popUpBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(230, 81, 0, 0.16);
+    color: #FF7043 !important;
+    margin-top: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    animation: none !important;
   }
 
   .mobile-bottom-item.active .mobile-bottom-label {
     font-weight: 700;
-    color: #FFB74D;
-    font-size: 10.5px;
-    margin-top: 2px;
-  }
-
-  @keyframes popUpBounce {
-    0% {
-      transform: scale(0.65) translateY(4px);
-      opacity: 0.8;
-    }
-    60% {
-      transform: scale(1.15) translateY(-4px);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-    }
+    color: #FF9800;
+    font-size: 10px;
+    margin-top: 0 !important;
   }
 }
 
@@ -694,10 +678,5 @@
     right: 6px;
     bottom: 6px;
     height: 56px;
-  }
-  .mobile-bottom-item.active .mobile-bottom-icon-wrap {
-    width: 44px;
-    height: 44px;
-    margin-top: -20px;
   }
 }
