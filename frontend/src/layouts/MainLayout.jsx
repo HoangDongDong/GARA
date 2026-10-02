@@ -60,16 +60,10 @@ export default function MainLayout() {
   const menuRef = useRef(null);
   const contentRef = useRef(null);
 
-  const isSuaChua = loc.pathname === '/sua-chua' || loc.pathname.startsWith('/sua-chua');
   const [bottomNavHidden, setBottomNavHidden] = useState(false);
 
-  // Riêng trang Sửa chữa: Cuộn trang xem bên dưới thì ẩn thanh điều khiển, cuộn ngược lên thì hiện lại
+  // Áp dụng cho TẤT CẢ các giao diện: Cuộn trang xem bên dưới thì ẩn thanh điều khiển, cuộn ngược lên thì hiện lại
   useEffect(() => {
-    if (!isSuaChua) {
-      setBottomNavHidden(false);
-      return;
-    }
-
     let lastScrollTop = 0;
     const threshold = 8;
 
@@ -118,7 +112,12 @@ export default function MainLayout() {
       }
       window.removeEventListener('scroll', onScroll, { capture: true });
     };
-  }, [isSuaChua, loc.pathname]);
+  }, [loc.pathname]);
+
+  // Luôn hiện lại thanh điều khiển khi chuyển sang trang mới
+  useEffect(() => {
+    setBottomNavHidden(false);
+  }, [loc.pathname]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
@@ -150,7 +149,7 @@ export default function MainLayout() {
   const displayName = user.TEN_HIEN_THI || user.USERNAME || 'admin';
 
   return (
-    <div className={`app-layout ${isSuaChua && bottomNavHidden ? 'mobile-nav-hidden' : ''}`}>
+    <div className={`app-layout ${bottomNavHidden ? 'mobile-nav-hidden' : ''}`}>
       {/* Overlay backdrop khi mở Drawer trên mobile */}
       {mobileNavOpen && (
         <div 
@@ -298,7 +297,7 @@ export default function MainLayout() {
       </div>
 
       {/* ===== MOBILE BOTTOM DOCK (5 CHỨC NĂNG CHÍNH - GIỐNG MOONPHIM) ===== */}
-      <nav className={`mobile-bottom-nav ${isSuaChua && bottomNavHidden ? 'nav-hidden' : ''}`}>
+      <nav className={`mobile-bottom-nav ${bottomNavHidden ? 'nav-hidden' : ''}`}>
         {MOBILE_BOTTOM_NAV.map((item) => (
           <NavLink
             key={item.to}

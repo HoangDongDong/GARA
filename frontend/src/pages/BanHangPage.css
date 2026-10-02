@@ -1641,12 +1641,25 @@
 
 @media (max-width: 768px) {
   .pos-mobile-cart-bar {
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    left: 8px;
-    right: 8px;
-    border-radius: 12px;
-    border: 1px solid #E65100;
+    bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    border-radius: 12px 12px 0 0;
+    border-top: 2px solid #E65100;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
     padding: 8px 12px;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.16);
+    transition: bottom 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .app-layout.mobile-nav-hidden .pos-mobile-cart-bar {
+    bottom: 0 !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 12px)) !important;
+  }
+
+  .pos-wrapper {
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 12px)) !important;
   }
 }
