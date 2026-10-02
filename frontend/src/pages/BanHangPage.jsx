@@ -5,7 +5,6 @@ import {
   Barcode,
   FilePlus,
   ListOrdered,
-  MoreHorizontal,
   LayoutGrid,
   Cog,
   ShieldAlert,
@@ -583,10 +582,6 @@ export default function BanHangPage() {
           <button className="btn-pos-white" onClick={() => setShowSaleListModal(true)}>
             <ListOrdered size={16} color="#4b5563" />
             <span>Danh sách phiếu</span>
-          </button>
-
-          <button className="btn-pos-white" style={{ padding: '0 8px' }}>
-            <MoreHorizontal size={16} />
           </button>
 
           <select
