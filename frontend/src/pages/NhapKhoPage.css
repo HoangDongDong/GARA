@@ -32,6 +32,18 @@
   margin-top: 4px;
 }
 
+.nk-desktop-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.nk-mobile-actions {
+  display: none !important;
+}
+
 .nk-actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -355,7 +367,13 @@
   }
 
   /* Cụm nút tác vụ ở phiếu nhập kho trên mobile */
-  .nk-field-actions {
+  .nk-desktop-actions {
+    display: none !important;
+  }
+
+  .nk-mobile-actions {
+    display: flex !important;
+    flex-direction: column !important;
     margin-top: 8px !important;
     gap: 8px !important;
     width: 100% !important;

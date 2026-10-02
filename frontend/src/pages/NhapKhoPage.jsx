@@ -907,9 +907,41 @@ export default function NhapKhoPage() {
               />
             </div>
 
-            {/* Hàng 4: Tất cả các nút tác vụ phiếu nhập kho */}
-            <div className="nk-field-actions">
-              {/* Hàng 1: Các nút hành động chính, in ấn & xuất file */}
+            {/* Trên Desktop: Chỉ hiển thị 3 nút như cũ */}
+            <div className="nk-desktop-actions">
+              <button
+                type="button"
+                className="nk-btn-primary"
+                onClick={async () => {
+                  const saved = await saveReceipt(false);
+                  if (saved) setShowBarcodeModal(true);
+                }}
+              >
+                <Barcode size={15} />
+                Lưu và in mã vạch
+              </button>
+
+              <button
+                type="button"
+                className="nk-btn-orange-outline"
+                onClick={() => showToast('Đã xuất dữ liệu phiếu nhập ra file Excel!')}
+              >
+                <FileSpreadsheet size={15} color="#E65100" />
+                Xuất Excel
+              </button>
+
+              <button
+                type="button"
+                className="nk-btn-orange-outline"
+                onClick={() => showToast('Đang mở chức năng chia kho chi tiết...')}
+              >
+                <GitFork size={15} color="#E65100" />
+                Chia kho
+              </button>
+            </div>
+
+            {/* Trên Mobile: Hiển thị đầy đủ các nút tác vụ ở trên phiếu */}
+            <div className="nk-mobile-actions">
               <div className="nk-actions-row">
                 <button
                   type="button"
@@ -945,9 +977,11 @@ export default function NhapKhoPage() {
                   }}
                 >
                   <Barcode size={15} />
-                  Lưu và in mã vạch
+                  Lưu & in mã vạch
                 </button>
+              </div>
 
+              <div className="nk-actions-row">
                 <button
                   type="button"
                   className="nk-btn-secondary"
@@ -966,7 +1000,7 @@ export default function NhapKhoPage() {
                   }}
                 >
                   <Printer size={13} />
-                  In lại phiếu (Ctrl+P)
+                  In lại (Ctrl+P)
                 </button>
 
                 <button
@@ -988,7 +1022,6 @@ export default function NhapKhoPage() {
                 </button>
               </div>
 
-              {/* Hàng 2: Duyệt phiếu, tra cứu & tiện ích */}
               <div className="nk-actions-row">
                 <button
                   type="button"
@@ -1501,9 +1534,105 @@ export default function NhapKhoPage() {
         </div>
       </div>
 
+      {/* Thanh công cụ chân trang (Action Footer Bar trên Desktop) */}
+      <div className="nk-footer-bar">
+        {/* Cụm nút bên trái */}
+        <div className="nk-footer-left">
+          <button
+            type="button"
+            className="nk-btn-primary"
+            onClick={async () => {
+              if (!currentReceiptId && detailItems.length) {
+                const saved = await saveReceipt(false);
+                if (saved) prepareNewReceipt(false);
+                return;
+              }
+              prepareNewReceipt();
+            }}
+          >
+            <Plus size={14} />
+            Tạo mới
+          </button>
 
+          <button
+            type="button"
+            className="nk-btn-secondary"
+            onClick={() => navigateReceipt(1)}
+          >
+            <ArrowLeft size={13} />
+            Trước
+          </button>
 
-      {/* Modal Thêm mới mặt hàng */}
+          <button
+            type="button"
+            className="nk-btn-secondary"
+            onClick={() => navigateReceipt(-1)}
+          >
+            Sau
+            <ArrowRight size={13} />
+          </button>
+
+          <button
+            type="button"
+            className="nk-btn-secondary"
+            onClick={searchReceipt}
+          >
+            <Search size={13} />
+            Tìm kiếm
+          </button>
+        </div>
+
+        {/* Cụm nút bên phải */}
+        <div className="nk-footer-right">
+          <button
+            type="button"
+            className="nk-btn-primary"
+            onClick={() => setShowPaymentModal(true)}
+          >
+            <CreditCard size={14} />
+            Thanh toán (F12)
+          </button>
+
+          <button
+            type="button"
+            className="nk-btn-secondary"
+            onClick={() => setShowPreviewModal(true)}
+          >
+            <Eye size={13} />
+            Xem in
+          </button>
+
+          <button
+            type="button"
+            className="nk-btn-secondary"
+            onClick={() => {
+              showToast('Đang gửi lệnh in phiếu...');
+              setTimeout(() => window.print(), 300);
+            }}
+          >
+            <Printer size={13} />
+            In lại phiếu (Ctrl+P)
+          </button>
+
+          <button
+            type="button"
+            className="nk-btn-danger-outline"
+            onClick={cancelReceipt}
+          >
+            <Ban size={13} />
+            Hủy phiếu
+          </button>
+
+          <button
+            type="button"
+            className="nk-btn-danger-outline"
+            onClick={() => window.history.back()}
+          >
+            <LogOut size={13} />
+            Thoát
+          </button>
+        </div>
+      </div>
       {showAddPartModal && (
         <div
           onMouseDown={(event) => { if (event.target === event.currentTarget && !savingPart) setShowAddPartModal(false); }}
