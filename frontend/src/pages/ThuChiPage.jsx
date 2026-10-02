@@ -4,6 +4,7 @@ import {
   Search, Plus, FileSpreadsheet, MoreVertical, Calendar, 
   ArrowUpRight, ArrowDownRight, Users, CheckCircle, X, Filter
 } from 'lucide-react';
+import './ThuChiPage.css';
 
 export default function ThuChiPage() {
   const [fromDate, setFromDate] = useState('01/09/2025');
@@ -12,6 +13,7 @@ export default function ThuChiPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [debtTab, setDebtTab] = useState('receivable'); // 'receivable' (Phải thu) or 'payable' (Phải trả)
+  const [mobileTab, setMobileTab] = useState('overview'); // 'overview' | 'in_out' | 'debt'
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -108,7 +110,7 @@ export default function ThuChiPage() {
   };
 
   return (
-    <div className="dashboard" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto' }}>
+    <div className="tc-page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -134,121 +136,160 @@ export default function ThuChiPage() {
       )}
 
       {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: 6, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ background: '#E65100', color: 'white', width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+      <div className="tc-header">
+        <h1 className="tc-header-title">
+          <span style={{ background: '#E65100', color: 'white', width: 26, height: 26, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
             💰
           </span>
           Thu - Chi
         </h1>
-        <div className="page-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="tc-actions-group">
           <button 
             onClick={() => setShowAddModal(true)}
-            style={{ background: '#E65100', color: 'white', border: 'none', padding: '5px 12px', borderRadius: 4, fontWeight: 600, fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+            className="tc-btn-add"
           >
-            + Tạo phiếu thu/chi
+            <Plus size={14} /> Tạo phiếu thu/chi
           </button>
-          <button 
-            onClick={() => showToastMsg('Tính năng Import Excel sẵn sàng')}
-            style={{ background: 'white', color: '#424242', border: '1px solid #E0E0E0', padding: '5px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, cursor: 'pointer' }}
-          >
-            <FileSpreadsheet size={13} color="#4CAF50" /> Import Excel
-          </button>
-          <button 
-            onClick={() => showToastMsg('Xuất file Excel sổ quỹ thu chi thành công!')}
-            style={{ background: 'white', color: '#424242', border: '1px solid #E0E0E0', padding: '5px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, cursor: 'pointer' }}
-          >
-            <FileSpreadsheet size={13} color="#1976D2" /> Xuất Excel
-          </button>
-          <button style={{ background: 'white', color: '#616161', border: '1px solid #E0E0E0', padding: '5px 8px', borderRadius: 4, fontSize: 10.5, cursor: 'pointer' }}>
-            <MoreVertical size={13} color="#616161" />
-          </button>
+          <div className="tc-actions-row-mobile">
+            <button 
+              type="button"
+              onClick={() => showToastMsg('Tính năng Import Excel sẵn sàng')}
+              className="tc-btn-outline"
+            >
+              <FileSpreadsheet size={14} color="#4CAF50" /> Import Excel
+            </button>
+            <button 
+              type="button"
+              onClick={() => showToastMsg('Xuất file Excel sổ quỹ thu chi thành công!')}
+              className="tc-btn-outline"
+            >
+              <FileSpreadsheet size={14} color="#1976D2" /> Xuất Excel
+            </button>
+            <button type="button" className="tc-btn-outline" style={{ padding: '6px 8px' }}>
+              <MoreVertical size={14} color="#616161" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div style={{ background: 'white', padding: '6px 12px', borderRadius: 6, border: '1px solid #E0E0E0', marginBottom: 8, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0 }}>
-        <div>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 2 }}>Từ ngày</label>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              style={{ width: 100, padding: '4px 24px 4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10.5 }} 
-            />
-            <Calendar size={12} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+      <div className="tc-filter-bar">
+        <div className="tc-filter-row-1">
+          <div className="tc-search-box">
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Nhập nội dung, mã phiếu, đối tác..." 
+                className="tc-search-input"
+              />
+              <Search size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+            </div>
           </div>
-        </div>
-
-        <div>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 2 }}>Đến ngày</label>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              style={{ width: 100, padding: '4px 24px 4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10.5 }} 
-            />
-            <Calendar size={12} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
-          </div>
-        </div>
-
-        <div style={{ minWidth: 120 }}>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 2 }}>Loại giao dịch</label>
-          <select 
-            value={transactionType} 
-            onChange={(e) => setTransactionType(e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10.5 }}
+          <button 
+            type="button"
+            className="tc-btn-search"
+            onClick={() => showToastMsg('Đã lọc kết quả theo tiêu chí')}
           >
-            <option value="">Tất cả</option>
-            <option value="thu">Phiếu thu</option>
-            <option value="chi">Phiếu chi</option>
-          </select>
+            <Search size={12} /> Tìm kiếm
+          </button>
         </div>
 
-        <div style={{ minWidth: 130 }}>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 2 }}>Danh mục</label>
-          <select 
-            value={categoryFilter} 
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10.5 }}
-          >
-            <option value="">Tất cả</option>
-            <option>Sửa chữa bảo dưỡng</option>
-            <option>Mua phụ tùng</option>
-            <option>Lương nhân sự</option>
-            <option>Chi phí văn phòng</option>
-            <option>Công nợ nhà cung cấp</option>
-          </select>
-        </div>
+        <div className="tc-filter-row-2">
+          <div className="tc-filter-item">
+            <label className="tc-filter-label">Từ ngày</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="tc-filter-input"
+                style={{ width: '100%', paddingRight: 24 }}
+              />
+              <Calendar size={12} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+            </div>
+          </div>
 
-        <div style={{ flex: 1.5, minWidth: 200 }}>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nhập nội dung, mã phiếu, đối tác..." 
-              style={{ width: '100%', padding: '4px 28px 4px 8px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10.5 }} 
-            />
-            <Search size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+          <div className="tc-filter-item">
+            <label className="tc-filter-label">Đến ngày</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="tc-filter-input"
+                style={{ width: '100%', paddingRight: 24 }}
+              />
+              <Calendar size={12} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+            </div>
           </div>
         </div>
 
-        <button 
-          onClick={() => showToastMsg('Đã lọc kết quả theo tiêu chí')}
-          style={{ background: '#E65100', color: 'white', border: 'none', padding: '5px 14px', borderRadius: 4, fontWeight: 600, fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', height: 27 }}
+        <div className="tc-filter-row-3">
+          <div className="tc-filter-item">
+            <label className="tc-filter-label">Loại giao dịch</label>
+            <select 
+              value={transactionType} 
+              onChange={(e) => setTransactionType(e.target.value)}
+              className="tc-filter-select"
+              style={{ width: '100%' }}
+            >
+              <option value="">Tất cả</option>
+              <option value="thu">Phiếu thu</option>
+              <option value="chi">Phiếu chi</option>
+            </select>
+          </div>
+
+          <div className="tc-filter-item">
+            <label className="tc-filter-label">Danh mục</label>
+            <select 
+              value={categoryFilter} 
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="tc-filter-select"
+              style={{ width: '100%' }}
+            >
+              <option value="">Tất cả</option>
+              <option>Sửa chữa bảo dưỡng</option>
+              <option>Mua phụ tùng</option>
+              <option>Lương nhân sự</option>
+              <option>Chi phí văn phòng</option>
+              <option>Công nợ nhà cung cấp</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Segmented Tabs */}
+      <div className="tc-mobile-tabs">
+        <button
+          type="button"
+          className={`tc-mobile-tab-btn ${mobileTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setMobileTab('overview')}
         >
-          <Search size={12} /> Tìm kiếm
+          <TrendingUp size={14} /> Tổng quan & Biểu đồ
+        </button>
+        <button
+          type="button"
+          className={`tc-mobile-tab-btn ${mobileTab === 'in_out' ? 'active' : ''}`}
+          onClick={() => setMobileTab('in_out')}
+        >
+          <Wallet size={14} /> Sổ Thu & Chi
+        </button>
+        <button
+          type="button"
+          className={`tc-mobile-tab-btn ${mobileTab === 'debt' ? 'active' : ''}`}
+          onClick={() => setMobileTab('debt')}
+        >
+          <BookOpen size={14} /> Công nợ
         </button>
       </div>
 
       {/* 4 KPI Summary Cards */}
-      <div className="responsive-grid-4" style={{ marginBottom: 8, flexShrink: 0 }}>
+      <div className={`tc-kpi-grid ${mobileTab !== 'overview' ? 'tc-mobile-hidden' : ''}`}>
         
         {/* Card 1: Tổng thu */}
-        <div className="card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <div className="card tc-kpi-card">
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#2E7D32', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <ArrowUpRight size={20} color="white" strokeWidth={2.5} />
           </div>
@@ -260,7 +301,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Card 2: Tổng chi */}
-        <div className="card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <div className="card tc-kpi-card">
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#D32F2F', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <ArrowDownRight size={20} color="white" strokeWidth={2.5} />
           </div>
@@ -272,7 +313,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Card 3: Tồn quỹ hiện tại */}
-        <div className="card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <div className="card tc-kpi-card">
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1976D2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Wallet size={19} color="white" />
           </div>
@@ -283,7 +324,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Card 4: Công nợ phải thu */}
-        <div className="card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <div className="card tc-kpi-card">
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#E65100', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <BookOpen size={19} color="white" />
           </div>
@@ -299,10 +340,10 @@ export default function ThuChiPage() {
       </div>
 
       {/* Middle Section: Biểu đồ thu - chi theo tháng (~60%) & Giao dịch gần đây (~40%) */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexShrink: 0, height: 260 }}>
+      <div className={`tc-middle-grid ${mobileTab !== 'overview' ? 'tc-mobile-hidden' : ''}`}>
         
         {/* Left: Biểu đồ thu - chi theo tháng */}
-        <div className="card" style={{ flex: 1.45, padding: '6px 10px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div className="card tc-chart-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 4, marginBottom: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ color: '#E65100', fontSize: 13 }}>📊</span>
@@ -319,7 +360,7 @@ export default function ThuChiPage() {
           </div>
 
           {/* Dual Bar Chart Rendered with SVG */}
-          <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
+          <div style={{ flex: 1, position: 'relative', display: 'flex', minWidth: 280, overflowX: 'auto' }}>
             {/* Y Axis Labels */}
             <div style={{ width: 35, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 8.5, color: '#757575', paddingBottom: 18, textAlign: 'right', paddingRight: 6 }}>
               <span>250tr</span>
@@ -331,7 +372,7 @@ export default function ThuChiPage() {
             </div>
 
             {/* Chart Area with Grid and Bars */}
-            <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minWidth: 320 }}>
               {/* Grid Lines */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 20, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pointerEvents: 'none' }}>
                 {[0, 1, 2, 3, 4, 5].map((_, i) => (
@@ -373,7 +414,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Right: Giao dịch gần đây */}
-        <div className="card" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div className="card tc-recent-card">
           <div style={{ padding: '6px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ color: '#E65100', fontSize: 13 }}>📋</span>
@@ -382,8 +423,8 @@ export default function ThuChiPage() {
             <span style={{ fontSize: 9.5, color: '#1976D2', cursor: 'pointer', fontWeight: 500 }}>Xem tất cả</span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
+          <div className="tc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+            <table className="tc-table-recent" style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#FFF3E0', borderBottom: '1px solid #FFE0B2' }}>
                   <th style={{ ...tableHeaderThStyle, width: 65 }}>Ngày</th>
@@ -435,10 +476,10 @@ export default function ThuChiPage() {
       </div>
 
       {/* Bottom Section: 3 Cards (Danh sách thu, Danh sách chi, Công nợ) */}
-      <div className="responsive-grid-3" style={{ flex: 1, minHeight: 180 }}>
+      <div className="tc-bottom-grid">
         
         {/* Card 1: Danh sách thu trong tháng */}
-        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div className={`card tc-bottom-card ${mobileTab !== 'in_out' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ color: '#2E7D32', fontSize: 13 }}>📥</span>
@@ -447,8 +488,8 @@ export default function ThuChiPage() {
             <span style={{ fontSize: 9.5, color: '#1976D2', cursor: 'pointer' }}>Xem tất cả</span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
+          <div className="tc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+            <table className="tc-table-income" style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
                   <th style={{ ...tableHeaderThStyle, width: 65 }}>Ngày</th>
@@ -477,7 +518,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Card 2: Danh sách chi trong tháng */}
-        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div className={`card tc-bottom-card ${mobileTab !== 'in_out' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ color: '#D32F2F', fontSize: 13 }}>📤</span>
@@ -486,8 +527,8 @@ export default function ThuChiPage() {
             <span style={{ fontSize: 9.5, color: '#1976D2', cursor: 'pointer' }}>Xem tất cả</span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
+          <div className="tc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+            <table className="tc-table-expense" style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
                   <th style={{ ...tableHeaderThStyle, width: 65 }}>Ngày</th>
@@ -516,7 +557,7 @@ export default function ThuChiPage() {
         </div>
 
         {/* Card 3: Công nợ */}
-        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div className={`card tc-bottom-card ${mobileTab !== 'debt' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -559,8 +600,8 @@ export default function ThuChiPage() {
             <span style={{ fontSize: 9.5, color: '#1976D2', cursor: 'pointer' }}>Xem tất cả</span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
+          <div className="tc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+            <table className="tc-table-debt" style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
                   <th style={{ ...tableHeaderThStyle }}>{debtTab === 'receivable' ? 'Khách hàng' : 'Nhà cung cấp'}</th>
