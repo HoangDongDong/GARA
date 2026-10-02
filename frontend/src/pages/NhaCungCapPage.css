@@ -1,0 +1,341 @@
+/* ============================================
+   NHÀ CUNG CẤP - RESPONSIVE STYLES
+   ============================================ */
+
+.ncc-page-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Header & Actions */
+.ncc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ncc-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.ncc-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ncc-btn-add {
+  background: #E65100;
+  color: #FFFFFF;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.ncc-btn-add:hover {
+  background: #D84315;
+}
+
+.ncc-btn-outline {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+.ncc-btn-outline:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+  color: #1E293B;
+}
+
+/* Filter bar */
+.ncc-filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.ncc-search-box {
+  flex: 2;
+  min-width: 220px;
+}
+
+.ncc-filter-select-row {
+  display: flex;
+  gap: 10px;
+  flex: 2;
+}
+
+.ncc-filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.ncc-filter-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  margin-bottom: 4px;
+}
+
+.ncc-filter-select,
+.ncc-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  background: #FFFFFF;
+}
+
+.ncc-filter-select:focus,
+.ncc-search-input:focus {
+  border-color: #E65100;
+}
+
+/* Mobile Tabs Switcher (Ẩn trên Desktop) */
+.ncc-mobile-tabs {
+  display: none;
+}
+
+/* 2-Column Desktop Grid */
+.ncc-main-grid {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.ncc-left-col {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ncc-right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 3 cards bottom row on desktop */
+.ncc-bottom-cards-row {
+  display: flex;
+  gap: 12px;
+  height: 220px;
+}
+
+.ncc-sub-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Table container cuộn ngang */
+.ncc-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   RESPONSIVE CHO MOBILE (<= 768px)
+   ============================================ */
+@media (max-width: 768px) {
+  .ncc-page-container {
+    overflow-y: auto !important;
+    padding-bottom: 90px !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  .ncc-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .ncc-actions-group {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .ncc-btn-add {
+    width: 100% !important;
+    justify-content: center !important;
+    height: 38px !important;
+    font-size: 14px !important;
+  }
+
+  .ncc-actions-row-mobile {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .ncc-actions-row-mobile .ncc-btn-outline {
+    flex: 1 !important;
+    justify-content: center !important;
+    height: 34px !important;
+    font-size: 12.5px !important;
+  }
+
+  /* Bộ lọc xếp chuẩn trên Mobile */
+  .ncc-filter-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .ncc-search-box {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  .ncc-filter-select-row {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  .ncc-filter-select-row .ncc-filter-item {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  /* Mobile Tabs Switcher */
+  .ncc-mobile-tabs {
+    display: flex !important;
+    background: #E2E8F0;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ncc-tab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .ncc-tab-btn.active {
+    background: #FFFFFF;
+    color: #E65100;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Khối chính hiển thị theo Tab trên mobile */
+  .ncc-main-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: auto !important;
+    gap: 12px !important;
+  }
+
+  .ncc-left-col,
+  .ncc-right-col {
+    width: 100% !important;
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  /* Khi ở tab mobile khác, ẩn/hiển thị tương ứng */
+  .ncc-mobile-hidden {
+    display: none !important;
+  }
+
+  /* 3 Cards xếp dọc 100% trên Mobile */
+  .ncc-bottom-cards-row {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 12px !important;
+  }
+
+  .ncc-sub-card {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .ncc-sub-card .card-body {
+    overflow-y: visible !important;
+  }
+
+  /* Table cuộn ngang mượt mà trên mobile */
+  .ncc-table-responsive {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .ncc-table-responsive table {
+    min-width: 620px !important;
+  }
+
+  #ncc-back-to-list-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+}

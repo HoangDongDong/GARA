@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Plus, FileSpreadsheet } from 'lucide-react';
 import { suppliers } from '../services';
+import './NhaCungCapPage.css';
 
 const money = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
 const shortDate = (value) => value ? new Date(value).toLocaleDateString('vi-VN') : '—';
@@ -9,6 +11,7 @@ const EMPTY_FORM = {
 };
 
 export default function NhaCungCapPage() {
+  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'detail' | 'stats'
   const [supplierList, setSupplierList] = useState([]);
   const [groupList, setGroupList] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -240,234 +243,405 @@ export default function NhaCungCapPage() {
     });
 
   return (
-    <div className="dashboard" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div className="ncc-page-container">
       {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: 10 }}>
-        <h1>
+      <div className="ncc-header">
+        <h1 className="ncc-header-title">
           <span className="page-icon">🏢</span>
           Nhà cung cấp
         </h1>
-        <div className="page-actions" style={{ display: 'flex', gap: 8 }}>
-           <button onClick={openAddForm} className="btn" style={{ background: '#E65100', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, fontWeight: 600 }}>+ Thêm nhà cung cấp</button>
-           <button className="btn" style={{ background: 'white', border: '1px solid #E0E0E0', padding: '6px 12px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}>📊 Import Excel</button>
-           <button className="btn" style={{ background: 'white', border: '1px solid #E0E0E0', padding: '6px 12px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}>📊 Xuất Excel</button>
-           <button className="btn" style={{ background: 'white', border: '1px solid #E0E0E0', padding: '6px 12px', borderRadius: 4 }}>...</button>
+        <div className="ncc-actions-group">
+          <button onClick={openAddForm} className="ncc-btn-add">
+            <Plus size={16} /> Thêm nhà cung cấp
+          </button>
+          <div className="ncc-actions-row-mobile">
+            <button 
+              type="button" 
+              className="ncc-btn-outline" 
+              onClick={() => alert('Chức năng Import dữ liệu từ Excel')}
+            >
+              <FileSpreadsheet size={15} /> Import Excel
+            </button>
+            <button 
+              type="button" 
+              className="ncc-btn-outline" 
+              onClick={() => alert('Đã xuất danh sách nhà cung cấp ra file Excel')}
+            >
+              <FileSpreadsheet size={15} /> Xuất Excel
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-         <div style={{ flex: 2 }}><input type="text" placeholder="Tìm theo tên NCC, mã NCC, số điện thoại..." value={search} onChange={(event) => setSearch(event.target.value)} style={{ padding: '8px 12px', width: '100%' }} /></div>
-         <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 10, color: '#757575', marginBottom: 2 }}>Nhóm NCC</label>
-            <select value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)} style={{ width: '100%', padding: '6px 12px' }}>
+      <div className="ncc-filter-bar">
+        <div className="ncc-search-box">
+          <input 
+            type="text" 
+            placeholder="Tìm theo tên NCC, mã NCC, SĐT..." 
+            value={search} 
+            onChange={(event) => setSearch(event.target.value)} 
+            className="ncc-search-input"
+          />
+        </div>
+        <div className="ncc-filter-select-row">
+          <div className="ncc-filter-item">
+            <label className="ncc-filter-label">Nhóm NCC</label>
+            <select 
+              value={groupFilter} 
+              onChange={(event) => setGroupFilter(event.target.value)} 
+              className="ncc-filter-select"
+            >
               <option value="">Tất cả</option>
-              {groupList.map((group) => <option key={group.ID} value={group.ID}>{group.NAME}</option>)}
+              {groupList.map((group) => (
+                <option key={group.ID} value={group.ID}>{group.NAME}</option>
+              ))}
             </select>
-         </div>
-         <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 10, color: '#757575', marginBottom: 2 }}>Trạng thái</label>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={{ width: '100%', padding: '6px 12px' }}>
+          </div>
+          <div className="ncc-filter-item">
+            <label className="ncc-filter-label">Trạng thái</label>
+            <select 
+              value={statusFilter} 
+              onChange={(event) => setStatusFilter(event.target.value)} 
+              className="ncc-filter-select"
+            >
               <option value="">Tất cả</option>
               <option value="1">Đang hoạt động</option>
               <option value="0">Tạm ngưng</option>
             </select>
-         </div>
-         <div style={{ flex: 4 }}></div>
+          </div>
+        </div>
       </div>
 
-      <div className="responsive-2col" style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0 }}>
-        
-        {/* Left Column */}
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-          
-          {/* Main Table */}
-          <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="card-body no-padding" style={{ flex: 1, overflowY: 'auto' }}>
-              <table className="table" style={{ border: 'none' }}>
-                 <thead><tr><th>STT</th><th>Mã NCC</th><th>Tên nhà cung cấp</th><th>Nhóm NCC</th><th>Điện thoại</th><th>Địa chỉ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-                 <tbody>
-                    {loading && <tr><td colSpan={8} style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>}
-                    {!loading && filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center' }}>Chưa có nhà cung cấp</td></tr>}
-                    {!loading && filtered.map((item, index) => (
-                      <tr key={item.ID} onClick={() => setSelected(item)} style={{ background: selected?.ID === item.ID ? '#FFF3E0' : undefined, cursor: 'pointer' }}>
-                        <td>{index + 1}</td>
-                        <td>{item.MANHACUNGCAP || '—'}</td>
-                        <td>{item.NAME || '—'}</td>
-                        <td>{item.GROUP_NAME || '—'}</td>
-                        <td>{item.DIENTHOAI || '—'}</td>
-                        <td>{item.DIACHI || '—'}</td>
-                        <td><span className={Number(item.STATUS) === 1 ? 'badge badge-success' : 'badge badge-neutral'}>{Number(item.STATUS) === 1 ? 'Đang hoạt động' : 'Tạm ngưng'}</span></td>
-                        <td onClick={(event) => event.stopPropagation()}>
-                          <button type="button" title="Xem" onClick={() => setSelected(item)} style={{ border: 0, background: 'transparent', padding: 2, cursor: 'pointer' }}>👁️</button>
-                          <button type="button" title="Sửa" onClick={() => { setSelected(item); openEditForm(item); }} style={{ border: 0, background: 'transparent', padding: 2, cursor: 'pointer' }}>✏️</button>
-                          <button type="button" title="Xóa" onClick={() => handleDelete(item)} disabled={Boolean(deletingId)} style={{ border: 0, background: 'transparent', padding: 2, cursor: deletingId ? 'wait' : 'pointer', opacity: deletingId === item.ID ? 0.45 : 1 }}>🗑️</button>
-                        </td>
-                      </tr>
-                    ))}
-                 </tbody>
+      {/* Mobile Tabs Switcher */}
+      <div className="ncc-mobile-tabs">
+        <button
+          type="button"
+          className={`ncc-tab-btn ${mobileTab === 'list' ? 'active' : ''}`}
+          onClick={() => setMobileTab('list')}
+        >
+          🏢 Danh sách ({filtered.length})
+        </button>
+        <button
+          type="button"
+          className={`ncc-tab-btn ${mobileTab === 'detail' ? 'active' : ''}`}
+          onClick={() => setMobileTab('detail')}
+        >
+          📋 Chi tiết
+        </button>
+        <button
+          type="button"
+          className={`ncc-tab-btn ${mobileTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setMobileTab('stats')}
+        >
+          📊 Nhóm & Thống kê
+        </button>
+      </div>
+
+      {/* 2-Column Responsive Layout */}
+      <div className="ncc-main-grid">
+        {/* CỘT TRÁI (BẢNG CHÍNH + 3 CARDS ĐÁY) */}
+        <div className="ncc-left-col">
+          {/* Main Table: on mobile hidden if mobileTab !== 'list' */}
+          <div 
+            className={`card ${mobileTab !== 'list' ? 'ncc-mobile-hidden' : ''}`} 
+            style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          >
+            <div className="card-body no-padding ncc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+              <table className="table" style={{ border: 'none', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 45, textAlign: 'center' }}>STT</th>
+                    <th style={{ width: 95 }}>Mã NCC</th>
+                    <th>Tên nhà cung cấp</th>
+                    <th>Nhóm NCC</th>
+                    <th>Điện thoại</th>
+                    <th>Địa chỉ</th>
+                    <th>Trạng thái</th>
+                    <th style={{ width: 85, textAlign: 'center' }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 16 }}>Đang tải dữ liệu...</td></tr>}
+                  {!loading && filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 16 }}>Chưa có nhà cung cấp</td></tr>}
+                  {!loading && filtered.map((item, index) => (
+                    <tr 
+                      key={item.ID} 
+                      onClick={() => {
+                        setSelected(item);
+                        setMobileTab('detail');
+                      }} 
+                      style={{ background: selected?.ID === item.ID ? '#FFF3E0' : undefined, cursor: 'pointer' }}
+                    >
+                      <td style={{ textAlign: 'center' }}>{index + 1}</td>
+                      <td style={{ fontWeight: 600, color: '#E65100' }}>{item.MANHACUNGCAP || '—'}</td>
+                      <td style={{ fontWeight: 600, color: '#1E293B' }}>{item.NAME || '—'}</td>
+                      <td>{item.GROUP_NAME || '—'}</td>
+                      <td>{item.DIENTHOAI || '—'}</td>
+                      <td>{item.DIACHI || '—'}</td>
+                      <td>
+                        <span className={Number(item.STATUS) === 1 ? 'badge badge-success' : 'badge badge-neutral'}>
+                          {Number(item.STATUS) === 1 ? 'Đang hoạt động' : 'Tạm ngưng'}
+                        </span>
+                      </td>
+                      <td onClick={(event) => event.stopPropagation()} style={{ textAlign: 'center' }}>
+                        <button 
+                          type="button" 
+                          title="Xem" 
+                          onClick={() => {
+                            setSelected(item);
+                            setMobileTab('detail');
+                          }} 
+                          style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer' }}
+                        >
+                          👁️
+                        </button>
+                        <button 
+                          type="button" 
+                          title="Sửa" 
+                          onClick={() => { setSelected(item); openEditForm(item); }} 
+                          style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer' }}
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          type="button" 
+                          title="Xóa" 
+                          onClick={() => handleDelete(item)} 
+                          disabled={Boolean(deletingId)} 
+                          style={{ border: 0, background: 'transparent', padding: 4, cursor: deletingId ? 'wait' : 'pointer', opacity: deletingId === item.ID ? 0.45 : 1 }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
             <div className="card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <span>Tổng cộng: {filtered.length} nhà cung cấp</span>
-               <div className="pagination">
-                 <button className="btn btn-ghost">&lt;</button>
-                 <button className="btn active" style={{ background: '#E65100', color: 'white', border: 'none' }}>1</button>
-                 <button className="btn btn-ghost">&gt;</button>
-               </div>
+              <span>Tổng cộng: <b>{filtered.length}</b> nhà cung cấp</span>
+              <div className="pagination">
+                <button className="btn btn-ghost">&lt;</button>
+                <button className="btn active" style={{ background: '#E65100', color: 'white', border: 'none' }}>1</button>
+                <button className="btn btn-ghost">&gt;</button>
+              </div>
             </div>
           </div>
 
-          {/* Bottom row in Left Column */}
-          <div style={{ display: 'flex', gap: 10, height: 200 }}>
-             <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div className="card-header">
-                   <h3><span className="icon">📂</span> Danh sách nhóm nhà cung cấp</h3>
-                   <button onClick={() => openGroupForm()} className="link-btn" style={{ border: '1px solid #E65100', padding: '2px 8px', borderRadius: 4 }}>+ Thêm</button>
-                </div>
-                <div className="card-body no-padding" style={{ flex: 1, overflowY: 'auto' }}>
-                  <table className="table" style={{ border: 'none' }}>
-                     <thead><tr><th>STT</th><th>Nhóm NCC</th><th>Số lượng</th><th>Thao tác</th></tr></thead>
-                     <tbody>
-                        {groupStats.map((group, index) => (
-                          <tr key={group.ID}>
-                            <td>{index + 1}</td>
-                            <td>{group.NAME}</td>
-                            <td className="text-center">{group.count}</td>
-                            <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
-                              <button type="button" title="Sửa nhóm" onClick={() => openGroupForm(group)} style={{ border: 0, background: 'transparent', padding: 2, cursor: 'pointer' }}>✏️</button>
-                              <button type="button" title="Xóa nhóm" onClick={() => handleDeleteGroup(group)} disabled={Boolean(deletingGroupId)} style={{ border: 0, background: 'transparent', padding: 2, cursor: deletingGroupId ? 'wait' : 'pointer', opacity: deletingGroupId === group.ID ? 0.45 : 1 }}>🗑️</button>
-                            </td>
-                          </tr>
-                        ))}
-                        {!loading && groupStats.length === 0 && <tr><td colSpan={4} className="text-center">Chưa có nhóm nhà cung cấp</td></tr>}
-                     </tbody>
-                  </table>
-                </div>
-             </div>
-             
-             <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div className="card-header"><h3><span className="icon">📊</span> Thống kê nhà cung cấp</h3></div>
-                <div className="card-body" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                   <div style={{ background: '#FFF3E0', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ color: '#E65100', fontSize: 20 }}>🏢</div>
-                      <div style={{ fontSize: 10, color: '#757575' }}>Tổng số NCC</div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{supplierList.length}</div>
-                   </div>
-                   <div style={{ background: '#E8F5E9', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ color: '#4CAF50', fontSize: 20 }}>✔️</div>
-                      <div style={{ fontSize: 10, color: '#757575' }}>Đang hoạt động</div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{activeCount}</div>
-                   </div>
-                   <div style={{ background: '#E3F2FD', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ color: '#2196F3', fontSize: 20 }}>⏸️</div>
-                      <div style={{ fontSize: 10, color: '#757575' }}>Tạm ngưng</div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{inactiveCount}</div>
-                   </div>
-                   <div style={{ background: '#F3E5F5', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ color: '#9C27B0', fontSize: 20 }}>💰</div>
-                      <div style={{ fontSize: 10, color: '#757575' }}>Tổng công nợ</div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{money(totalDebt)}</div>
-                   </div>
-                </div>
-             </div>
-             
-             <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div className="card-header"><h3><span className="icon">🍩</span> Công nợ theo nhà cung cấp</h3></div>
-                <div className="card-body" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-                   <div style={{ width: 100, height: 100, position: 'relative' }}>
-                      <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                         <circle cx="18" cy="18" r="14" fill="none" stroke="#E0E0E0" strokeWidth="4"/>
-                         {debtSegments.map((segment) => <circle key={segment.name} cx="18" cy="18" r="14" fill="none" stroke={segment.color} strokeWidth="4" strokeDasharray={`${segment.length} 88`} strokeDashoffset={-segment.offset} strokeLinecap="round"/>)}
-                      </svg>
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                         <div style={{ fontSize: 10, fontWeight: 700 }}>{money(totalDebt)}</div>
-                         <div style={{ fontSize: 8, color: '#757575' }}>Tổng công nợ</div>
-                      </div>
-                   </div>
-                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 10 }}>
-                      {debtSegments.map((segment) => <div key={segment.name}><span style={{color: segment.color}}>●</span> {segment.name}<br/><b>{money(segment.value)}</b></div>)}
-                      {debtSegments.length === 0 && <div style={{ color: '#757575' }}>Chưa phát sinh công nợ</div>}
-                   </div>
-                </div>
-             </div>
-          </div>
+          {/* 3 Bottom Cards: on mobile hidden if mobileTab !== 'stats' */}
+          <div className={`ncc-bottom-cards-row ${mobileTab !== 'stats' ? 'ncc-mobile-hidden' : ''}`}>
+            {/* Card 1: Nhóm NCC */}
+            <div className="card ncc-sub-card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: 13 }}><span className="icon">📂</span> Nhóm nhà cung cấp</h3>
+                <button 
+                  onClick={() => openGroupForm()} 
+                  className="link-btn" 
+                  style={{ border: '1px solid #E65100', color: '#E65100', padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 12 }}
+                >
+                  + Thêm
+                </button>
+              </div>
+              <div className="card-body no-padding" style={{ flex: 1, overflowY: 'auto' }}>
+                <table className="table" style={{ border: 'none', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40, textAlign: 'center' }}>STT</th>
+                      <th>Nhóm NCC</th>
+                      <th className="text-center" style={{ width: 60 }}>SL</th>
+                      <th className="text-center" style={{ width: 60 }}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupStats.map((group, index) => (
+                      <tr key={group.ID}>
+                        <td style={{ textAlign: 'center' }}>{index + 1}</td>
+                        <td style={{ fontWeight: 500 }}>{group.NAME}</td>
+                        <td className="text-center">{group.count}</td>
+                        <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
+                          <button type="button" title="Sửa nhóm" onClick={() => openGroupForm(group)} style={{ border: 0, background: 'transparent', padding: 2, cursor: 'pointer' }}>✏️</button>
+                          <button type="button" title="Xóa nhóm" onClick={() => handleDeleteGroup(group)} disabled={Boolean(deletingGroupId)} style={{ border: 0, background: 'transparent', padding: 2, cursor: deletingGroupId ? 'wait' : 'pointer', opacity: deletingGroupId === group.ID ? 0.45 : 1 }}>🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!loading && groupStats.length === 0 && <tr><td colSpan={4} className="text-center" style={{ padding: 12 }}>Chưa có nhóm nhà cung cấp</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
+            {/* Card 2: Thống kê NCC */}
+            <div className="card ncc-sub-card">
+              <div className="card-header"><h3 style={{ margin: 0, fontSize: 13 }}><span className="icon">📊</span> Thống kê nhà cung cấp</h3></div>
+              <div className="card-body" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 10 }}>
+                <div style={{ background: '#FFF3E0', borderRadius: 8, padding: '8px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ color: '#E65100', fontSize: 18 }}>🏢</div>
+                  <div style={{ fontSize: 10, color: '#757575', marginTop: 2 }}>Tổng số NCC</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#E65100' }}>{supplierList.length}</div>
+                </div>
+                <div style={{ background: '#E8F5E9', borderRadius: 8, padding: '8px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ color: '#4CAF50', fontSize: 18 }}>✔️</div>
+                  <div style={{ fontSize: 10, color: '#757575', marginTop: 2 }}>Đang hoạt động</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#2E7D32' }}>{activeCount}</div>
+                </div>
+                <div style={{ background: '#E3F2FD', borderRadius: 8, padding: '8px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ color: '#2196F3', fontSize: 18 }}>⏸️</div>
+                  <div style={{ fontSize: 10, color: '#757575', marginTop: 2 }}>Tạm ngưng</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1565C0' }}>{inactiveCount}</div>
+                </div>
+                <div style={{ background: '#F3E5F5', borderRadius: 8, padding: '8px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ color: '#9C27B0', fontSize: 18 }}>💰</div>
+                  <div style={{ fontSize: 10, color: '#757575', marginTop: 2 }}>Tổng công nợ</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#7B1FA2' }}>{money(totalDebt)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Công nợ theo NCC */}
+            <div className="card ncc-sub-card">
+              <div className="card-header"><h3 style={{ margin: 0, fontSize: 13 }}><span className="icon">🍩</span> Công nợ theo nhà cung cấp</h3></div>
+              <div className="card-body" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: 10 }}>
+                <div style={{ width: 90, height: 90, position: 'relative', flexShrink: 0 }}>
+                  <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="#E0E0E0" strokeWidth="4"/>
+                    {debtSegments.map((segment) => (
+                      <circle key={segment.name} cx="18" cy="18" r="14" fill="none" stroke={segment.color} strokeWidth="4" strokeDasharray={`${segment.length} 88`} strokeDashoffset={-segment.offset} strokeLinecap="round"/>
+                    ))}
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#E65100' }}>{money(totalDebt)}</div>
+                    <div style={{ fontSize: 7.5, color: '#757575' }}>Tổng công nợ</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, minWidth: 0 }}>
+                  {debtSegments.map((segment) => (
+                    <div key={segment.name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: segment.color, marginRight: 4 }}>●</span> 
+                      <span style={{ color: '#475569' }}>{segment.name}</span>
+                      <br/>
+                      <b style={{ color: '#1E293B', marginLeft: 12 }}>{money(segment.value)}</b>
+                    </div>
+                  ))}
+                  {debtSegments.length === 0 && <div style={{ color: '#757575', fontSize: 11 }}>Chưa phát sinh công nợ</div>}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Column */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-          
+        {/* CỘT PHẢI (CHI TIẾT NHÀ CUNG CẤP): on mobile hidden if mobileTab !== 'detail' */}
+        <div className={`ncc-right-col ${mobileTab !== 'detail' ? 'ncc-mobile-hidden' : ''}`}>
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="card-header">
-               <h3><span className="icon">🏢</span> Thông tin nhà cung cấp</h3>
-               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                 <button onClick={() => openEditForm(selected)} disabled={!selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #E65100', color: '#E65100', borderRadius: 4, opacity: selected ? 1 : 0.5 }}>✏️ Sửa</button>
-                 <button onClick={() => handleDelete(selected)} disabled={!selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, opacity: selected && !deletingId ? 1 : 0.5 }}>🗑️ Xóa</button>
-               </div>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button 
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setMobileTab('list')}
+                  style={{ border: '1px solid #CBD5E1', padding: '3px 8px', borderRadius: 4, fontSize: 11, color: '#475569' }}
+                  id="ncc-back-to-list-btn"
+                >
+                  ← Quay lại
+                </button>
+                <h3 style={{ margin: 0, fontSize: 13 }}><span className="icon">🏢</span> Thông tin nhà cung cấp</h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => openEditForm(selected)} disabled={!selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #E65100', color: '#E65100', borderRadius: 4, opacity: selected ? 1 : 0.5 }}>✏️ Sửa</button>
+                <button onClick={() => handleDelete(selected)} disabled={!selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, opacity: selected && !deletingId ? 1 : 0.5 }}>🗑️ Xóa</button>
+              </div>
             </div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-               
-               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 40, height: 40, background: '#FF5722', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏢</div>
-                  <div style={{ flex: 1 }}>
-                     <div style={{ fontSize: 14, fontWeight: 700 }}>{selected?.NAME || 'Chưa chọn nhà cung cấp'}</div>
-                  </div>
-                  <div><span className={Number(selected?.STATUS) === 1 ? 'badge badge-success' : 'badge badge-neutral'}>{selected ? (Number(selected.STATUS) === 1 ? 'Đang hoạt động' : 'Tạm ngưng') : '—'}</span></div>
-               </div>
+              {/* Header chi tiết */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 42, height: 42, background: '#FF5722', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🏢</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1E293B', wordBreak: 'break-word' }}>{selected?.NAME || 'Chưa chọn nhà cung cấp'}</div>
+                </div>
+                <div>
+                  <span className={Number(selected?.STATUS) === 1 ? 'badge badge-success' : 'badge badge-neutral'}>
+                    {selected ? (Number(selected.STATUS) === 1 ? 'Đang hoạt động' : 'Tạm ngưng') : '—'}
+                  </span>
+                </div>
+              </div>
 
-               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Mã NCC</div><div className="detail-value">{selected?.MANHACUNGCAP || '—'}</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Nhóm NCC</div><div className="detail-value">{selected?.GROUP_NAME || '—'}</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Điện thoại</div><div className="detail-value">{selected?.DIENTHOAI || '—'}</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Email</div><div className="detail-value">{selected?.EMAIL || '—'}</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Địa chỉ</div><div className="detail-value">{selected?.DIACHI || '—'}</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Người liên hệ</div><div className="detail-value">—</div></div>
-                  <div className="detail-row"><div className="detail-label" style={{ width: 100 }}>Ghi chú</div><div className="detail-value" style={{ fontSize: 11, fontWeight: 400 }}>{selected?.NOTE || '—'}</div></div>
-               </div>
+              {/* Chi tiết liên hệ */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="detail-row"><div className="detail-label" style={{ width: 95 }}>Mã NCC</div><div className="detail-value" style={{ fontWeight: 600 }}>{selected?.MANHACUNGCAP || '—'}</div></div>
+                <div className="detail-row"><div className="detail-label" style={{ width: 95 }}>Nhóm NCC</div><div className="detail-value">{selected?.GROUP_NAME || '—'}</div></div>
+                <div className="detail-row">
+                  <div className="detail-label" style={{ width: 95 }}>Điện thoại</div>
+                  <div className="detail-value">
+                    {selected?.DIENTHOAI ? <a href={`tel:${selected.DIENTHOAI}`} style={{ color: '#E65100', fontWeight: 600 }}>{selected.DIENTHOAI}</a> : '—'}
+                  </div>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label" style={{ width: 95 }}>Email</div>
+                  <div className="detail-value">
+                    {selected?.EMAIL ? <a href={`mailto:${selected.EMAIL}`} style={{ color: '#2563EB' }}>{selected.EMAIL}</a> : '—'}
+                  </div>
+                </div>
+                <div className="detail-row"><div className="detail-label" style={{ width: 95 }}>Địa chỉ</div><div className="detail-value">{selected?.DIACHI || '—'}</div></div>
+                <div className="detail-row"><div className="detail-label" style={{ width: 95 }}>Người liên hệ</div><div className="detail-value">—</div></div>
+                <div className="detail-row"><div className="detail-label" style={{ width: 95 }}>Ghi chú</div><div className="detail-value" style={{ fontSize: 12, fontWeight: 400 }}>{selected?.NOTE || '—'}</div></div>
+              </div>
 
-               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                  <div style={{ flex: 1, border: '1px solid #FFCDD2', background: '#FFEBEE', borderRadius: 8, padding: '12px 8px', textAlign: 'center' }}>
-                     <div style={{ fontSize: 11, color: '#C62828', marginBottom: 4 }}>📉 Tổng công nợ</div>
-                     <div style={{ fontSize: 14, fontWeight: 700, color: '#C62828' }}>{money(selected?.TOTAL_DEBT)}</div>
-                  </div>
-                  <div style={{ flex: 1, border: '1px solid #C8E6C9', background: '#E8F5E9', borderRadius: 8, padding: '12px 8px', textAlign: 'center' }}>
-                     <div style={{ fontSize: 11, color: '#2E7D32', marginBottom: 4 }}>✔️ Đã thanh toán</div>
-                     <div style={{ fontSize: 14, fontWeight: 700, color: '#2E7D32' }}>{money(selected?.TOTAL_PAID)}</div>
-                  </div>
-                  <div style={{ flex: 1, border: '1px solid #BBDEFB', background: '#E3F2FD', borderRadius: 8, padding: '12px 8px', textAlign: 'center' }}>
-                     <div style={{ fontSize: 11, color: '#1565C0', marginBottom: 4 }}>📊 Hạn mức công nợ</div>
-                     <div style={{ fontSize: 14, fontWeight: 700, color: '#1565C0' }}>—</div>
-                  </div>
-               </div>
-               
-               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #E0E0E0', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ padding: '8px 12px', background: '#F5F5F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <h4 style={{ margin: 0, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{color:'#E65100'}}>📝</span> Lịch sử giao dịch gần đây</h4>
-                     <button className="link-btn">Xem tất cả</button>
-                  </div>
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
-                     <table className="table" style={{ border: 'none' }}>
-                        <thead><tr><th>Ngày</th><th>Số chứng từ</th><th>Loại giao dịch</th><th>Giá trị</th><th>Trạng thái</th></tr></thead>
-                        <tbody>
-                           {transactions.map((item) => (
-                             <tr key={item.ID}>
-                               <td>{shortDate(item.NGAY)}</td>
-                               <td>{item.NAME || '—'}</td>
-                               <td>{Number(item.LOAI) === 1 ? 'Nhập trả' : Number(item.LOAI) === 2 ? 'Chuyển kho' : 'Nhập hàng'}</td>
-                               <td className="text-right">{money(item.TONGCONG)}</td>
-                               <td><span className={Number(item.CONGNO) > 0 ? 'badge badge-neutral' : 'badge badge-success'}>{Number(item.CONGNO) > 0 ? 'Còn nợ' : 'Đã thanh toán'}</span></td>
-                             </tr>
-                           ))}
-                           {transactions.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center' }}>Chưa có giao dịch</td></tr>}
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
+              {/* Thẻ công nợ */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 calc(33% - 6px)', minWidth: 100, border: '1px solid #FFCDD2', background: '#FFEBEE', borderRadius: 8, padding: '10px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 10.5, color: '#C62828', marginBottom: 2 }}>📉 Tổng công nợ</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#C62828' }}>{money(selected?.TOTAL_DEBT)}</div>
+                </div>
+                <div style={{ flex: '1 1 calc(33% - 6px)', minWidth: 100, border: '1px solid #C8E6C9', background: '#E8F5E9', borderRadius: 8, padding: '10px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 10.5, color: '#2E7D32', marginBottom: 2 }}>✔️ Đã thanh toán</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2E7D32' }}>{money(selected?.TOTAL_PAID)}</div>
+                </div>
+                <div style={{ flex: '1 1 calc(33% - 6px)', minWidth: 100, border: '1px solid #BBDEFB', background: '#E3F2FD', borderRadius: 8, padding: '10px 6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 10.5, color: '#1565C0', marginBottom: 2 }}>📊 Hạn mức nợ</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#1565C0' }}>—</div>
+                </div>
+              </div>
+              
+              {/* Lịch sử giao dịch */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #E0E0E0', borderRadius: 8, overflow: 'hidden', minHeight: 180 }}>
+                <div style={{ padding: '8px 12px', background: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                    <span style={{ color: '#E65100' }}>📝</span> Lịch sử giao dịch gần đây
+                  </h4>
+                </div>
+                <div className="ncc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+                  <table className="table" style={{ border: 'none', width: '100%', minWidth: 460 }}>
+                    <thead>
+                      <tr>
+                        <th>Ngày</th>
+                        <th>Số chứng từ</th>
+                        <th>Loại giao dịch</th>
+                        <th style={{ textAlign: 'right' }}>Giá trị</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.map((item) => (
+                        <tr key={item.ID}>
+                          <td>{shortDate(item.NGAY)}</td>
+                          <td style={{ fontWeight: 600 }}>{item.NAME || '—'}</td>
+                          <td>{Number(item.LOAI) === 1 ? 'Nhập trả' : Number(item.LOAI) === 2 ? 'Chuyển kho' : 'Nhập hàng'}</td>
+                          <td className="text-right" style={{ fontWeight: 600 }}>{money(item.TONGCONG)}</td>
+                          <td>
+                            <span className={Number(item.CONGNO) > 0 ? 'badge badge-neutral' : 'badge badge-success'}>
+                              {Number(item.CONGNO) > 0 ? 'Còn nợ' : 'Đã thanh toán'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {transactions.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 16 }}>Chưa có giao dịch</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
             </div>
           </div>
-
         </div>
       </div>
 
