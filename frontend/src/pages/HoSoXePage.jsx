@@ -845,11 +845,8 @@ export default function HoSoXePage() {
     <div className="page-responsive-container hsx-page-container" style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
       width: '100%',
       boxSizing: 'border-box',
-      overflowX: 'hidden',
-      overflowY: 'auto',
       gap: 'clamp(3px, 0.6vh, 6px)',
       fontSize: 'clamp(10px, 0.75vw, 12px)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
@@ -1426,7 +1423,7 @@ export default function HoSoXePage() {
         {activeTab === 'thong-tin-chung' && (
           <>
             {/* 4 Cards dạng lưới */}
-            <div style={{
+            <div className="hsx-cards-grid" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(min(270px, 100%), 1fr))',
               gap: 'clamp(4px, 0.6vh, 6px)',
@@ -1563,7 +1560,7 @@ export default function HoSoXePage() {
             </div>
 
             {/* Card Lịch sử sửa chữa gần đây */}
-            <div style={{
+            <div className="hsx-recent-repairs-card" style={{
               background: '#FFFFFF',
               borderRadius: 6,
               border: '1px solid #E0E0E0',

@@ -193,20 +193,50 @@
   .hsx-page-container {
     height: auto !important;
     min-height: auto !important;
+    overflow: visible !important;
     overflow-y: visible !important;
     padding-bottom: 0 !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
   }
 
   /* Vùng nội dung chính mở rộng chiều cao tự nhiên theo nội dung */
   .hsx-main-content {
+    overflow: visible !important;
     overflow-y: visible !important;
     height: auto !important;
+    min-height: auto !important;
     flex: none !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
     margin-bottom: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 4 Cards thông tin xe trên mobile xếp cột dọc 100% chiều rộng */
+  .hsx-cards-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  /* Card Lịch sử sửa chữa gần đây mở rộng chiều cao tự nhiên */
+  .hsx-recent-repairs-card {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .hsx-recent-repairs-card .hsx-table-responsive {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
   /* Toolbar tìm kiếm & nút trên cùng */

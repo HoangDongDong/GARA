@@ -8,6 +8,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
 }
@@ -649,8 +650,8 @@
 
 @media (max-width: 480px) {
   .app-header {
-    height: 44px;
-    padding: 0 8px;
+    height: calc(46px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 8px 0 8px;
   }
   .logo-text .logo-name {
     font-size: 13px;
@@ -677,9 +678,9 @@
     gap: 4px;
   }
   .mobile-bottom-nav {
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
-    height: 56px;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    height: 58px;
   }
 }

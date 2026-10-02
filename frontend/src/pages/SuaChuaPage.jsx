@@ -3,11 +3,40 @@ import {
   Wrench, Calendar, Search, CheckSquare, Square, Check, XCircle, RotateCcw, 
   Send, Printer, Bookmark, CheckCircle, ChevronDown, Sparkles, Filter, 
   Disc, Zap, Thermometer, BatteryCharging, MoreHorizontal, Settings as SettingsIcon,
-  CircleDot, FileText, Car, Plus, UserPlus
+  CircleDot, FileText, Car, Plus, UserPlus, Images, ImagePlus, Trash2
 } from 'lucide-react';
 import { customers, employees, invoices, masterData, parts as partsApi, repairOrders, vehicles, workflow } from '../services';
 import VehicleProfileModal from '../components/VehicleProfileModal';
 import EmployeeFormModal from '../components/EmployeeFormModal';
+
+const MAX_WORKFLOW_IMAGES = 12;
+
+const compressWorkflowImage = (file) => new Promise((resolve, reject) => {
+  if (!file?.type?.startsWith('image/')) return reject(new Error('Tệp đã chọn không phải hình ảnh.'));
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    try {
+      const maxSide = 1600;
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      const data = canvas.toDataURL('image/jpeg', 0.82);
+      URL.revokeObjectURL(objectUrl);
+      resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', data });
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      reject(error);
+    }
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error(`Không đọc được ảnh ${file.name}.`));
+  };
+  image.src = objectUrl;
+});
 
 export default function SuaChuaPage() {
   // Toast thông báo
@@ -211,10 +240,17 @@ export default function SuaChuaPage() {
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [savingProcess, setSavingProcess] = useState(false);
   const [repairFlow, setRepairFlow] = useState({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
+  const [vehicleFlowOptions, setVehicleFlowOptions] = useState([]);
   const vehicleSelectionRequest = useRef(0);
   const [showRepairConfirmation, setShowRepairConfirmation] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [workflowImages, setWorkflowImages] = useState([]);
+  const [draftWorkflowImages, setDraftWorkflowImages] = useState([]);
+  const [selectedImageState, setSelectedImageState] = useState(0);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const workflowImageInputRef = useRef(null);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [vehicleBrands, setVehicleBrands] = useState([]);
@@ -297,7 +333,10 @@ export default function SuaChuaPage() {
             date: new Date().toISOString().slice(0, 10),
             receiptCode: `BG${Date.now().toString().slice(-8)}`,
           }));
-          const activeFlow = await workflow.byVehicle(first.ID).catch(() => null);
+          const flowRows = await workflow.byVehicleAll(first.ID).catch(() => []);
+          const flowOptions = Array.isArray(flowRows) ? flowRows : [];
+          setVehicleFlowOptions(flowOptions);
+          const activeFlow = flowOptions[0] || null;
           if (activeFlow) {
             setRepairFlow({
               repairId: activeFlow.TLENHSUACHUAID || null,
@@ -305,6 +344,10 @@ export default function SuaChuaPage() {
               receptionId: activeFlow.TTIEPNHANXEID || null,
               workflowState: Number(activeFlow.TRANGTHAI),
             });
+            setVehicleInfo((current) => ({
+              ...current,
+              receiptCode: activeFlow.SOPHIEU || activeFlow.SOPHIEUTIEPNHAN || current.receiptCode,
+            }));
             if (activeFlow.TLENHSUACHUAID) {
               const order = await repairOrders.get(activeFlow.TLENHSUACHUAID).catch(() => null);
               const detailIds = new Set((order?.details || []).map((detail) => detail.DMATHANGID || detail.DDICHVUID));
@@ -362,14 +405,136 @@ export default function SuaChuaPage() {
 
   const businessStage = Math.max(0, Math.min(4, Number(repairFlow.workflowState ?? 0)));
   const isFlowCompleted = Number(repairFlow.workflowState) === 4;
+  const activeVehicleFlow = vehicleFlowOptions.find((flow) => Number(flow.TRANGTHAI) < 4) || null;
   const processLabels = ['Tiếp nhận & Báo giá', 'Xác nhận sửa chữa', 'Đang sửa', 'Giao xe', 'Hoàn thành'];
   const shortProcessLabels = ['Báo giá', 'Xác nhận', 'Đang sửa', 'Giao xe', 'Hoàn tất'];
+
+  const refreshWorkflowImages = async (workflowId = repairFlow.workflowId) => {
+    if (!workflowId) {
+      setWorkflowImages([]);
+      return [];
+    }
+    const rows = await workflow.images(workflowId);
+    const list = Array.isArray(rows) ? rows : [];
+    setWorkflowImages(list);
+    return list;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!repairFlow.workflowId) {
+      setWorkflowImages([]);
+      return undefined;
+    }
+    workflow.images(repairFlow.workflowId)
+      .then((rows) => { if (!cancelled) setWorkflowImages(Array.isArray(rows) ? rows : []); })
+      .catch((error) => { if (!cancelled) showToast(error?.response?.data?.error || 'Không thể tải ảnh trạng thái.'); });
+    return () => { cancelled = true; };
+  }, [repairFlow.workflowId]);
+
+  useEffect(() => {
+    setSelectedImageState(businessStage);
+  }, [repairFlow.workflowId, repairFlow.workflowState]);
+
+  const handleWorkflowImageFiles = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+    const currentCount = repairFlow.workflowId
+      ? workflowImages.filter((item) => Number(item.TRANGTHAI) === selectedImageState).length
+      : draftWorkflowImages.length;
+    const available = MAX_WORKFLOW_IMAGES - currentCount;
+    if (available <= 0) return showToast(`Mỗi trạng thái lưu tối đa ${MAX_WORKFLOW_IMAGES} ảnh.`);
+
+    setUploadingImages(true);
+    try {
+      const prepared = await Promise.all(files.slice(0, available).map(compressWorkflowImage));
+      if (!repairFlow.workflowId) {
+        if (selectedImageState !== 0) return showToast('Hãy lưu Tiếp nhận & Báo giá trước khi thêm ảnh cho bước này.');
+        setDraftWorkflowImages((current) => [...current, ...prepared]);
+        showToast(`Đã chọn ${prepared.length} ảnh; ảnh sẽ lưu cùng phiếu tiếp nhận.`);
+        return;
+      }
+      await workflow.uploadImages({
+        TTRANGTHAIXEID: repairFlow.workflowId,
+        DXEID: vehicleInfo.vehicleId,
+        TLENHSUACHUAID: repairFlow.repairId,
+        TRANGTHAI: selectedImageState,
+        images: prepared,
+      });
+      await refreshWorkflowImages(repairFlow.workflowId);
+      showToast(`Đã lưu ${prepared.length} ảnh cho bước ${processLabels[selectedImageState]}.`);
+    } catch (error) {
+      showToast(error?.response?.data?.error || error.message || 'Không thể lưu ảnh trạng thái.');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const handleDeleteWorkflowImage = async (image) => {
+    try {
+      await workflow.deleteImage(image.ID);
+      await refreshWorkflowImages(repairFlow.workflowId);
+      showToast('Đã xóa ảnh khỏi trạng thái.');
+    } catch (error) {
+      showToast(error?.response?.data?.error || 'Không thể xóa ảnh trạng thái.');
+    }
+  };
+
+  const visibleWorkflowImages = repairFlow.workflowId
+    ? workflowImages.filter((item) => Number(item.TRANGTHAI) === selectedImageState)
+    : selectedImageState === 0 ? draftWorkflowImages : [];
+
+  const loadRepairFlow = async (flow, requestId = vehicleSelectionRequest.current, catalog = null) => {
+    if (!flow) return;
+    setRepairFlow({
+      repairId: flow.TLENHSUACHUAID || null,
+      workflowId: flow.ID || null,
+      receptionId: flow.TTIEPNHANXEID || null,
+      workflowState: Number(flow.TRANGTHAI),
+    });
+    setVehicleInfo((current) => ({
+      ...current,
+      receiptCode: flow.SOPHIEU || flow.SOPHIEUTIEPNHAN || current.receiptCode,
+    }));
+    setServices((current) => (catalog || current).map((item) => ({ ...item, checked: false })));
+    if (!flow.TLENHSUACHUAID) return;
+    const order = await repairOrders.get(flow.TLENHSUACHUAID).catch((error) => {
+      showToast(error?.response?.data?.error || 'Không thể tải lại các hạng mục của số phiếu đã chọn.');
+      return null;
+    });
+    if (requestId !== vehicleSelectionRequest.current || !order) return;
+    const detailIds = new Set((order.details || []).map((detail) => detail.DMATHANGID || detail.DDICHVUID));
+    setServices((current) => (catalog || current).map((item) => ({ ...item, checked: detailIds.has(item.sourceId) })));
+  };
+
+  const handleSelectRepairFlow = async (workflowId) => {
+    const flow = vehicleFlowOptions.find((item) => String(item.ID) === String(workflowId));
+    if (!flow || String(flow.ID) === String(repairFlow.workflowId)) return;
+    const requestId = ++vehicleSelectionRequest.current;
+    setWorkflowImages([]);
+    setDraftWorkflowImages([]);
+    setSelectedImageState(Math.max(0, Math.min(4, Number(flow.TRANGTHAI || 0))));
+    await loadRepairFlow(flow, requestId);
+  };
+
+  const updateSelectedFlowState = (state) => {
+    setVehicleFlowOptions((current) => current.map((flow) => (
+      String(flow.ID) === String(repairFlow.workflowId)
+        ? { ...flow, TRANGTHAI: state, TRANGTHAI_TEN: processLabels[state] }
+        : flow
+    )));
+  };
 
   const selectVehicle = async (vehicleId, source = vehicleOptions) => {
     const selected = source.find((item) => item.ID === vehicleId);
     if (!selected) return;
     const requestId = ++vehicleSelectionRequest.current;
     setRepairFlow({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
+    setVehicleFlowOptions([]);
+    setWorkflowImages([]);
+    setDraftWorkflowImages([]);
+    setSelectedImageState(0);
     setServices((current) => current.map((item) => ({ ...item, checked: false })));
     setVehicleInfo((current) => ({
       ...current, vehicleId: selected.ID, customerId: selected.DKHACHHANGID || '',
@@ -378,25 +543,13 @@ export default function SuaChuaPage() {
       carModel: [selected.HANG_XE, selected.DONG_XE, selected.PHIENBAN].filter(Boolean).join(' '),
       receiptCode: `BG${Date.now().toString().slice(-8)}`,
     }));
-    const activeFlow = await workflow.byVehicle(selected.ID).catch(() => null);
+    const flowRows = await workflow.byVehicleAll(selected.ID).catch(() => []);
     if (requestId !== vehicleSelectionRequest.current) return;
+    const flowOptions = Array.isArray(flowRows) ? flowRows : [];
+    setVehicleFlowOptions(flowOptions);
+    const activeFlow = flowOptions[0] || null;
     if (activeFlow) {
-      setRepairFlow({
-        repairId: activeFlow.TLENHSUACHUAID || null,
-        workflowId: activeFlow.ID || null,
-        receptionId: activeFlow.TTIEPNHANXEID || null,
-        workflowState: Number(activeFlow.TRANGTHAI),
-      });
-      if (activeFlow.TLENHSUACHUAID) {
-        const order = await repairOrders.get(activeFlow.TLENHSUACHUAID).catch((error) => {
-          showToast(error?.response?.data?.error || 'Không thể tải lại các hạng mục đã báo giá.');
-          return null;
-        });
-        if (requestId !== vehicleSelectionRequest.current) return;
-        if (!order) return;
-        const detailIds = new Set((order?.details || []).map((detail) => detail.DMATHANGID || detail.DDICHVUID));
-        setServices((current) => current.map((item) => ({ ...item, checked: detailIds.has(item.sourceId) })));
-      }
+      await loadRepairFlow(activeFlow, requestId);
     }
   };
 
@@ -667,7 +820,27 @@ export default function SuaChuaPage() {
         });
         setRepairFlow({ repairId: result.id, workflowId: result.workflowId || repairFlow.workflowId, receptionId, workflowState: 0 });
         setVehicleInfo((current) => ({ ...current, receiptCode: result.code || current.receiptCode }));
-        showToast('Đã lưu Tiếp nhận & Báo giá vào database.');
+        const createdWorkflowId = result.workflowId || repairFlow.workflowId;
+        const refreshedFlows = await workflow.byVehicleAll(vehicleInfo.vehicleId).catch(() => []);
+        if (Array.isArray(refreshedFlows)) setVehicleFlowOptions(refreshedFlows);
+        if (createdWorkflowId && draftWorkflowImages.length) {
+          try {
+            await workflow.uploadImages({
+              TTRANGTHAIXEID: createdWorkflowId,
+              DXEID: vehicleInfo.vehicleId,
+              TLENHSUACHUAID: result.id,
+              TRANGTHAI: 0,
+              images: draftWorkflowImages,
+            });
+            setDraftWorkflowImages([]);
+            await refreshWorkflowImages(createdWorkflowId);
+            showToast(`Đã lưu Tiếp nhận & Báo giá cùng ${draftWorkflowImages.length} ảnh.`);
+          } catch (imageError) {
+            showToast(imageError?.response?.data?.error || 'Phiếu đã lưu nhưng chưa thể lưu ảnh trạng thái.');
+          }
+        } else {
+          showToast('Đã lưu Tiếp nhận & Báo giá vào database.');
+        }
         setShowRepairConfirmation(true);
       } else if (repairFlow.workflowState === 0) {
         setShowRepairConfirmation(true);
@@ -680,6 +853,7 @@ export default function SuaChuaPage() {
           LYDO: `Chuyển sang bước ${nextLabel}`, GHICHU: repairNotes,
         });
         setRepairFlow((current) => ({ ...current, workflowState: nextState }));
+        updateSelectedFlowState(nextState);
         showToast(`Đã chuyển sang: ${nextLabel}.`);
       } else if (repairFlow.workflowState === 3) {
         setPaymentMethod('cash');
@@ -710,6 +884,7 @@ export default function SuaChuaPage() {
         GHICHU: repairNotes,
       });
       setRepairFlow((current) => ({ ...current, workflowState: 2 }));
+      updateSelectedFlowState(2);
       setShowRepairConfirmation(false);
       showToast('Đã xác nhận và chuyển sang Đang sửa.');
     } catch (error) {
@@ -749,6 +924,7 @@ export default function SuaChuaPage() {
       }
 
       setRepairFlow((current) => ({ ...current, workflowState: 4 }));
+      updateSelectedFlowState(4);
       setShowPayment(false);
       showToast('Thanh toán thành công. Phiếu đã chuyển sang Hoàn thành.');
     } catch (error) {
@@ -764,6 +940,9 @@ export default function SuaChuaPage() {
     // khi người dùng chọn hạng mục rồi bấm Lưu Tiếp nhận & Báo giá.
     vehicleSelectionRequest.current += 1;
     setRepairFlow({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
+    setWorkflowImages([]);
+    setDraftWorkflowImages([]);
+    setSelectedImageState(0);
     setServices((current) => current.map((item) => ({ ...item, checked: false, quantity: 1 })));
     setSearchTerm('');
     setShowPayment(false);
@@ -842,10 +1021,8 @@ export default function SuaChuaPage() {
     <div className="page-responsive-container" style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
       width: '100%',
       boxSizing: 'border-box',
-      overflow: 'hidden',
       gap: 'clamp(4px, 0.7vh, 8px)',
       fontSize: 'clamp(10.5px, 0.8vw, 12.5px)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
@@ -1093,23 +1270,50 @@ export default function SuaChuaPage() {
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
               Số phiếu
             </label>
-            <input
-              type="text"
-              value={vehicleInfo.receiptCode}
-              readOnly
-              style={{
-                flex: 1, minWidth: 0,
-                height: 'clamp(28px, 3.2vh, 31px)',
-                padding: '0 8px',
-                border: '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: 'inherit',
-                background: '#F8FAFC',
-                color: '#64748B',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+            {vehicleFlowOptions.length > 1 ? (
+              <select
+                value={repairFlow.workflowId || ''}
+                onChange={(event) => handleSelectRepairFlow(event.target.value)}
+                style={{
+                  flex: 1, minWidth: 0,
+                  height: 'clamp(28px, 3.2vh, 31px)',
+                  padding: '0 8px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: 'inherit',
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                }}
+              >
+                {!repairFlow.workflowId && <option value="">Phiếu mới</option>}
+                {vehicleFlowOptions.map((flow) => (
+                  <option key={flow.ID} value={flow.ID}>
+                    {flow.SOPHIEU || flow.SOPHIEUTIEPNHAN || 'Chưa có số phiếu'} - {processLabels[Number(flow.TRANGTHAI)] || flow.TRANGTHAI_TEN}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={vehicleInfo.receiptCode}
+                readOnly
+                style={{
+                  flex: 1, minWidth: 0,
+                  height: 'clamp(28px, 3.2vh, 31px)',
+                  padding: '0 8px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 4,
+                  fontSize: 'inherit',
+                  background: '#F8FAFC',
+                  color: '#64748B',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            )}
           </div>
 
           {/* 9. Ghi chú */}
@@ -1516,12 +1720,63 @@ export default function SuaChuaPage() {
             </div>
           </div>
 
+          {/* Ảnh được lưu riêng theo từng trạng thái của lượt sửa chữa */}
+          <div style={{ flex: '0 0 auto', background: '#fff', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+            <div style={{ padding: '5px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#1E293B', fontSize: 11.5 }}>
+                <Images size={14} color="#E65100" /> Ảnh theo trạng thái
+              </span>
+              <button type="button" disabled={uploadingImages} onClick={() => workflowImageInputRef.current?.click()} style={{ height: 24, padding: '0 8px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 10.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, cursor: uploadingImages ? 'wait' : 'pointer', opacity: uploadingImages ? 0.65 : 1 }}>
+                <ImagePlus size={12} /> {uploadingImages ? 'Đang lưu...' : 'Thêm ảnh'}
+              </button>
+              <input ref={workflowImageInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={handleWorkflowImageFiles} />
+            </div>
+
+            <div style={{ padding: '5px 7px' }}>
+              <div style={{ display: 'flex', gap: 3, overflowX: 'auto', paddingBottom: 4 }}>
+                {processLabels.map((label, state) => {
+                  const reached = state <= businessStage;
+                  if (!reached) return null;
+                  const count = repairFlow.workflowId
+                    ? workflowImages.filter((image) => Number(image.TRANGTHAI) === state).length
+                    : state === 0 ? draftWorkflowImages.length : 0;
+                  const selected = selectedImageState === state;
+                  return (
+                    <button key={label} type="button" onClick={() => setSelectedImageState(state)} style={{ flex: '0 0 auto', height: 23, padding: '0 7px', border: `1px solid ${selected ? '#E65100' : '#CBD5E1'}`, borderRadius: 12, background: selected ? '#FFF3E0' : '#fff', color: selected ? '#C2410C' : '#64748B', fontSize: 9.5, fontWeight: selected ? 700 : 600, cursor: 'pointer' }}>
+                      {shortProcessLabels[state]} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ minHeight: 48, maxHeight: 100, overflowY: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                {visibleWorkflowImages.length === 0 ? (
+                  <button type="button" onClick={() => workflowImageInputRef.current?.click()} style={{ width: '100%', height: 45, border: '1px dashed #CBD5E1', borderRadius: 5, background: '#F8FAFC', color: '#94A3B8', fontSize: 10.5, cursor: 'pointer' }}>
+                    Chưa có ảnh ở bước {processLabels[selectedImageState]} · Bấm để thêm nhiều ảnh
+                  </button>
+                ) : visibleWorkflowImages.map((image, index) => {
+                  const source = image.ID ? (image.URL || workflow.imageUrl(image.ID)) : image.data;
+                  return (
+                    <div key={image.ID || `${image.name}-${index}`} style={{ position: 'relative', flex: '0 0 54px', width: 54, height: 48, borderRadius: 5, overflow: 'hidden', border: '1px solid #CBD5E1', background: '#F1F5F9' }}>
+                      <img src={source} alt={image.TENFILE || image.name || 'Ảnh trạng thái'} onClick={() => setPreviewImage(source)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} />
+                      <button type="button" title="Xóa ảnh" onClick={() => image.ID ? handleDeleteWorkflowImage(image) : setDraftWorkflowImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} style={{ position: 'absolute', top: 2, right: 2, width: 17, height: 17, padding: 0, border: 0, borderRadius: '50%', background: 'rgba(185,28,28,.88)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           {/* Cụm nút hành động */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
             {/* Nút lớn: Chuyển đi sửa chữa */}
             <button
               type="button"
-              onClick={isFlowCompleted ? handleStartNewRepairVisit : handleProcessAction}
+              onClick={isFlowCompleted
+                ? (activeVehicleFlow ? () => handleSelectRepairFlow(activeVehicleFlow.ID) : handleStartNewRepairVisit)
+                : handleProcessAction}
               disabled={savingProcess}
               style={{
                 height: 'clamp(32px, 4.2vh, 38px)',
@@ -1539,7 +1794,7 @@ export default function SuaChuaPage() {
                 boxShadow: isFlowCompleted ? '0 2px 6px rgba(46,125,50,0.25)' : '0 2px 6px rgba(230,81,0,0.25)'
               }}
             >
-              {isFlowCompleted ? <Plus size={15} /> : <Send size={15} />}
+              {isFlowCompleted ? (activeVehicleFlow ? <RotateCcw size={15} /> : <Plus size={15} />) : <Send size={15} />}
               {savingProcess
                 ? 'Đang xử lý...'
                 : !repairFlow.repairId
@@ -1552,7 +1807,7 @@ export default function SuaChuaPage() {
                         ? 'Giao xe'
                         : repairFlow.workflowState === 3
                           ? 'Thanh toán'
-                          : 'Tạo lượt sửa chữa mới'}
+                          : activeVehicleFlow ? 'Mở phiếu đang xử lý' : 'Tạo lượt sửa chữa mới'}
             </button>
 
             {/* 2 nút bên dưới: In phiếu & Lưu tạm */}
@@ -1967,6 +2222,13 @@ export default function SuaChuaPage() {
               <button type="submit" disabled={savingVehicleMaster} style={{ height: 32, padding: '0 16px', border: 0, borderRadius: 5, background: savingVehicleMaster ? '#FDBA74' : '#E65100', color: '#fff', fontWeight: 700, cursor: savingVehicleMaster ? 'wait' : 'pointer' }}>{savingVehicleMaster ? 'Đang lưu...' : 'Thêm dòng xe'}</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {previewImage && (
+        <div onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewImage(null); }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(2,6,23,.86)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <button type="button" onClick={() => setPreviewImage(null)} style={{ position: 'absolute', top: 16, right: 18, width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,.45)', background: 'rgba(15,23,42,.7)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><XCircle size={22} /></button>
+          <img src={previewImage} alt="Ảnh trạng thái sửa chữa" style={{ maxWidth: '94vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 7, boxShadow: '0 18px 60px rgba(0,0,0,.5)' }} />
         </div>
       )}
 
