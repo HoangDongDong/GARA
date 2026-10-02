@@ -189,12 +189,12 @@
 
 /* ===== TỐI ƯU GIAO DIỆN HỒ SƠ XE TRÊN MOBILE (<= 768px) ===== */
 @media (max-width: 768px) {
-  /* Page container cho phép cuộn toàn trang và có padding an toàn tránh bottom nav */
-  .page-responsive-container {
+  /* Page container cho phép cuộn tự nhiên theo app-content, không đệm thừa */
+  .hsx-page-container {
     height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    padding-bottom: 95px !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+    padding-bottom: 0 !important;
     display: block !important;
   }
 
@@ -206,7 +206,7 @@
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 0 !important;
   }
 
   /* Toolbar tìm kiếm & nút trên cùng */

@@ -865,9 +865,10 @@
 @media (max-width: 992px) {
   .pos-wrapper {
     height: auto !important;
-    min-height: 100% !important;
+    min-height: auto !important;
     overflow-y: visible !important;
     padding: 6px !important;
+    padding-bottom: 0 !important;
     gap: 8px !important;
   }
 
@@ -1620,6 +1621,18 @@
   }
 
   .pos-wrapper {
-    padding-bottom: 75px !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-mobile-cart-bar {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    right: 8px;
+    border-radius: 12px;
+    border: 1px solid #E65100;
+    padding: 8px 12px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
   }
 }

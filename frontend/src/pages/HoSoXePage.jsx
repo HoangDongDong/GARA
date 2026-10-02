@@ -565,12 +565,30 @@ const mapVehicleProfile = (data) => {
       daysLeft: days == null ? '—' : days >= 0 ? `Còn ${days} ngày` : 'Hết BH', supplier: 'KAZUKO AUTO', note: item.NOTE || '',
     };
   });
-  const media = (data?.media || []).map((item) => ({
+  const receptionMedia = (data?.media || []).map((item) => ({
     id: item.ID, title: item.MOTA || 'Hình ảnh tiếp nhận xe',
     category: Number(item.LOAIHINH) === 2 ? 'sau' : Number(item.LOAIHINH) === 1 ? 'trong' : 'truoc',
+    repairId: item.SO_PHIEU || '',
+    mediaType: 'image',
     date: formatProfileDate(item.TIMECREATED, true),
     odo: `${Number(item.ODO || row.ODO || 0).toLocaleString('vi-VN')} km`, url: summary.avatar,
   }));
+  const workflowMedia = (data?.workflowMedia || []).map((item) => {
+    const state = workflowStageIndex(item.TRANGTHAI);
+    return {
+      id: item.ID,
+      title: item.MOTA || `${VEHICLE_PROCESS_STAGES[state]}${item.SO_PHIEU ? ` · ${item.SO_PHIEU}` : ''}`,
+      category: state <= 1 ? 'truoc' : state === 2 ? 'trong' : 'sau',
+      workflowState: state,
+      workflowLabel: item.TRANGTHAI_TEN || VEHICLE_PROCESS_STAGES[state],
+      repairId: item.SO_PHIEU || item.TLENHSUACHUAID || '',
+      mediaType: String(item.MIME || '').toLowerCase().startsWith('video/') ? 'video' : 'image',
+      date: formatProfileDate(item.TIMECREATED, true),
+      odo: `${Number(item.ODO || row.ODO || 0).toLocaleString('vi-VN')} km`,
+      url: item.URL || `/api/workflow/images/${item.ID}/content`,
+    };
+  });
+  const media = [...workflowMedia, ...receptionMedia];
   const noteList = row.GHICHU ? [{ id: `vehicle-${row.ID}`, priority: 'info', author: 'Hệ thống', date: formatProfileDate(row.TIMECREATED, true), content: row.GHICHU }] : [];
   return {
     ...EMPTY_VEHICLE_PROFILE, ...summary,
@@ -600,6 +618,7 @@ export default function HoSoXePage() {
   const [selectedRepair, setSelectedRepair] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [mediaFilter, setMediaFilter] = useState('all');
+  const [expandedMediaRepairs, setExpandedMediaRepairs] = useState([]);
   const [repairSearch, setRepairSearch] = useState('');
   const [searchPlateQuery, setSearchPlateQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -622,6 +641,11 @@ export default function HoSoXePage() {
   const searchBoxRef = useRef(null);
 
   const currentNotes = vehicleNotes[currentVehicle.plate] || currentVehicle.notes || [];
+  const mediaRepairGroups = currentVehicle.repairs.map((repair) => {
+    const allMedia = currentVehicle.media.filter((item) => item.repairId === repair.id);
+    const media = allMedia.filter((item) => mediaFilter === 'all' || item.category === mediaFilter);
+    return { repair, allMedia, media };
+  });
 
   // Lắng nghe click bên ngoài để đóng dropdown tìm kiếm
   useEffect(() => {
@@ -647,6 +671,9 @@ export default function HoSoXePage() {
       const profile = mapVehicleProfile(data);
       setCurrentVehicle(profile);
       setSelectedPlate(profile.plate);
+      setMediaFilter('all');
+      const firstRepairWithMedia = profile.repairs.find((repair) => profile.media.some((item) => item.repairId === repair.id));
+      setExpandedMediaRepairs(firstRepairWithMedia ? [firstRepairWithMedia.id] : []);
       if (notify) showToast('Đã tải hồ sơ xe: ' + profile.plate + ' (' + profile.model + ')');
     } catch (error) {
       showToast(error?.response?.data?.error || error.message || 'Không thể tải hồ sơ xe.');
@@ -815,7 +842,7 @@ export default function HoSoXePage() {
   ];
 
   return (
-    <div className="page-responsive-container" style={{
+    <div className="page-responsive-container hsx-page-container" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
@@ -1491,23 +1518,23 @@ export default function HoSoXePage() {
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B', width: '30%' }}>Tên công ty</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1E293B' }}>{currentVehicle.company.name}</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1E293B' }}>{currentVehicle.company?.name || '—'}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Mã số thuế</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.company.taxCode}</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 600 }}>{currentVehicle.company?.taxCode || '—'}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Địa chỉ</td>
-                      <td style={{ padding: '3px 6px', color: '#1E293B' }}>{currentVehicle.company.address}</td>
+                      <td style={{ padding: '3px 6px', color: '#1E293B' }}>{currentVehicle.company?.address || '—'}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Điện thoại</td>
-                      <td style={{ padding: '3px 6px' }}>{currentVehicle.company.phone}</td>
+                      <td style={{ padding: '3px 6px' }}>{currentVehicle.company?.phone || '—'}</td>
                     </tr>
                     <tr>
                       <td style={{ padding: '3px 6px', color: '#64748B' }}>Người liên hệ</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1565C0' }}>{currentVehicle.company.contact}</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#1565C0' }}>{currentVehicle.company?.contact || '—'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2186,166 +2213,132 @@ export default function HoSoXePage() {
           </div>
         )}
 
-        {/* TAB 5: HÌNH ẢNH & VIDEO */}
+        {/* TAB 5: HÌNH ẢNH & VIDEO - nhóm theo từng hồ sơ phiếu sửa chữa */}
         {activeTab === 'hinh-anh' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}>
-            {/* Thanh lọc & Tải ảnh lên */}
-            <div style={{
-              background: '#FFFFFF',
-              border: '1px solid #E2E8F0',
-              borderRadius: 6,
-              padding: '6px 10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 8,
-              flexShrink: 0
-            }}>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flex: 1, minHeight: 0 }}>
+            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 6, padding: '7px 10px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ImageIcon size={14} color="#E65100" />
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#1E293B' }}>
+                    HÌNH ẢNH &amp; VIDEO ({currentVehicle.media.length})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => showToast('Mở hộp thoại tải lên ảnh/video thực tế của xe ' + currentVehicle.plate)}
+                  style={{ height: 27, padding: '0 11px', background: '#E65100', color: '#FFFFFF', border: 'none', borderRadius: 4, fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                >
+                  <Plus size={12} /> Tải ảnh / Video
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', marginTop: 7 }}>
                 {[
-                  { id: 'all', label: 'Tất cả ảnh/video' },
+                  { id: 'all', label: 'Tất cả' },
                   { id: 'truoc', label: 'Trước sửa chữa' },
                   { id: 'trong', label: 'Trong quá trình' },
-                  { id: 'sau', label: 'Sau hoàn thiện' }
-                ].map(f => {
-                  const isSelected = mediaFilter === f.id;
-                  const count = f.id === 'all' ? currentVehicle.media.length : currentVehicle.media.filter(m => m.category === f.id).length;
+                  { id: 'sau', label: 'Sau hoàn thiện' },
+                ].map((filter) => {
+                  const isSelected = mediaFilter === filter.id;
+                  const count = filter.id === 'all' ? currentVehicle.media.length : currentVehicle.media.filter((item) => item.category === filter.id).length;
                   return (
                     <button
-                      key={f.id}
+                      key={filter.id}
                       type="button"
-                      onClick={() => setMediaFilter(f.id)}
-                      style={{
-                        padding: '3px 10px',
-                        background: isSelected ? '#E65100' : '#F1F5F9',
-                        color: isSelected ? '#FFFFFF' : '#475569',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontSize: '11px',
-                        fontWeight: isSelected ? 600 : 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
+                      onClick={() => setMediaFilter(filter.id)}
+                      style={{ padding: '4px 11px', background: isSelected ? '#E65100' : '#F1F5F9', color: isSelected ? '#FFFFFF' : '#475569', border: 'none', borderRadius: 4, fontSize: '11px', fontWeight: isSelected ? 700 : 500, cursor: 'pointer' }}
                     >
-                      {f.label} ({count})
+                      {filter.label} ({count})
                     </button>
                   );
                 })}
               </div>
-
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => showToast('Mở hộp thoại tải lên ảnh/video thực tế của xe ' + currentVehicle.plate)}
-                  style={{
-                    height: 26,
-                    padding: '0 10px',
-                    background: '#E65100',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: 4,
-                    fontWeight: 600,
-                    fontSize: '11px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Plus size={12} /> Tải ảnh / Video lên
-                </button>
-              </div>
             </div>
 
-            {/* Grid hiển thị hình ảnh & video */}
-            <div style={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: 'auto',
-              background: '#FFFFFF',
-              borderRadius: 6,
-              border: '1px solid #E0E0E0',
-              padding: 8
-            }}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 10
-              }}>
-                {currentVehicle.media.filter(m => mediaFilter === 'all' || m.category === mediaFilter).map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => setPreviewImage(item)}
-                    style={{
-                      border: '1px solid #E2E8F0',
-                      borderRadius: 6,
-                      overflow: 'hidden',
-                      background: '#FAFAFA',
-                      cursor: 'pointer',
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ position: 'relative', width: '100%', height: 130, background: '#CBD5E1', overflow: 'hidden' }}>
-                      <img
-                        src={item.url}
-                        alt={item.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        top: 6,
-                        left: 6,
-                        background: item.category === 'truoc' ? '#1565C0' : item.category === 'trong' ? '#E65100' : '#2E7D32',
-                        color: '#fff',
-                        fontSize: '9px',
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: 4
-                      }}>
-                        {item.category === 'truoc' ? 'Trước SC' : item.category === 'trong' ? 'Đang làm' : 'Hoàn thiện'}
-                      </span>
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 6,
-                        right: 6,
-                        background: 'rgba(0,0,0,0.6)',
-                        color: '#fff',
-                        fontSize: '9px',
-                        padding: '1px 5px',
-                        borderRadius: 3,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}>
-                        <Eye size={10} /> Phóng to
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {mediaRepairGroups.map(({ repair, allMedia, media }) => {
+                const expanded = expandedMediaRepairs.includes(repair.id);
+                const imageCount = allMedia.filter((item) => item.mediaType !== 'video').length;
+                const videoCount = allMedia.filter((item) => item.mediaType === 'video').length;
+                return (
+                  <section key={repair.id} style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setExpandedMediaRepairs((current) => expanded ? current.filter((id) => id !== repair.id) : [...current, repair.id])}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setExpandedMediaRepairs((current) => expanded ? current.filter((id) => id !== repair.id) : [...current, repair.id]);
+                        }
+                      }}
+                      style={{ padding: '8px 10px', cursor: 'pointer', background: expanded ? '#FFF7ED' : '#FFFFFF', borderBottom: expanded ? '1px solid #FED7AA' : 'none' }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.8fr) minmax(180px, 1fr) auto', gap: 12, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                          {expanded ? <ChevronDown size={15} color="#E65100" /> : <ChevronRight size={15} color="#64748B" />}
+                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#E65100' }}>{repair.id}</span>
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: '#475569' }}>{repair.date} • {repair.odo}</div>
+                        <div style={{ fontSize: '10.5px', color: '#334155', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          {imageCount} ảnh{videoCount ? ` • ${videoCount} video` : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 4, paddingLeft: 21 }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {repair.items.slice(0, 3).join(' + ') || repair.service}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); setSelectedRepair(repair); }}
+                          style={{ border: 'none', background: 'transparent', color: '#1565C0', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Xem hồ sơ →
+                        </button>
                       </div>
                     </div>
 
-                    <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <div style={{ fontWeight: 600, fontSize: '11px', color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.title}
+                    {expanded && (
+                      <div style={{ padding: 9 }}>
+                        {media.length ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 9 }}>
+                            {media.map((item) => (
+                              <div key={item.id} onClick={() => setPreviewImage(item)} style={{ border: '1px solid #E2E8F0', borderRadius: 6, overflow: 'hidden', background: '#FAFAFA', cursor: 'pointer' }}>
+                                <div style={{ position: 'relative', width: '100%', height: 118, background: '#CBD5E1', overflow: 'hidden' }}>
+                                  {item.mediaType === 'video' ? (
+                                    <video src={item.url} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    <img src={item.url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  )}
+                                  <span style={{ position: 'absolute', top: 6, left: 6, background: item.category === 'truoc' ? '#1565C0' : item.category === 'trong' ? '#E65100' : '#2E7D32', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>
+                                    {item.category === 'truoc' ? 'Trước SC' : item.category === 'trong' ? 'Đang làm' : 'Hoàn thiện'}
+                                  </span>
+                                  <span style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.62)', color: '#fff', fontSize: '9px', padding: '1px 5px', borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Eye size={10} /> Phóng to
+                                  </span>
+                                </div>
+                                <div style={{ padding: '6px 8px' }}>
+                                  <div style={{ fontWeight: 600, fontSize: '10.5px', color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, fontSize: '9.5px', color: '#64748B' }}>
+                                    <span>{item.date}</span><span>{item.odo}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ padding: 18, textAlign: 'center', color: '#94A3B8', fontSize: '11px', border: '1px dashed #CBD5E1', borderRadius: 5, background: '#F8FAFC' }}>
+                            Phiếu này chưa có ảnh/video thuộc nhóm đang lọc.
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: '#64748B' }}>
-                        <span>{item.date}</span>
-                        <span style={{ fontWeight: 600, color: '#334155' }}>{item.odo}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )}
+                  </section>
+                );
+              })}
+              {!mediaRepairGroups.length && (
+                <div style={{ padding: 30, textAlign: 'center', color: '#94A3B8', background: '#FFFFFF', border: '1px dashed #CBD5E1', borderRadius: 6 }}>Xe chưa có hồ sơ phiếu sửa chữa.</div>
+              )}
             </div>
           </div>
         )}

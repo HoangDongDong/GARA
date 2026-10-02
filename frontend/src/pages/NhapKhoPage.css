@@ -234,10 +234,11 @@
   /* Container toàn trang không bị giới hạn chiều cao */
   .page-responsive-container {
     height: auto !important;
-    min-height: 100% !important;
+    min-height: auto !important;
     display: flex !important;
     flex-direction: column !important;
     overflow-y: visible !important;
+    padding-bottom: 0 !important;
   }
 
   /* Khối thông tin phiếu nhập trên mobile xếp theo cột dọc */

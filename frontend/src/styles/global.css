@@ -849,8 +849,9 @@ table.table {
 @media (max-width: 768px) {
   .page-responsive-container {
     height: auto !important;
-    min-height: 100% !important;
+    min-height: auto !important;
     overflow-y: visible !important;
+    padding-bottom: 0 !important;
   }
 
   .tiepnhan-top-cards {

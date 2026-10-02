@@ -184,8 +184,8 @@
    ============================================ */
 @media (max-width: 768px) {
   .ncc-page-container {
-    overflow-y: auto !important;
-    padding-bottom: 90px !important;
+    overflow-y: visible !important;
+    padding-bottom: 0 !important;
     height: auto !important;
     display: block !important;
   }
