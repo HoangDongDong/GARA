@@ -1772,49 +1772,10 @@ export default function SuaChuaPage() {
             </div>
           </div>
 
-          {/* Cụm nút hành động */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-            {/* Nút lớn: Chuyển đi sửa chữa */}
-            <button
-              type="button"
-              onClick={isFlowCompleted
-                ? (activeVehicleFlow ? () => handleSelectRepairFlow(activeVehicleFlow.ID) : handleStartNewRepairVisit)
-                : handleProcessAction}
-              disabled={savingProcess}
-              style={{
-                height: 'clamp(32px, 4.2vh, 38px)',
-                background: isFlowCompleted ? '#2E7D32' : '#E65100',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 5,
-                fontWeight: 700,
-                fontSize: 'clamp(11.5px, 0.85vw, 13px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                cursor: savingProcess ? 'wait' : 'pointer',
-                boxShadow: isFlowCompleted ? '0 2px 6px rgba(46,125,50,0.25)' : '0 2px 6px rgba(230,81,0,0.25)'
-              }}
-            >
-              {isFlowCompleted ? (activeVehicleFlow ? <RotateCcw size={15} /> : <Plus size={15} />) : <Send size={15} />}
-              {savingProcess
-                ? 'Đang xử lý...'
-                : !repairFlow.repairId
-                  ? 'Lưu Tiếp nhận & Báo giá'
-                  : repairFlow.workflowState === 0
-                    ? 'Xác nhận sửa chữa'
-                    : repairFlow.workflowState === 1
-                      ? 'Bắt đầu sửa chữa'
-                      : repairFlow.workflowState === 2
-                        ? 'Giao xe'
-                        : repairFlow.workflowState === 3
-                          ? 'Thanh toán'
-                          : activeVehicleFlow ? 'Mở phiếu đang xử lý' : 'Tạo lượt sửa chữa mới'}
-            </button>
-
-            {/* 2 nút bên dưới: In phiếu & Lưu tạm */}
-            <div className="responsive-grid-2" style={{ gap: 6 }}>
+          {/* Cụm 3 nút hành động: 1 hàng duy nhất (Nửa trái: In phiếu + Lưu tạm, Nửa phải: Lưu Tiếp nhận & Báo giá) */}
+          <div className="suachua-action-buttons-row" style={{ display: 'flex', alignItems: 'stretch', gap: 6, width: '100%', flexShrink: 0 }}>
+            {/* Nửa bên trái (50%): 2 nút In phiếu & Lưu tạm */}
+            <div style={{ display: 'flex', flex: '1 1 50%', minWidth: 0, gap: 5 }}>
               <button
                 type="button"
                 onClick={() => {
@@ -1822,46 +1783,99 @@ export default function SuaChuaPage() {
                   setTimeout(() => window.print(), 300);
                 }}
                 style={{
-                  height: 'clamp(26px, 3.4vh, 30px)',
+                  flex: 1,
+                  minWidth: 0,
+                  height: 'clamp(32px, 4vh, 38px)',
                   background: '#FFFFFF',
                   color: '#E65100',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 4,
+                  borderRadius: 5,
                   fontWeight: 600,
-                  fontSize: 'inherit',
+                  fontSize: 'clamp(10.5px, 0.8vw, 12px)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 5,
-                  cursor: 'pointer'
+                  gap: 4,
+                  cursor: 'pointer',
+                  padding: '0 4px',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <Printer size={13} color="#E65100" />
-                In phiếu
+                <Printer size={13} color="#E65100" style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>In phiếu</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => showToast('Đã lưu tạm bảng kê dịch vụ')}
                 style={{
-                  height: 'clamp(26px, 3.4vh, 30px)',
+                  flex: 1,
+                  minWidth: 0,
+                  height: 'clamp(32px, 4vh, 38px)',
                   background: '#FFFFFF',
                   color: '#E65100',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 4,
+                  borderRadius: 5,
                   fontWeight: 600,
-                  fontSize: 'inherit',
+                  fontSize: 'clamp(10.5px, 0.8vw, 12px)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 5,
-                  cursor: 'pointer'
+                  gap: 4,
+                  cursor: 'pointer',
+                  padding: '0 4px',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <Bookmark size={13} color="#E65100" />
-                Lưu tạm
+                <Bookmark size={13} color="#E65100" style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Lưu tạm</span>
               </button>
             </div>
+
+            {/* Nửa bên phải (50%): Nút chuyển trạng thái / Lưu Tiếp nhận & Báo giá */}
+            <button
+              type="button"
+              onClick={isFlowCompleted
+                ? (activeVehicleFlow ? () => handleSelectRepairFlow(activeVehicleFlow.ID) : handleStartNewRepairVisit)
+                : handleProcessAction}
+              disabled={savingProcess}
+              style={{
+                flex: '1 1 50%',
+                minWidth: 0,
+                height: 'clamp(32px, 4vh, 38px)',
+                background: isFlowCompleted ? '#2E7D32' : '#E65100',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 5,
+                fontWeight: 700,
+                fontSize: 'clamp(11px, 0.85vw, 12.5px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                cursor: savingProcess ? 'wait' : 'pointer',
+                boxShadow: isFlowCompleted ? '0 2px 6px rgba(46,125,50,0.25)' : '0 2px 6px rgba(230,81,0,0.25)',
+                padding: '0 6px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {isFlowCompleted ? (activeVehicleFlow ? <RotateCcw size={14} style={{ flexShrink: 0 }} /> : <Plus size={14} style={{ flexShrink: 0 }} />) : <Send size={14} style={{ flexShrink: 0 }} />}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {savingProcess
+                  ? 'Đang xử lý...'
+                  : !repairFlow.repairId
+                    ? 'Lưu Tiếp nhận & Báo giá'
+                    : repairFlow.workflowState === 0
+                      ? 'Xác nhận sửa chữa'
+                      : repairFlow.workflowState === 1
+                        ? 'Bắt đầu sửa chữa'
+                        : repairFlow.workflowState === 2
+                          ? 'Giao xe'
+                          : repairFlow.workflowState === 3
+                            ? 'Thanh toán'
+                            : activeVehicleFlow ? 'Mở phiếu đang xử lý' : 'Tạo lượt sửa chữa mới'}
+              </span>
+            </button>
           </div>
           </div> {/* End suachua-bottom-action-panel */}
         </div>

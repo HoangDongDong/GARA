@@ -108,6 +108,7 @@ export const vehicles = {
   remove: (id) => remove('vehicles', id),
   meta:   () => list('vehicles/meta/brands'),
   profile: (id) => list(`vehicles/${id}/profile`),
+  imageUrl: (id) => `/api/vehicles/${id}/image`,
 };
 
 /* ===== EMPLOYEES (DNHANVIEN) ===== */

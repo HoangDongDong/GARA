@@ -35,6 +35,13 @@
   flex-shrink: 0;
 }
 
+.suachua-action-buttons-row button {
+  transition: all 0.15s ease-in-out;
+}
+.suachua-action-buttons-row button:active {
+  transform: scale(0.98);
+}
+
 /* ===== TỐI ƯU GIAO DIỆN MOBILE (<= 768px) ===== */
 @media (max-width: 768px) {
   /* Container trang cho phép cuộn tự nhiên theo app-content, có khoảng đệm cuối để nội dung không bị che */
@@ -43,7 +50,7 @@
     min-height: auto !important;
     overflow: visible !important;
     overflow-y: visible !important;
-    padding-bottom: calc(270px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(230px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .suachua-main-split {
