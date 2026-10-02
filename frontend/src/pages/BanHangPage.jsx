@@ -730,13 +730,6 @@ export default function BanHangPage() {
                 <span className="pos-form-label">Số phiếu</span>
                 <div className="pos-form-input-wrap">
                   <input type="text" className="pos-form-input" value={saleCode} readOnly />
-                  <button
-                    className="pos-form-icon-btn"
-                    onClick={copySaleCode}
-                    title="Sao chép số phiếu"
-                  >
-                    {copiedCode ? <Check size={13} color="#15803d" /> : <Copy size={13} />}
-                  </button>
                 </div>
               </div>
 
@@ -744,9 +737,6 @@ export default function BanHangPage() {
                 <span className="pos-form-label">Ngày bán</span>
                 <div className="pos-form-input-wrap">
                   <input type="text" className="pos-form-input" value={saleDate} readOnly />
-                  <span className="pos-form-icon-btn" style={{ pointerEvents: 'none' }}>
-                    <Calendar size={13} />
-                  </span>
                 </div>
               </div>
 
@@ -781,9 +771,6 @@ export default function BanHangPage() {
                 <span className="pos-form-label">Người bán</span>
                 <div className="pos-form-input-wrap">
                   <input type="text" className="pos-form-input" value={currentSeller} readOnly />
-                  <span className="pos-form-icon-btn" style={{ pointerEvents: 'none' }}>
-                    <User size={13} />
-                  </span>
                 </div>
               </div>
 
