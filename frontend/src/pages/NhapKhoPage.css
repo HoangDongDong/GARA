@@ -21,6 +21,14 @@
   align-items: center;
 }
 
+.nk-main-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 0.5vh, 6px);
+}
+
 .nk-catalog-card {
   flex: 0 0 35%;
   background: #FFFFFF;
@@ -91,6 +99,36 @@
 
 /* ===== TỐI ƯU GIAO DIỆN NHẬP KHO TRÊN MOBILE (<= 768px) ===== */
 @media (max-width: 768px) {
+  /* Container toàn trang không bị giới hạn chiều cao */
+  .page-responsive-container {
+    height: auto !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: visible !important;
+  }
+
+  /* Khối danh sách hàng hóa tự động ôm sát nội dung, KHÔNG được co/giãn flex gây đè lên bảng */
+  .nk-main-section {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
+  .nk-main-section .responsive-2col {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
   /* Các hàng form chia 1 cột trên mobile */
   .nk-form-row-2,
   .nk-form-row-2-short {
@@ -120,21 +158,28 @@
     height: 30px !important;
   }
 
-  /* 2 bảng danh mục và bảng chi tiết hàng nhập */
+  /* 2 bảng danh mục và bảng chi tiết hàng nhập trên mobile */
   .nk-catalog-card,
   .nk-details-card {
     width: 100% !important;
     max-width: 100% !important;
     flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: hidden !important;
   }
 
   .nk-catalog-card .table-responsive {
-    max-height: 220px !important;
+    max-height: 240px !important;
+    height: auto !important;
+    flex: none !important;
     overflow-y: auto !important;
   }
 
   .nk-details-card .table-responsive {
-    max-height: 260px !important;
+    max-height: 280px !important;
+    height: auto !important;
+    flex: none !important;
     overflow-y: auto !important;
   }
 
@@ -173,14 +218,16 @@
     padding: 0 10px !important;
   }
 
-  /* Thanh công cụ chân trang trên mobile: 2 hàng nút trượt ngang êm ái, không nhảy lung tung */
+  /* Thanh công cụ chân trang trên mobile: Nằm ở dưới cùng sau bảng, 2 hàng nút trượt ngang êm ái */
   .nk-footer-bar {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
+    flex: none !important;
     height: auto !important;
     padding: 8px !important;
-    margin-top: 8px !important;
+    margin-top: 12px !important;
+    margin-bottom: 24px !important;
     gap: 8px !important;
     background: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;

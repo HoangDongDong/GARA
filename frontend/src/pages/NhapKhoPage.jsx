@@ -1108,7 +1108,7 @@ export default function NhapKhoPage() {
       </div>
 
       {/* Phần Danh sách hàng hóa nhập kho (Chiếm flex: 1 trọn vẹn chiều cao) */}
-      <div style={{
+      <div className="nk-main-section" style={{
         flex: 1,
         minHeight: 0,
         display: 'flex',
