@@ -686,7 +686,7 @@ export default function NhapKhoPage() {
       </div>
 
       {/* Phần Thông tin phiếu nhập kho (2 cột: Trái ~73% thông tin, Phải ~27% Tổng cộng) */}
-      <div className="responsive-2col" style={{
+      <div className="nk-top-split" style={{
         display: 'flex',
         gap: 'clamp(6px, 0.8vw, 10px)',
         flexShrink: 0
@@ -697,10 +697,10 @@ export default function NhapKhoPage() {
           background: '#FFFFFF',
           borderRadius: 6,
           border: '1px solid #E0E0E0',
-          padding: 'clamp(6px, 1vh, 10px) clamp(8px, 1vw, 14px)',
+          padding: 'clamp(6px, 0.8vh, 8px) clamp(8px, 1vw, 12px)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 'clamp(4px, 0.7vh, 8px)',
+          gap: 'clamp(3px, 0.5vh, 6px)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           {/* Hàng 1: Ngày *, Số phiếu *, Nhân viên nhập * */}
@@ -980,10 +980,10 @@ export default function NhapKhoPage() {
           background: '#FFFFFF',
           borderRadius: 6,
           border: '1px solid #E0E0E0',
-          padding: 'clamp(6px, 1vh, 8px) clamp(8px, 1vw, 12px)',
+          padding: 'clamp(6px, 0.8vh, 8px) clamp(8px, 1vw, 12px)',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
+          gap: 'clamp(3px, 0.5vh, 6px)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           {/* Header Tổng cộng */}
