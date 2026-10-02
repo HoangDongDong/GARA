@@ -631,10 +631,11 @@
   }
 
   .mobile-bottom-item .mobile-bottom-label {
-    font-size: 10px;
+    font-size: clamp(9px, 2.5vw, 10px);
     font-weight: 500;
     transition: color 0.2s ease, font-weight 0.2s ease;
     white-space: nowrap;
+    letter-spacing: -0.2px;
   }
 
   /* Khi bấm chọn: Nền bo góc mềm màu cam trong suốt, chữ cam gạch chân nổi bật giống ảnh mẫu */

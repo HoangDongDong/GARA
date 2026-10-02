@@ -46,11 +46,11 @@ const NAV = [
 ];
 
 const MOBILE_BOTTOM_NAV = [
-  { to: '/sua-chua', code: 'REPAIR', icon: <Wrench size={20} />, label: 'Sửa chữa' },
-  { to: '/ban-hang', code: 'SALES', icon: <ShoppingCart size={20} />, label: 'Bán hàng' },
-  { to: '/',         code: 'DASHBOARD', icon: <Home size={20} />,         label: 'Trang chủ' },
-  { to: '/ho-so-xe', code: 'VEHICLES', icon: <CarFront size={20} />,     label: 'Hồ sơ xe' },
-  { to: '/bao-hanh', code: 'WARRANTY', icon: <ShieldCheck size={20} />,  label: 'Bảo hành' },
+  { to: '/sua-chua',        code: 'REPAIR',   icon: <Wrench size={20} />,         label: 'Sửa chữa' },
+  { to: '/ban-hang',        code: 'SALES',    icon: <ShoppingCart size={20} />,   label: 'Bán hàng' },
+  { to: '/',                code: 'DASHBOARD', icon: <Home size={20} />,           label: 'Trang chủ' },
+  { to: '/ho-so-cho-duyet', code: 'REPAIR',   icon: <ClipboardCheck size={20} />, label: 'Hồ sơ chờ duyệt' },
+  { to: '/bao-hanh',        code: 'WARRANTY', icon: <ShieldCheck size={20} />,    label: 'Bảo hành' },
 ];
 
 export default function MainLayout() {
