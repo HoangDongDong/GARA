@@ -2,51 +2,39 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-/**
- * GARAGE.FDB - DNHANVIEN:
- *   NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON, LOAINHANVIEN,
- *   CACHTINHLUONG, LUONGCA, LUONGTHANG, LUONGTHEOCA, HOAHONG
- */
-
-const LOAI_NV = ['NV thường','KTV','Cố vấn DV','Thủ kho','Thu ngân'];
-
 // GET /api/employees
 router.get('/', async (req, res) => {
   try {
     const includeInactive = String(req.query.includeInactive || '') === '1';
     const rows = await db.query(
-      `SELECT ID, NAME, CODE, NOTE, DIENTHOAI, DIACHI,
-              CHUYENMON, SIMAGEID, TIMECREATED,
-              NGHITHU7, NGHICHUNHAT,
-              LOAINHANVIEN, CACHTINHLUONG, LUONGCA, LUONGTHANG, STATUS
-         FROM DNHANVIEN
-        WHERE ${includeInactive ? 'STATUS IN (0, 1)' : 'STATUS = 1'}
-     ORDER BY TIMECREATED DESC`
+      `SELECT n.ID, n.NAME, n.CODE, n.NOTE, n.DIENTHOAI, n.DIACHI,
+              n.EMAIL, n.CHUNGCHI, n.CHUYENMON, n.SIMAGEID, n.TIMECREATED,
+              n.NGHITHU7, n.NGHICHUNHAT, n.LOAINHANVIEN, n.CACHTINHLUONG,
+              n.LUONGCA, n.LUONGTHANG, n.STATUS,
+              u.ID AS SUSERID, u.USERNAME, g.ID AS SGROUPUSERID, g.NAME AS CHUCVU
+         FROM DNHANVIEN n
+         LEFT JOIN SUSER u ON u.DNHANVIENID=n.ID AND u.STATUS=1
+         LEFT JOIN SGROUPUSER g ON g.ID=u.SGROUPUSERID AND g.STATUS=1
+        WHERE ${includeInactive ? 'n.STATUS IN (0, 1)' : 'n.STATUS = 1'}
+     ORDER BY n.TIMECREATED DESC`
     );
-    res.json({
-      data: rows.map((r) => ({ ...r, LOAI_NV_LABEL: LOAI_NV[r.LOAINHANVIEN] || '-' })),
-    });
+    res.json({ data: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/', async (req, res) => {
   try {
-    const {
-      NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON, LOAINHANVIEN,
-      LUONGCA, LUONGTHANG, CACHTINHLUONG, NOTE,
-    } = req.body;
-    if (!NAME) return res.status(400).json({ error: 'Ten NV khong duoc trong' });
+    const { NAME, DIENTHOAI, EMAIL, CHUNGCHI, CHUYENMON } = req.body;
+    if (!String(NAME || '').trim()) return res.status(400).json({ error: 'Họ và tên không được để trống.' });
     const id = db.uuidv4();
     await db.execute(
       `INSERT INTO DNHANVIEN
-         (ID, NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON, LOAINHANVIEN, NOTE,
-          LUONGCA, LUONGTHANG, CACHTINHLUONG, USERCREATEDID, TIMECREATED, STATUS)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)`,
-      [
-        id, NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON,
-        LOAINHANVIEN || 0, NOTE || null, LUONGCA || 0, LUONGTHANG || 0,
-        CACHTINHLUONG || 0, 'SYSTEM',
-      ]
+         (ID,NAME,DIENTHOAI,EMAIL,CHUNGCHI,CHUYENMON,LOAINHANVIEN,
+          CACHTINHLUONG,LUONGCA,LUONGTHANG,USERCREATEDID,TIMECREATED,STATUS)
+       VALUES (?,?,?,?,?,?,0,0,0,0,?,CURRENT_TIMESTAMP,1)`,
+      [id, String(NAME).trim(), String(DIENTHOAI || '').trim() || null,
+        String(EMAIL || '').trim() || null, String(CHUNGCHI || '').trim() || null,
+        String(CHUYENMON || '').trim() || null, req.accessUser?.ID || 'SYSTEM']
     );
     res.json({ ok: true, id });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -54,21 +42,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const {
-      NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON, LOAINHANVIEN,
-      LUONGCA, LUONGTHANG, CACHTINHLUONG,
-    } = req.body;
+    const { NAME, DIENTHOAI, EMAIL, CHUNGCHI, CHUYENMON } = req.body;
     await db.execute(
       `UPDATE DNHANVIEN
-          SET NAME=?, CODE=?, DIENTHOAI=?, DIACHI=?, CHUYENMON=?, LOAINHANVIEN=?,
-              LUONGCA=?, LUONGTHANG=?, CACHTINHLUONG=?,
+          SET NAME=?, DIENTHOAI=?, EMAIL=?, CHUNGCHI=?, CHUYENMON=?,
               USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
         WHERE ID=?`,
-      [
-        NAME, CODE, DIENTHOAI, DIACHI, CHUYENMON,
-        LOAINHANVIEN || 0, LUONGCA || 0, LUONGTHANG || 0,
-        CACHTINHLUONG || 0, 'SYSTEM', req.params.id,
-      ]
+      [String(NAME || '').trim(), String(DIENTHOAI || '').trim() || null,
+        String(EMAIL || '').trim() || null, String(CHUNGCHI || '').trim() || null,
+        String(CHUYENMON || '').trim() || null, req.accessUser?.ID || 'SYSTEM', req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -76,11 +58,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await db.execute(
-      `UPDATE DNHANVIEN SET STATUS=0, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
-       WHERE ID=?`,
-      [req.params.id]
-    );
+    await db.transaction(async (query, execute) => {
+      await execute(`UPDATE DNHANVIEN SET STATUS=0,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [req.accessUser?.ID || 'SYSTEM', req.params.id]);
+      await execute(`UPDATE SUSER SET STATUS=0,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE DNHANVIENID=?`, [req.accessUser?.ID || 'SYSTEM', req.params.id]);
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

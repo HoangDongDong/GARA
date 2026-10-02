@@ -12,6 +12,14 @@ const api = axios.create({
   timeout: 20000,
 });
 
+export const protectedMediaUrl = (path) => {
+  if (!path || !String(path).startsWith('/api/')) return path;
+  const token = localStorage.getItem('garage_token');
+  if (!token) return path;
+  const separator = String(path).includes('?') ? '&' : '?';
+  return `${path}${separator}access_token=${encodeURIComponent(token)}`;
+};
+
 /* Auto attach user info (neu co) de backend log */
 api.interceptors.request.use((config) => {
   try {
@@ -19,6 +27,8 @@ api.interceptors.request.use((config) => {
     if (u?.USERNAME) {
       config.headers['X-User'] = u.USERNAME;
     }
+    const token = localStorage.getItem('garage_token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
   } catch {}
   return config;
 });
@@ -108,7 +118,7 @@ export const vehicles = {
   remove: (id) => remove('vehicles', id),
   meta:   () => list('vehicles/meta/brands'),
   profile: (id) => list(`vehicles/${id}/profile`),
-  imageUrl: (id) => `/api/vehicles/${id}/image`,
+  imageUrl: (id) => protectedMediaUrl(`/api/vehicles/${id}/image`),
 };
 
 /* ===== EMPLOYEES (DNHANVIEN) ===== */
@@ -216,22 +226,37 @@ export const reports = {
 /* ===== WORKFLOW ===== */
 export const workflow = {
   list:           (params) => list('workflow', params),
+  board:          () => list('workflow/board'),
   states:         () => list('workflow/states'),
   dashboard:      () => list('workflow/dashboard'),
   byPlate:        (plate) => list('workflow/by-plate/' + encodeURIComponent(plate)),
   byVehicle:      (dxid) => list('workflow/by-vehicle/' + dxid),
   byVehicleAll:   (dxid) => list('workflow/by-vehicle/' + dxid + '/all'),
   transition:     (payload) => create('workflow/transition', payload),
-  images:         (workflowId, state) => list(`workflow/${workflowId}/images`, state == null ? {} : { state }),
+  images:         async (workflowId, state) => (await list(`workflow/${workflowId}/images`, state == null ? {} : { state })).map((item) => ({ ...item, URL: protectedMediaUrl(item.URL || `/api/workflow/images/${item.ID}/content`) })),
   uploadImages:   (payload) => create('workflow/images', payload),
   deleteImage:    (id) => remove('workflow/images', id),
-  imageUrl:       (id) => `/api/workflow/images/${id}/content`,
+  imageUrl:       (id) => protectedMediaUrl(`/api/workflow/images/${id}/content`),
 };
 
 /* ===== AUTH ===== */
 export const auth = {
-  login: (username, password) => api.post('/auth/login', { USERNAME: username, PASSWORD: password }).then(r => r.data),
+  login: (username, password) => api.post('/auth/login', { username, password }).then(r => r.data),
+  me: () => api.get('/auth/me').then(r => r.data?.data),
   logout: () => Promise.resolve(),
+};
+
+/* ===== USER ACCOUNTS & ROLE-BASED ACCESS ===== */
+export const accessControl = {
+  overview: () => api.get('/admin-access/overview').then(r => r.data?.data),
+  createGroup: (payload) => api.post('/admin-access/groups', payload).then(r => r.data),
+  updateGroup: (id, payload) => api.put(`/admin-access/groups/${id}`, payload).then(r => r.data),
+  removeGroup: (id) => api.delete(`/admin-access/groups/${id}`).then(r => r.data),
+  permissions: (id) => list(`admin-access/groups/${id}/permissions`),
+  savePermissions: (id, items) => api.put(`/admin-access/groups/${id}/permissions`, { items }).then(r => r.data),
+  createUser: (payload) => api.post('/admin-access/users', payload).then(r => r.data),
+  updateUser: (id, payload) => api.put(`/admin-access/users/${id}`, payload).then(r => r.data),
+  removeUser: (id) => api.delete(`/admin-access/users/${id}`).then(r => r.data),
 };
 
 /* ===== Direct passthrough (escape hatch) ===== */

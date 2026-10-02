@@ -7,7 +7,7 @@ const db = require('./db');
 const app = express();
 
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '35mb' }));
 app.use(morgan('dev'));
 
 app.get('/api/health', async (req, res) => {
@@ -20,6 +20,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth',           require('./routes/auth'));
+const { authenticate, authorize } = require('./accessControl');
+app.use('/api', authenticate, authorize);
+app.use('/api/admin-access',   require('./routes/adminAccess'));
 app.use('/api/customers',      require('./routes/customers'));
 app.use('/api/vehicles',       require('./routes/vehicles'));
 app.use('/api/repair-orders',  require('./routes/repairOrders'));

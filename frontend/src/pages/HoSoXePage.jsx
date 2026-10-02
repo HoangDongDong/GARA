@@ -4,7 +4,7 @@ import {
   User, Building2, History, Image as ImageIcon, Calendar, Edit3, Printer, Edit, Trash2, Tag,
   Wrench, Shield, CheckCircle, Copy, ChevronRight, ChevronDown, X, Eye, Download, AlertTriangle, Check, Clock, Award, FileCheck, Filter, ArrowRight
 } from 'lucide-react';
-import { customers, vehicles } from '../services';
+import { customers, vehicles, protectedMediaUrl } from '../services';
 import VehicleProfileModal from '../components/VehicleProfileModal';
 import './HoSoXePage.css';
 
@@ -599,7 +599,7 @@ const mapVehicleProfile = (data) => {
       mediaType: String(item.MIME || '').toLowerCase().startsWith('video/') ? 'video' : 'image',
       date: formatProfileDate(item.TIMECREATED, true),
       odo: `${Number(item.ODO || row.ODO || 0).toLocaleString('vi-VN')} km`,
-      url: item.URL || `/api/workflow/images/${item.ID}/content`,
+      url: protectedMediaUrl(item.URL || `/api/workflow/images/${item.ID}/content`),
     };
   });
   const media = [...workflowMedia, ...receptionMedia];

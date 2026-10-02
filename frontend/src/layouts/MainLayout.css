@@ -259,6 +259,18 @@
   flex: 1;
   white-space: pre-line;
 }
+.sidebar-badge {
+  background: #FFD54F;
+  color: #B71C1C;
+  font-weight: 800;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  min-width: 18px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  line-height: 1.2;
+}
 
 /* Sidebar bottom */
 .sidebar-bottom {

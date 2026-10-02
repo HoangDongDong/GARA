@@ -3,6 +3,8 @@
  * (vi trong Firebird 2.5 GEN_UUID tra ve 16 bytes binary)
  * UUID se duoc truyen tu JS qua tham so.
  */
+const os = require('os');
+try { os.userInfo(); } catch { os.userInfo = () => ({ username: process.env.USERNAME || 'SYSTEM' }); }
 const firebird = require('node-firebird');
 
 const config = {
@@ -43,6 +45,8 @@ BEGIN
   SELECT FIRST 1 ID, TRANGTHAI, TTIEPNHANXEID, TLENHSUACHUAID
     FROM TTRANGTHAIXE
    WHERE DXEID = :P_DXEID AND STATUS = 1
+   ORDER BY CASE WHEN TRANGTHAI < 4 THEN 0 ELSE 1 END,
+            NGAY_TRANGTHAI DESC, TIMECREATED DESC
     INTO :V_TTRANGTHAIXEID, :V_TRANGTHAI_CU, :V_TTIEPNHANXEID, :V_TLENHSUACHUAID;
 
   IF (V_TTRANGTHAIXEID IS NULL) THEN

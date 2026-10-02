@@ -2,6 +2,19 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+const WORKFLOW_IMAGE_LIMIT = 12;
+const WORKFLOW_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function parseImageDataUrl(value) {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$/i.exec(String(value || ''));
+  if (!match) return null;
+  const mime = match[1].toLowerCase();
+  const buffer = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+  if (!ALLOWED_IMAGE_TYPES.has(mime) || !buffer.length || buffer.length > WORKFLOW_IMAGE_MAX_BYTES) return null;
+  return { mime, buffer, dataUrl: `data:${mime};base64,${buffer.toString('base64')}` };
+}
+
 /**
  * Workflow 5 trang thai vong doi xe:
  *  0=Tiep nhan & Bao gia, 1=Xac nhan sua chua, 2=Dang sua,
@@ -44,6 +57,78 @@ router.get('/', async (req, res) => {
   }
 });
 
+/* GET /api/workflow/board - dữ liệu thật cho Kanban/Danh sách điều phối */
+router.get('/board', async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT TT.ID,TT.DXEID,TT.DKHACHHANGID,TT.TTIEPNHANXEID,TT.TLENHSUACHUAID,
+              TT.TRANGTHAI,TT.NGAY_VAO,TT.NGAY_TRANGTHAI,TT.NGAY_DUKIEN,
+              TT.DNHANVIENKTVID,TT.DNHANVIENCOOVANID,TT.LYDO,TT.GHICHU,TT.MUCUU_TIEN,
+              V.BIENSO,V.PHIENBAN,V.NAMSANXUAT,HX.NAME AS HANG_XE,DX.NAME AS DONG_XE,
+              KH.NAME AS TEN_KH,KH.DIENTHOAI,
+              TN.NAME AS SO_PHIEU_TN,TN.YEUCAUKHACH,TN.TINHTRANGXE,TN.ODO,
+              LS.NAME AS SO_LENH,LS.NOTE AS LENH_NOTE,LS.TONGCONG,LS.TONGTIENCONG,LS.TONGTIENPHUTUNG,
+              KTV.NAME AS TEN_KTV,CV.NAME AS TEN_CV,W.TEN AS TRANGTHAI_TEN
+         FROM TTRANGTHAIXE TT
+         LEFT JOIN DXE V ON V.ID=TT.DXEID
+         LEFT JOIN DHANGXE HX ON HX.ID=V.DHANGXEID
+         LEFT JOIN DDONGXE DX ON DX.ID=V.DDONGXEID
+         LEFT JOIN DKHACHHANG KH ON KH.ID=TT.DKHACHHANGID
+         LEFT JOIN TTIEPNHANXE TN ON TN.ID=TT.TTIEPNHANXEID
+         LEFT JOIN TLENHSUACHUA LS ON LS.ID=TT.TLENHSUACHUAID
+         LEFT JOIN DNHANVIEN KTV ON KTV.ID=TT.DNHANVIENKTVID
+         LEFT JOIN DNHANVIEN CV ON CV.ID=TT.DNHANVIENCOOVANID
+         LEFT JOIN TWORKFLOWMAP W ON W.STT_WORKFLOW=TT.TRANGTHAI
+        WHERE TT.STATUS=1
+        ORDER BY CASE WHEN TT.TRANGTHAI<4 THEN 0 ELSE 1 END,TT.MUCUU_TIEN DESC,TT.NGAY_TRANGTHAI DESC`
+    );
+    const workflowIds = rows.map((row) => row.ID);
+    const repairIds = rows.map((row) => row.TLENHSUACHUAID).filter(Boolean);
+    let details = [];
+    let history = [];
+    if (repairIds.length) {
+      const placeholders = repairIds.map(() => '?').join(',');
+      details = await db.query(
+        `SELECT CT.ID,CT.TLENHSUACHUAID,CT.LOAI,CT.SOLUONG,CT.DONGIA,CT.THANHTIEN,CT.NOTE,
+                COALESCE(M.NAME,DV.NAME,CT.NOTE) AS TEN_HANG_MUC
+           FROM TLENHSUACHUACHITIET CT
+           LEFT JOIN DMATHANG M ON M.ID=CT.DMATHANGID
+           LEFT JOIN DDICHVU DV ON DV.ID=CT.DDICHVUID
+          WHERE COALESCE(CT.STATUS,1)=1 AND CT.TLENHSUACHUAID IN (${placeholders})
+          ORDER BY CT.TIMECREATED,CT.ID`, repairIds
+      );
+    }
+    if (workflowIds.length) {
+      const placeholders = workflowIds.map(() => '?').join(',');
+      history = await db.query(
+        `SELECT H.ID,H.TTRANGTHAIXEID,H.TRANGTHAI_CU,H.TRANGTHAI_MOI,H.NGAY,H.LYDO,H.GHICHU,
+                N.NAME AS TEN_NV,CU.TEN AS TEN_CU,MOI.TEN AS TEN_MOI
+           FROM TLICHSUTRANGTHAI H
+           LEFT JOIN DNHANVIEN N ON N.ID=H.DNHANVIENID
+           LEFT JOIN TWORKFLOWMAP CU ON CU.STT_WORKFLOW=H.TRANGTHAI_CU
+           LEFT JOIN TWORKFLOWMAP MOI ON MOI.STT_WORKFLOW=H.TRANGTHAI_MOI
+          WHERE H.STATUS=1 AND H.TTRANGTHAIXEID IN (${placeholders})
+          ORDER BY H.NGAY,H.TIMECREATED`, workflowIds
+      );
+    }
+    const detailsByRepair = new Map();
+    details.forEach((item) => {
+      const list = detailsByRepair.get(item.TLENHSUACHUAID) || [];
+      list.push(item); detailsByRepair.set(item.TLENHSUACHUAID, list);
+    });
+    const historyByWorkflow = new Map();
+    history.forEach((item) => {
+      const list = historyByWorkflow.get(item.TTRANGTHAIXEID) || [];
+      list.push(item); historyByWorkflow.set(item.TTRANGTHAIXEID, list);
+    });
+    res.json({ data: rows.map((row) => ({
+      ...row,
+      ITEMS: detailsByRepair.get(row.TLENHSUACHUAID) || [],
+      HISTORY: historyByWorkflow.get(row.ID) || [],
+    })) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* GET /api/workflow/states - danh sach 5 trang thai */
 router.get('/states', async (req, res) => {
   try {
@@ -59,6 +144,138 @@ router.get('/states', async (req, res) => {
   }
 });
 
+/* GET /api/workflow/:workflowId/images?state=0..4 */
+router.get('/:workflowId/images', async (req, res) => {
+  try {
+    const params = [req.params.workflowId];
+    let stateFilter = '';
+    if (req.query.state !== undefined && req.query.state !== '') {
+      const state = Number(req.query.state);
+      if (!Number.isInteger(state) || state < 0 || state > 4) {
+        return res.status(400).json({ error: 'Trang thai anh khong hop le' });
+      }
+      stateFilter = ' AND A.TRANGTHAI=?';
+      params.push(state);
+    }
+    const rows = await db.query(
+      `SELECT A.ID, A.TTRANGTHAIXEID, A.TLICHSUTRANGTHAIID, A.DXEID,
+              A.TLENHSUACHUAID, A.TRANGTHAI, A.TENFILE, A.MIME,
+              A.MOTA, A.THUTU, A.TIMECREATED
+         FROM TTRANGTHAIANH A
+        WHERE A.STATUS=1 AND A.TTRANGTHAIXEID=?${stateFilter}
+        ORDER BY A.TRANGTHAI, A.THUTU, A.TIMECREATED`,
+      params
+    );
+    res.json({ data: rows.map((row) => ({
+      ...row,
+      URL: `/api/workflow/images/${row.ID}/content`,
+    })) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* GET /api/workflow/images/:id/content */
+router.get('/images/:id/content', async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT MIME, DULIEUANH FROM TTRANGTHAIANH WHERE ID=? AND STATUS=1`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Anh khong ton tai' });
+    const data = parseImageDataUrl(rows[0].DULIEUANH);
+    if (!data) return res.status(422).json({ error: 'Du lieu anh khong hop le' });
+    res.set('Content-Type', rows[0].MIME || data.mime);
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.send(data.buffer);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* POST /api/workflow/images - lưu nhiều ảnh cho một trạng thái */
+router.post('/images', async (req, res) => {
+  try {
+    const { TTRANGTHAIXEID, DXEID, TLENHSUACHUAID, TRANGTHAI, images = [] } = req.body;
+    const state = Number(TRANGTHAI);
+    if (!TTRANGTHAIXEID || !DXEID || !Number.isInteger(state) || state < 0 || state > 4) {
+      return res.status(400).json({ error: 'Thieu thong tin workflow hoac trang thai anh' });
+    }
+    if (!Array.isArray(images) || !images.length || images.length > WORKFLOW_IMAGE_LIMIT) {
+      return res.status(400).json({ error: `Moi lan chi duoc tai 1-${WORKFLOW_IMAGE_LIMIT} anh` });
+    }
+
+    const workflowRows = await db.query(
+      `SELECT ID, DXEID, TLENHSUACHUAID, TRANGTHAI
+         FROM TTRANGTHAIXE WHERE ID=? AND DXEID=? AND STATUS=1`,
+      [TTRANGTHAIXEID, DXEID]
+    );
+    if (!workflowRows.length) return res.status(404).json({ error: 'Khong tim thay luot sua chua' });
+    if (state > Number(workflowRows[0].TRANGTHAI)) {
+      return res.status(409).json({ error: 'Chua the luu anh cho trang thai chua dien ra' });
+    }
+
+    const prepared = images.map((image, index) => {
+      const parsed = parseImageDataUrl(image.data);
+      if (!parsed) {
+        const error = new Error(`Anh thu ${index + 1} khong hop le hoac vuot qua 3 MB`);
+        error.statusCode = 400;
+        throw error;
+      }
+      return {
+        parsed,
+        name: String(image.name || `anh-trang-thai-${index + 1}.jpg`).slice(0, 255),
+        description: String(image.description || '').slice(0, 500) || null,
+      };
+    });
+
+    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    const result = await db.transaction(async (query, execute, uuidv4) => {
+      const history = await query(
+        `SELECT FIRST 1 ID FROM TLICHSUTRANGTHAI
+          WHERE TTRANGTHAIXEID=? AND TRANGTHAI_MOI=? AND STATUS=1
+          ORDER BY NGAY DESC, TIMECREATED DESC`,
+        [TTRANGTHAIXEID, state]
+      );
+      const currentCount = await query(
+        `SELECT COUNT(*) AS CNT FROM TTRANGTHAIANH
+          WHERE TTRANGTHAIXEID=? AND TRANGTHAI=? AND STATUS=1`,
+        [TTRANGTHAIXEID, state]
+      );
+      let order = Number(currentCount[0]?.CNT || 0);
+      const ids = [];
+      for (const image of prepared) {
+        const id = uuidv4();
+        order += 1;
+        await execute(
+          `INSERT INTO TTRANGTHAIANH
+             (ID, TTRANGTHAIXEID, TLICHSUTRANGTHAIID, DXEID, TLENHSUACHUAID,
+              TRANGTHAI, TENFILE, MIME, DULIEUANH, MOTA, THUTU,
+              STATUS, USERCREATEDID, TIMECREATED)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
+          [id, TTRANGTHAIXEID, history[0]?.ID || null, DXEID,
+            TLENHSUACHUAID || workflowRows[0].TLENHSUACHUAID || null,
+            // Dùng Buffer để node-firebird mở luồng ghi BLOB thực sự. Truyền
+            // chuỗi Base64 dài khiến driver suy luận VARCHAR và đóng connection
+            // giữa lúc chuyển dữ liệu ảnh lớn.
+            state, image.name, image.parsed.mime, Buffer.from(image.parsed.dataUrl, 'utf8'),
+            image.description, order, actor]
+        );
+        ids.push(id);
+      }
+      return ids;
+    });
+    res.json({ ok: true, ids: result });
+  } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
+});
+
+router.delete('/images/:id', async (req, res) => {
+  try {
+    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    await db.execute(
+      `UPDATE TTRANGTHAIANH SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
+      [actor, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* GET /api/workflow/by-plate/:plate - tra cuu workflow theo bien so */
 router.get('/by-plate/:plate', async (req, res) => {
   try {
@@ -71,7 +288,8 @@ router.get('/by-plate/:plate', async (req, res) => {
          LEFT JOIN DXE V ON V.ID = TT.DXEID
         WHERE TT.STATUS = 1
           AND UPPER(REPLACE(REPLACE(REPLACE(V.BIENSO, '-', ''), '.', ''), ' ', '')) = ?
-        `,
+        ORDER BY CASE WHEN TT.TRANGTHAI < 4 THEN 0 ELSE 1 END,
+                 TT.NGAY_TRANGTHAI DESC, TT.TIMECREATED DESC`,
       [plate]
     );
     if (!wf.length) return res.status(404).json({ error: 'Xe chua co trong workflow' });
@@ -101,7 +319,8 @@ router.get('/by-vehicle/:dxid', async (req, res) => {
          FROM TTRANGTHAIXE TT
          LEFT JOIN TWORKFLOWMAP W ON W.STT_WORKFLOW = TT.TRANGTHAI
          WHERE TT.STATUS = 1 AND TT.DXEID = ?
-      ORDER BY TT.NGAY_TRANGTHAI DESC, TT.TIMECREATED DESC`,
+      ORDER BY CASE WHEN TT.TRANGTHAI < 4 THEN 0 ELSE 1 END,
+               TT.NGAY_TRANGTHAI DESC, TT.TIMECREATED DESC`,
       [req.params.dxid]
     );
     if (!wf.length) return res.json({ data: null, history: [] });
@@ -122,6 +341,28 @@ router.get('/by-vehicle/:dxid', async (req, res) => {
   }
 });
 
+/* GET /api/workflow/by-vehicle/:dxid/all - tất cả số phiếu của xe */
+router.get('/by-vehicle/:dxid/all', async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT TT.ID, TT.DXEID, TT.DKHACHHANGID, TT.TTIEPNHANXEID,
+              TT.TLENHSUACHUAID, TT.TRANGTHAI, TT.NGAY_VAO,
+              TT.NGAY_TRANGTHAI, TT.TIMECREATED,
+              W.TEN AS TRANGTHAI_TEN, W.MAU AS TRANGTHAI_MAU,
+              LS.NAME AS SOPHIEU, LS.TONGCONG, TN.NAME AS SOPHIEUTIEPNHAN
+         FROM TTRANGTHAIXE TT
+         LEFT JOIN TWORKFLOWMAP W ON W.STT_WORKFLOW = TT.TRANGTHAI
+         LEFT JOIN TLENHSUACHUA LS ON LS.ID = TT.TLENHSUACHUAID
+         LEFT JOIN TTIEPNHANXE TN ON TN.ID = TT.TTIEPNHANXEID
+        WHERE TT.STATUS=1 AND TT.DXEID=?
+        ORDER BY CASE WHEN TT.TRANGTHAI < 4 THEN 0 ELSE 1 END,
+                 TT.NGAY_TRANGTHAI DESC, TT.TIMECREATED DESC`,
+      [req.params.dxid]
+    );
+    res.json({ data: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* POST /api/workflow/transition - chuyen trang thai xe
    Body: { DXEID, TRANGTHAI, DNHANVIENID, LYDO, GHICHU }
 */
@@ -136,7 +377,8 @@ router.post('/transition', async (req, res) => {
       `SELECT FIRST 1 ID, TRANGTHAI, TLENHSUACHUAID, TTIEPNHANXEID
          FROM TTRANGTHAIXE
         WHERE DXEID=? AND STATUS=1
-        ORDER BY NGAY_TRANGTHAI DESC, TIMECREATED DESC`,
+        ORDER BY CASE WHEN TRANGTHAI < 4 THEN 0 ELSE 1 END,
+                 NGAY_TRANGTHAI DESC, TIMECREATED DESC`,
       [DXEID]
     );
     if (!currentRows.length) return res.status(404).json({ error: 'Xe chua co quy trinh sua chua' });

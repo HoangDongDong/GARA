@@ -33,26 +33,23 @@ function formatDate(value) {
 }
 
 function mapEmployee(row, index) {
-  const type = Number(row.LOAINHANVIEN ?? 0);
   const isActive = Number(row.STATUS) === 1;
-  let noteData = {};
-  try { noteData = JSON.parse(row.NOTE || '{}'); } catch {}
   return {
     databaseId: row.ID,
     stt: index + 1,
     id: row.CODE || `NV${String(index + 1).padStart(3, '0')}`,
     name: row.NAME || '—',
-    role: noteData.chucVu || ROLE_BY_TYPE[type] || row.LOAI_NV_LABEL || 'Nhân viên',
-    department: noteData.phongBan || DEPARTMENT_BY_TYPE[type] || 'Văn phòng',
+    role: row.CHUCVU || 'Chưa cấp tài khoản',
+    department: '—',
     phone: row.DIENTHOAI || '—',
-    email: noteData.email || '—',
+    email: row.EMAIL || '—',
     startDate: formatDate(row.TIMECREATED),
     manager: '—',
     status: isActive ? 'Đang làm việc' : 'Nghỉ việc',
     statusColor: isActive ? '#2E7D32' : '#E65100',
     statusBg: isActive ? '#E8F5E9' : '#FFE0B2',
     avatar: DEFAULT_AVATAR,
-    cert: noteData.chungChi || (typeof row.NOTE === 'string' && !row.NOTE.trim().startsWith('{') ? row.NOTE : '—'),
+    cert: row.CHUNGCHI || '—',
     skills: row.CHUYENMON || '—',
     specialty: row.CHUYENMON || '',
     exp: '—',

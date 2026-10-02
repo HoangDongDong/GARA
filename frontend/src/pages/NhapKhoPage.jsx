@@ -3,7 +3,7 @@ import {
   Package, Calendar, Plus, Barcode, FileSpreadsheet, GitFork, 
   Calculator, Search, Truck, ArrowLeft, ArrowRight, Ban, Eye, 
   Printer, CreditCard, LogOut, CheckCircle, Trash2, X, Edit,
-  Building2, Hash, UserCheck, AlertCircle, FileText
+  Building2, Hash, UserCheck, AlertCircle, FileText, ImagePlus
 } from 'lucide-react';
 import { employees, inventoryReceipts, masterData, parts, suppliers as supplierApi } from '../services';
 import './NhapKhoPage.css';
@@ -12,6 +12,7 @@ const EMPTY_PART_FORM = {
   NAME: '', CODE: '', BARCODE: '', MAOEM: '',
   DNHOMMATHANGID: '', DDONVITINHID: '', DHANGSANXUATID: '', DVITRIKHOID: '',
   GIANHAP: '', GIABAN: '', BAOHANH: '', TONTOITHIEU: '', TONTOIDA: '',
+  ANH: '',
 };
 
 const EMPTY_SUPPLIER_FORM = {
@@ -463,6 +464,27 @@ export default function NhapKhoPage() {
     } finally {
       setSavingPart(false);
     }
+  };
+
+  const handlePartImageChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPartFormError('Ảnh mặt hàng chỉ hỗ trợ định dạng JPG, PNG hoặc WebP.');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setPartFormError('Ảnh mặt hàng không được vượt quá 3 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPartForm((current) => ({ ...current, ANH: String(reader.result || '') }));
+      setPartFormError('');
+    };
+    reader.onerror = () => setPartFormError('Không thể đọc tệp ảnh đã chọn.');
+    reader.readAsDataURL(file);
   };
 
   const partOptionConfig = {
@@ -1630,6 +1652,33 @@ export default function NhapKhoPage() {
                   Tên mặt hàng <span style={{ color: '#D32F2F' }}>*</span>
                   <input autoFocus value={partForm.NAME} onChange={(event) => setPartForm({ ...partForm, NAME: event.target.value })} placeholder="Nhập tên mặt hàng..." style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
                 </label>
+
+                <div style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                  Ảnh mặt hàng
+                  <div style={{ marginTop: 4, minHeight: 104, padding: 9, border: '1px dashed #CBD5E1', borderRadius: 6, background: '#F8FAFC', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {partForm.ANH ? (
+                      <img src={partForm.ANH} alt="Ảnh mặt hàng xem trước" style={{ width: 122, height: 86, objectFit: 'contain', borderRadius: 5, border: '1px solid #E2E8F0', background: '#fff' }} />
+                    ) : (
+                      <div style={{ width: 122, height: 86, borderRadius: 5, border: '1px solid #E2E8F0', background: '#fff', color: '#94A3B8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        <ImagePlus size={23} />
+                        <span style={{ fontSize: 10, fontWeight: 500 }}>Chưa có ảnh</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 7 }}>
+                      <label style={{ padding: '7px 12px', borderRadius: 4, background: '#E65100', color: '#fff', fontWeight: 700, cursor: savingPart ? 'not-allowed' : 'pointer', opacity: savingPart ? 0.7 : 1 }}>
+                        <ImagePlus size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                        {partForm.ANH ? 'Đổi ảnh' : 'Chọn ảnh'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={savingPart} onChange={handlePartImageChange} style={{ display: 'none' }} />
+                      </label>
+                      <span style={{ color: '#64748B', fontWeight: 400 }}>JPG, PNG hoặc WebP · tối đa 3 MB</span>
+                      {partForm.ANH && (
+                        <button type="button" disabled={savingPart} onClick={() => setPartForm((current) => ({ ...current, ANH: '' }))} style={{ padding: 0, border: 0, background: 'transparent', color: '#D32F2F', fontSize: 11, cursor: 'pointer' }}>
+                          Xóa ảnh đã chọn
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
                   Mã mặt hàng <span style={{ color: '#D32F2F' }}>*</span>

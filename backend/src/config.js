@@ -11,6 +11,13 @@ module.exports = {
     password: process.env.FB_PASSWORD || 'masterkey',
     role: process.env.FB_ROLE || undefined,
     page_size: 65536,
+    // Ảnh workflow được lưu trong BLOB SUB_TYPE TEXT dưới dạng data URL.
+    // Tùy chọn này giúp node-firebird đọc BLOB text trước khi nhả connection.
+    blobAsText: true,
+    // Firebird 2.5 closes the wire connection with 64 KB BLOB segments.
+    // 16 KB remains efficient and is compatible with the legacy protocol.
+    blobChunkSize: 16384,
+    blobReadChunkSize: 16384,
   },
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 };

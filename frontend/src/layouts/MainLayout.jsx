@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import './MainLayout.css';
+import { workflow } from '../services';
 
 import { 
   Home, 
@@ -19,41 +20,45 @@ import {
   Shield, 
   Settings,
   Menu,
-  X
+  X,
+  ClipboardCheck
 } from 'lucide-react';
 
 const NAV = [
-  { to: '/',                icon: <Home size={18} />, label: 'Tổng quan' },
+  { to: '/',                code: 'DASHBOARD', icon: <Home size={18} />, label: 'Tổng quan' },
   // Tạm thời ẩn theo yêu cầu:
   // { to: '/tiep-nhan',      icon: <CarFront size={18} />, label: 'Tiếp nhận xe' },
-  { to: '/sua-chua',       icon: <Wrench size={18} />, label: 'Sửa chữa - Dịch vụ' },
-  { to: '/ban-hang',       icon: <ShoppingCart size={18} />, label: 'Bán hàng (POS)' },
+  { to: '/sua-chua',       code: 'REPAIR', icon: <Wrench size={18} />, label: 'Sửa chữa - Dịch vụ' },
+  { to: '/ho-so-cho-duyet', code: 'REPAIR', icon: <ClipboardCheck size={18} />, label: 'Hồ sơ chờ duyệt', liveBadge: true },
+  { to: '/ban-hang',       code: 'SALES', icon: <ShoppingCart size={18} />, label: 'Bán hàng (POS)' },
   // Tạm thời ẩn theo yêu cầu:
   // { to: '/mua-linh-kien',  icon: <Package size={18} />, label: 'Mua linh kiện &\nKho phụ tùng' },
-  { to: '/nhap-kho',       icon: <Truck size={18} />, label: 'Nhập kho' },
-  { to: '/nha-cung-cap',   icon: <Contact size={18} />, label: 'Nhà cung cấp' },
-  { to: '/khach-hang',     icon: <Users size={18} />, label: 'Khách hàng' },
-  { to: '/ho-so-xe',       icon: <FileText size={18} />, label: 'Hồ sơ xe & Lịch sử' },
-  { to: '/bao-hanh',       icon: <ShieldCheck size={18} />, label: 'Bảo hành' },
-  { to: '/thu-chi',        icon: <CircleDollarSign size={18} />, label: 'Thu - Chi / Công nợ' },
-  { to: '/nhan-vien',      icon: <UserCog size={18} />, label: 'Nhân viên &\nKỹ thuật viên' },
-  { to: '/bao-cao',        icon: <LineChart size={18} />, label: 'Báo cáo' },
-  { to: '/quan-tri',       icon: <Shield size={18} />, label: 'Quản trị - Phân quyền' },
-  { to: '/cau-hinh',       icon: <Settings size={18} />, label: 'Cấu hình' },
+  { to: '/nhap-kho',       code: 'INVENTORY', icon: <Truck size={18} />, label: 'Nhập kho' },
+  { to: '/nha-cung-cap',   code: 'SUPPLIERS', icon: <Contact size={18} />, label: 'Nhà cung cấp' },
+  { to: '/khach-hang',     code: 'CUSTOMERS', icon: <Users size={18} />, label: 'Khách hàng' },
+  { to: '/ho-so-xe',       code: 'VEHICLES', icon: <FileText size={18} />, label: 'Hồ sơ xe & Lịch sử' },
+  { to: '/bao-hanh',       code: 'WARRANTY', icon: <ShieldCheck size={18} />, label: 'Bảo hành' },
+  { to: '/thu-chi',        code: 'FINANCE', icon: <CircleDollarSign size={18} />, label: 'Thu - Chi / Công nợ' },
+  { to: '/nhan-vien',      code: 'EMPLOYEES', icon: <UserCog size={18} />, label: 'Nhân viên &\nKỹ thuật viên' },
+  { to: '/bao-cao',        code: 'REPORTS', icon: <LineChart size={18} />, label: 'Báo cáo' },
+  { to: '/quan-tri',       code: 'ADMIN', icon: <Shield size={18} />, label: 'Quản trị - Phân quyền' },
+  { to: '/cau-hinh',       code: 'SETTINGS', icon: <Settings size={18} />, label: 'Cấu hình' },
 ];
 
 const MOBILE_BOTTOM_NAV = [
-  { to: '/sua-chua', icon: <Wrench size={20} />, label: 'Sửa chữa' },
-  { to: '/ban-hang', icon: <ShoppingCart size={20} />, label: 'Bán hàng' },
-  { to: '/',         icon: <Home size={20} />,         label: 'Trang chủ' },
-  { to: '/ho-so-xe', icon: <CarFront size={20} />,     label: 'Hồ sơ xe' },
-  { to: '/bao-hanh', icon: <ShieldCheck size={20} />,  label: 'Bảo hành' },
+  { to: '/sua-chua', code: 'REPAIR', icon: <Wrench size={20} />, label: 'Sửa chữa' },
+  { to: '/ban-hang', code: 'SALES', icon: <ShoppingCart size={20} />, label: 'Bán hàng' },
+  { to: '/',         code: 'DASHBOARD', icon: <Home size={20} />,         label: 'Trang chủ' },
+  { to: '/ho-so-xe', code: 'VEHICLES', icon: <CarFront size={20} />,     label: 'Hồ sơ xe' },
+  { to: '/bao-hanh', code: 'WARRANTY', icon: <ShieldCheck size={20} />,  label: 'Bảo hành' },
 ];
 
 export default function MainLayout() {
   const nav = useNavigate();
   const loc = useLocation();
   const user = JSON.parse(localStorage.getItem('garage_user') || '{}');
+  const canView = (code) => Number(user.ISADMIN) === 1 || (!['ADMIN', 'SETTINGS'].includes(code) && (Number(user.PERMISSIONS?.[code] || 0) & 1) === 1);
+  const visibleNav = NAV.filter((item) => canView(item.code));
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -61,6 +66,12 @@ export default function MainLayout() {
   const contentRef = useRef(null);
 
   const [bottomNavHidden, setBottomNavHidden] = useState(false);
+  const [workflowBadge, setWorkflowBadge] = useState(0);
+
+  useEffect(() => {
+    if (!canView('REPAIR')) return;
+    workflow.list().then((rows) => setWorkflowBadge((Array.isArray(rows) ? rows : []).filter((row) => Number(row.TRANGTHAI) < 4).length)).catch(() => setWorkflowBadge(0));
+  }, [loc.pathname]);
 
   // Áp dụng cho TẤT CẢ các giao diện: Cuộn trang xem bên dưới thì ẩn thanh điều khiển, cuộn ngược lên thì hiện lại
   useEffect(() => {
@@ -139,6 +150,7 @@ export default function MainLayout() {
 
   const logout = () => {
     localStorage.removeItem('garage_user');
+    localStorage.removeItem('garage_token');
     nav('/login');
   };
 
@@ -147,6 +159,7 @@ export default function MainLayout() {
   const dateStr = `${dayStr}, ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const displayName = user.TEN_HIEN_THI || user.USERNAME || 'admin';
+  const roleName = user.ROLE || (Number(user.ISADMIN) === 1 ? 'Admin' : 'Chưa gán chức vụ');
 
   return (
     <div className={`app-layout ${bottomNavHidden ? 'mobile-nav-hidden' : ''}`}>
@@ -203,14 +216,14 @@ export default function MainLayout() {
             </div>
             <div className="user-info-header">
               <div className="user-name">{displayName}</div>
-              <div className="user-role">Quản trị hệ thống</div>
+              <div className="user-role">{roleName}</div>
             </div>
 
             {menuOpen && (
               <div className="header-dropdown">
                 <div className="dropdown-header">
                   <div className="dropdown-name">{displayName}</div>
-                  <div className="dropdown-email">Quản trị hệ thống</div>
+                  <div className="dropdown-email">{roleName}</div>
                 </div>
                 <button className="dropdown-item" onClick={() => {}}>👤 Hồ sơ cá nhân</button>
                 <button className="dropdown-item" onClick={() => {}}>🔑 Đổi mật khẩu</button>
@@ -251,7 +264,7 @@ export default function MainLayout() {
           </div>
 
           <nav className="sidebar-nav">
-            {NAV.map((n) => (
+            {visibleNav.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -261,6 +274,7 @@ export default function MainLayout() {
               >
                 <span className="sidebar-icon">{n.icon}</span>
                 <span className="sidebar-label">{n.label}</span>
+                {n.liveBadge && workflowBadge > 0 && <span className="sidebar-badge">{workflowBadge}</span>}
               </NavLink>
             ))}
           </nav>
@@ -298,7 +312,7 @@ export default function MainLayout() {
 
       {/* ===== MOBILE BOTTOM DOCK (5 CHỨC NĂNG CHÍNH - GIỐNG MOONPHIM) ===== */}
       <nav className={`mobile-bottom-nav ${bottomNavHidden ? 'nav-hidden' : ''}`}>
-        {MOBILE_BOTTOM_NAV.map((item) => (
+        {MOBILE_BOTTOM_NAV.filter((item) => canView(item.code)).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

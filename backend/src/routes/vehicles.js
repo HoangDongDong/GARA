@@ -3,6 +3,16 @@ const router = express.Router();
 const db = require('../db');
 
 const normalizePlate = (value) => String(value || '').replace(/[-.\s]/g, '').toUpperCase();
+const VEHICLE_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+
+function parseVehicleImage(value) {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$/i.exec(String(value || ''));
+  if (!match) return null;
+  const mime = match[1].toLowerCase();
+  const buffer = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+  if (!buffer.length || buffer.length > VEHICLE_IMAGE_MAX_BYTES) return null;
+  return { mime, dataUrl: `data:${mime};base64,${buffer.toString('base64')}` };
+}
 
 /**
  * GARAGE.FDB - DXE:
@@ -17,6 +27,7 @@ router.get('/', async (req, res) => {
       `SELECT V.ID, V.BIENSO, V.PHIENBAN, V.NAMSANXUAT, V.MAUXE,
               V.SOKHUNG, V.SOMAY, V.ODO, V.NHIENLIEU, V.MUCNHIENLIEU,
               V.GHICHU, V.STATUS,
+              CASE WHEN V.ANHXE IS NULL THEN 0 ELSE 1 END AS CO_ANHXE,
               V.DHANGXEID, HX.NAME  AS HANG_XE,
               V.DDONGXEID, DX.NAME  AS DONG_XE,
               V.DKHACHHANGID, KH.NAME AS TEN_KH, KH.DIENTHOAI
@@ -209,6 +220,7 @@ router.get('/:id/profile', async (req, res) => {
       SELECT V.ID, V.BIENSO, V.PHIENBAN, V.NAMSANXUAT, V.MAUXE,
              V.SOKHUNG, V.SOMAY, V.ODO, V.NHIENLIEU, V.MUCNHIENLIEU, V.GHICHU,
              V.TIMECREATED, V.DKHACHHANGID, V.DHANGXEID, V.DDONGXEID,
+             CASE WHEN V.ANHXE IS NULL THEN 0 ELSE 1 END AS CO_ANHXE,
              HX.NAME AS HANG_XE, DX.NAME AS DONG_XE,
              KH.NAME AS TEN_KH, KH.DIENTHOAI, KH.EMAIL, KH.DIACHI,
              KH.MASOTHUE, KH.NOTE AS GHICHU_KH, NH.NAME AS NHOM_KH
@@ -284,11 +296,40 @@ router.get('/:id/profile', async (req, res) => {
     `, [req.params.id]);
 
     const media = await db.query(`
-      SELECT H.ID, H.LOAIHINH, H.MOTA, H.TIMECREATED, TN.ODO
+      SELECT H.ID, H.LOAIHINH, H.MOTA, H.TIMECREATED, TN.ODO,
+             (SELECT FIRST 1 LS.NAME
+                FROM TLENHSUACHUA LS
+               WHERE LS.TTIEPNHANXEID = TN.ID AND LS.STATUS = 1
+               ORDER BY LS.TIMECREATED DESC) AS SO_PHIEU
         FROM TTIEPNHANXEHINH H
         JOIN TTIEPNHANXE TN ON TN.ID = H.TTIEPNHANXEID
        WHERE TN.DXEID = ? AND H.STATUS = 1
        ORDER BY H.TIMECREATED DESC
+    `, [req.params.id]);
+
+    const appointments = await db.query(`
+      SELECT LS.ID, LS.NAME, LS.NOTE, LS.LOAIBAODUONG,
+             LS.CHUKY_NGAY, LS.CHUKY_KM, LS.ODO_LANCUOI, LS.NGAY_LANCUOI,
+             LS.NGAY_DUKIEN, LS.ODO_DUKIEN, LS.DANH_AC_CHUYEN, LS.TIMECREATED
+        FROM TLICHSUBAODUONG LS
+       WHERE LS.DXEID = ? AND LS.STATUS = 1
+       ORDER BY CASE WHEN LS.NGAY_DUKIEN IS NULL THEN 1 ELSE 0 END,
+                LS.NGAY_DUKIEN, LS.TIMECREATED DESC
+    `, [req.params.id]);
+
+    // Ảnh được chụp/lưu theo từng bước của quy trình sửa chữa.
+    // Chỉ trả metadata; nội dung BLOB được tải qua endpoint riêng để hồ sơ xe
+    // không phải nhận toàn bộ Base64 trong một response lớn.
+    const workflowMedia = await db.query(`
+      SELECT A.ID, A.TTRANGTHAIXEID, A.TLENHSUACHUAID, A.TRANGTHAI,
+             A.TENFILE, A.MIME, A.MOTA, A.THUTU, A.TIMECREATED,
+             LS.NAME AS SO_PHIEU, TN.ODO, W.TEN AS TRANGTHAI_TEN
+        FROM TTRANGTHAIANH A
+        LEFT JOIN TLENHSUACHUA LS ON LS.ID = A.TLENHSUACHUAID
+        LEFT JOIN TTIEPNHANXE TN ON TN.ID = LS.TTIEPNHANXEID
+        LEFT JOIN TWORKFLOWMAP W ON W.STT_WORKFLOW = A.TRANGTHAI
+       WHERE A.DXEID = ? AND A.STATUS = 1
+       ORDER BY A.TIMECREATED DESC, A.THUTU DESC
     `, [req.params.id]);
 
     const workflows = await db.query(`
@@ -350,7 +391,12 @@ router.get('/:id/profile', async (req, res) => {
         })),
         replacedParts,
         warranties,
+        appointments,
         media,
+        workflowMedia: workflowMedia.map((item) => ({
+          ...item,
+          URL: `/api/workflow/images/${item.ID}/content`,
+        })),
       },
     });
   } catch (e) {
@@ -358,11 +404,24 @@ router.get('/:id/profile', async (req, res) => {
   }
 });
 
+// GET /api/vehicles/:id/image - ảnh đại diện được lưu trực tiếp trong DXE.ANHXE
+router.get('/:id/image', async (req, res) => {
+  try {
+    const blob = await db.queryBlob('SELECT ANHXE FROM DXE WHERE ID=? AND STATUS=1', [req.params.id], 'ANHXE');
+    if (!blob) return res.status(404).json({ error: 'Xe chua co anh ho so' });
+    const image = parseVehicleImage(blob.toString('utf8'));
+    if (!image) return res.status(422).json({ error: 'Du lieu anh xe khong hop le' });
+    res.set('Content-Type', image.mime);
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(image.dataUrl.split(',')[1], 'base64'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/', async (req, res) => {
   try {
     const {
       BIENSO, DHANGXEID, DDONGXEID, PHIENBAN, NAMSANXUAT, MAUXE,
-      SOKHUNG, SOMAY, ODO, NHIENLIEU, MUCNHIENLIEU, DKHACHHANGID, GHICHU,
+      SOKHUNG, SOMAY, ODO, NHIENLIEU, MUCNHIENLIEU, DKHACHHANGID, GHICHU, ANHXE,
     } = req.body;
     const plate = String(BIENSO || '').trim().toUpperCase();
     if (!plate) return res.status(400).json({ error: 'Bien so khong duoc trong' });
@@ -376,19 +435,23 @@ router.post('/', async (req, res) => {
 
     const id = db.uuidv4();
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    const vehicleImage = ANHXE ? parseVehicleImage(ANHXE) : null;
+    if (ANHXE && !vehicleImage) return res.status(400).json({ error: 'Anh ho so xe khong hop le hoac vuot qua 3 MB' });
     await db.execute(
       `INSERT INTO DXE
          (ID, NAME, BIENSO, DHANGXEID, DDONGXEID, PHIENBAN, NAMSANXUAT,
           MAUXE, SOKHUNG, SOMAY, ODO, NHIENLIEU, MUCNHIENLIEU,
-          DKHACHHANGID, GHICHU,
+          DKHACHHANGID, GHICHU, ANHXE,
           STATUS, USERCREATEDID, TIMECREATED)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
       [
         id, plate, plate,
         DHANGXEID || null, DDONGXEID || null, PHIENBAN, NAMSANXUAT,
         MAUXE, SOKHUNG, SOMAY, Number(ODO) || 0, NHIENLIEU,
         Math.max(0, Math.min(100, Number(MUCNHIENLIEU) || 0)),
-        DKHACHHANGID || null, GHICHU, actor,
+        DKHACHHANGID || null, GHICHU,
+        vehicleImage ? Buffer.from(vehicleImage.dataUrl, 'utf8') : null,
+        actor,
       ]
     );
     res.json({ ok: true, id });
@@ -399,7 +462,7 @@ router.put('/:id', async (req, res) => {
   try {
     const {
       BIENSO, DHANGXEID, DDONGXEID, PHIENBAN, NAMSANXUAT, MAUXE,
-      SOKHUNG, SOMAY, ODO, NHIENLIEU, MUCNHIENLIEU, DKHACHHANGID, GHICHU,
+      SOKHUNG, SOMAY, ODO, NHIENLIEU, MUCNHIENLIEU, DKHACHHANGID, GHICHU, ANHXE,
     } = req.body;
     const plate = String(BIENSO || '').trim().toUpperCase();
     if (!plate) return res.status(400).json({ error: 'Bien so khong duoc trong' });
@@ -412,6 +475,8 @@ router.put('/:id', async (req, res) => {
     );
     if (duplicate.length) return res.status(409).json({ error: 'Bien so xe da ton tai' });
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
+    const vehicleImage = ANHXE !== undefined && ANHXE ? parseVehicleImage(ANHXE) : null;
+    if (ANHXE && !vehicleImage) return res.status(400).json({ error: 'Anh ho so xe khong hop le hoac vuot qua 3 MB' });
     await db.execute(
       `UPDATE DXE
           SET NAME=?, BIENSO=?, DHANGXEID=?, DDONGXEID=?, PHIENBAN=?,
@@ -427,6 +492,9 @@ router.put('/:id', async (req, res) => {
         DKHACHHANGID || null, GHICHU, actor, req.params.id,
       ]
     );
+    if (ANHXE !== undefined) {
+      await db.execute('UPDATE DXE SET ANHXE=? WHERE ID=?', [vehicleImage ? Buffer.from(vehicleImage.dataUrl, 'utf8') : null, req.params.id]);
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

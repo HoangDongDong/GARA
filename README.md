@@ -16,7 +16,8 @@ garage-app/
 │       ├── db.js           # pool + helper query / execute / transaction
 │       ├── config.js
 │       └── routes/
-│           ├── auth.js         # SUSER (username = NAME, password = NOTE)
+│           ├── auth.js         # Đăng nhập SUSER + token phiên
+│           ├── adminAccess.js  # Chức vụ, tài khoản, ma trận quyền
 │           ├── customers.js    # DKHACHHANG
 │           ├── vehicles.js     # DXE + DHANGXE + DDONGXE
 │           ├── employees.js    # DNHANVIEN (LOAI NV: thường/KTV/CV/Thủ kho/Thu ngân)
@@ -69,20 +70,24 @@ npm run dev
 
 Mở trình duyệt: **http://localhost:5173**
 
-## Đăng nhập
+## Phân quyền và đăng nhập
 
-Tài khoản lấy trực tiếp từ bảng **SUSER** trong `GARAGE.FDB` (cột `NAME` = username, cột `NOTE` = password, `STATUS = 1`).
+Chạy migration một lần cho database cũ:
 
-```sql
-SELECT NAME, NOTE FROM SUSER WHERE STATUS = 1;
+```powershell
+cd D:\Garage\garage-app\backend
+npm run migrate:access
 ```
 
-Nếu chưa có user, thêm nhanh 1 user admin bằng SQL:
+Mô hình dữ liệu:
 
-```sql
-INSERT INTO SUSER (ID, NAME, NOTE, STATUS, USERCREATEDID, TIMECREATED)
-VALUES (UUID(), 'admin', '123456', 1, UUID(), CURRENT_TIMESTAMP);
-```
+- `DNHANVIEN`: hồ sơ nhân viên (họ tên, điện thoại, email, chứng chỉ, kỹ năng).
+- `SUSER.DNHANVIENID`: tài khoản của nhân viên.
+- `SUSER.SGROUPUSERID`: chức vụ/nhóm quyền của tài khoản.
+- `SGROUPROLE`: quyền của chức vụ trên từng `SFUNCTION`.
+- `MODE`: bitmask `Xem=1`, `Thêm=2`, `Sửa=4`, `Xóa=8`, `In=16`.
+
+Tài khoản cũ được giữ nguyên; mật khẩu dạng cũ được tự động chuyển sang scrypt sau lần đăng nhập thành công đầu tiên. Token đăng nhập có hiệu lực 12 giờ. Khi triển khai, đặt `AUTH_TOKEN_SECRET` riêng trong `.env`.
 
 ## Bảng trong GARAGE.FDB đang dùng
 

@@ -6,10 +6,11 @@ import {
   Fingerprint, QrCode 
 } from 'lucide-react';
 import './LoginPage.css';
+import { auth } from '../services';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -17,46 +18,27 @@ export default function LoginPage() {
   const [quickLoginMsg, setQuickLoginMsg] = useState('');
   const nav = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-    setTimeout(() => {
-      if ((username === 'admin' && password === 'admin') || username) {
-        localStorage.setItem('garage_user', JSON.stringify({
-          USERNAME: username || 'admin',
-          TEN_HIEN_THI: username === 'admin' ? 'Admin' : username,
-        }));
-        nav('/');
-      } else {
-        setError('Tên đăng nhập hoặc mật khẩu không đúng');
-      }
-      setLoading(false);
-    }, 400);
+    try {
+      const result = await auth.login(username, password);
+      localStorage.setItem('garage_user', JSON.stringify(result.data));
+      localStorage.setItem('garage_token', result.token);
+      const destinations = [['DASHBOARD','/'],['REPAIR','/sua-chua'],['SALES','/ban-hang'],['INVENTORY','/nhap-kho'],['SUPPLIERS','/nha-cung-cap'],['CUSTOMERS','/khach-hang'],['VEHICLES','/ho-so-xe'],['WARRANTY','/bao-hanh'],['FINANCE','/thu-chi'],['EMPLOYEES','/nhan-vien'],['REPORTS','/bao-cao'],['ADMIN','/quan-tri'],['SETTINGS','/cau-hinh']];
+      const firstAllowed = destinations.find(([code]) => Number(result.data.ISADMIN) === 1 || (Number(result.data.PERMISSIONS?.[code] || 0) & 1) === 1);
+      nav(firstAllowed?.[1] || '/');
+    } catch (loginError) {
+      setError(loginError?.response?.data?.error || 'Tên đăng nhập hoặc mật khẩu không đúng');
+    } finally { setLoading(false); }
   };
 
   const handleQuickLogin = (type) => {
     if (type === 'windows') {
-      setUsername('Admin');
-      setPassword('admin');
-      setQuickLoginMsg('Đã xác thực tài khoản Windows thành công!');
-      setTimeout(() => {
-        localStorage.setItem('garage_user', JSON.stringify({
-          USERNAME: 'Admin',
-          TEN_HIEN_THI: 'Admin (Windows)',
-        }));
-        nav('/');
-      }, 500);
+      setQuickLoginMsg('Đăng nhập Windows chưa được cấu hình. Vui lòng dùng tài khoản được cấp.');
     } else if (type === 'fingerprint') {
-      setQuickLoginMsg('Đang xác thực vân tay bảo mật...');
-      setTimeout(() => {
-        localStorage.setItem('garage_user', JSON.stringify({
-          USERNAME: 'Admin',
-          TEN_HIEN_THI: 'Admin (Vân tay)',
-        }));
-        nav('/');
-      }, 600);
+      setQuickLoginMsg('Đăng nhập vân tay chưa được cấu hình. Vui lòng dùng tài khoản được cấp.');
     } else if (type === 'qr') {
       setQuickLoginMsg('Mở ứng dụng Kazuko trên điện thoại và quét mã QR');
     }

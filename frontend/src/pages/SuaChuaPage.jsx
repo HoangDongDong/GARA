@@ -406,6 +406,8 @@ export default function SuaChuaPage() {
 
   const businessStage = Math.max(0, Math.min(4, Number(repairFlow.workflowState ?? 0)));
   const isFlowCompleted = Number(repairFlow.workflowState) === 4;
+  const isServiceSelectionLocked = Boolean(repairFlow.repairId)
+    && Number(repairFlow.workflowState) >= 2;
   const activeVehicleFlow = vehicleFlowOptions.find((flow) => Number(flow.TRANGTHAI) < 4) || null;
   const processLabels = ['Tiếp nhận & Báo giá', 'Xác nhận sửa chữa', 'Đang sửa', 'Giao xe', 'Hoàn thành'];
   const shortProcessLabels = ['Báo giá', 'Xác nhận', 'Đang sửa', 'Giao xe', 'Hoàn tất'];
@@ -971,17 +973,20 @@ export default function SuaChuaPage() {
 
   // Toggle chọn 1 dịch vụ
   const handleToggle = (id) => {
+    if (isServiceSelectionLocked) return;
     setServices(prev => prev.map(s => s.id === id ? { ...s, checked: !s.checked } : s));
   };
 
   // Chọn tất cả
   const handleSelectAll = () => {
+    if (isServiceSelectionLocked) return;
     setServices(prev => prev.map(s => ({ ...s, checked: true })));
     showToast('Đã chọn tất cả dịch vụ');
   };
 
   // Bỏ chọn tất cả
   const handleDeselectAll = () => {
+    if (isServiceSelectionLocked) return;
     setServices(prev => prev.map(s => ({ ...s, checked: false })));
     showToast('Đã bỏ chọn tất cả dịch vụ');
   };
@@ -1401,9 +1406,16 @@ export default function SuaChuaPage() {
 
             {/* Cụm 3 nút: Chọn tất cả, Bỏ chọn tất cả, Làm mới */}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {isServiceSelectionLocked && (
+                <span style={{ color: '#64748B', fontSize: '10.5px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  Đã khóa sau khi xác nhận
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleSelectAll}
+                disabled={isServiceSelectionLocked}
+                title={isServiceSelectionLocked ? 'Không thể thay đổi hạng mục sau khi xác nhận sửa chữa' : 'Chọn tất cả'}
                 style={{
                   height: 'clamp(24px, 3vh, 28px)',
                   padding: '0 12px',
@@ -1416,7 +1428,8 @@ export default function SuaChuaPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 5,
-                  cursor: 'pointer',
+                  cursor: isServiceSelectionLocked ? 'not-allowed' : 'pointer',
+                  opacity: isServiceSelectionLocked ? 0.45 : 1,
                   whiteSpace: 'nowrap'
                 }}
               >
@@ -1427,6 +1440,8 @@ export default function SuaChuaPage() {
               <button
                 type="button"
                 onClick={handleDeselectAll}
+                disabled={isServiceSelectionLocked}
+                title={isServiceSelectionLocked ? 'Không thể thay đổi hạng mục sau khi xác nhận sửa chữa' : 'Bỏ chọn tất cả'}
                 style={{
                   height: 'clamp(24px, 3vh, 28px)',
                   padding: '0 10px',
@@ -1439,7 +1454,8 @@ export default function SuaChuaPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 4,
-                  cursor: 'pointer',
+                  cursor: isServiceSelectionLocked ? 'not-allowed' : 'pointer',
+                  opacity: isServiceSelectionLocked ? 0.45 : 1,
                   whiteSpace: 'nowrap'
                 }}
               >
@@ -1458,11 +1474,14 @@ export default function SuaChuaPage() {
                     <input
                       type="checkbox"
                       checked={services.length > 0 && services.every(s => s.checked)}
+                      disabled={isServiceSelectionLocked}
                       onChange={(e) => {
+                        if (isServiceSelectionLocked) return;
                         const checked = e.target.checked;
                         setServices(prev => prev.map(s => ({ ...s, checked })));
                       }}
-                      style={{ cursor: 'pointer', accentColor: '#E65100', width: 15, height: 15 }}
+                      title={isServiceSelectionLocked ? 'Danh sách đã khóa sau khi xác nhận sửa chữa' : ''}
+                      style={{ cursor: isServiceSelectionLocked ? 'not-allowed' : 'pointer', accentColor: '#E65100', width: 15, height: 15 }}
                     />
                   </th>
                   <th style={{ padding: '6px 4px', textAlign: 'center', width: 38, borderBottom: '1px solid #FFCC80' }}>STT</th>
@@ -1481,7 +1500,7 @@ export default function SuaChuaPage() {
                     style={{
                       background: row.checked ? '#FFF8E1' : (idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'),
                       borderBottom: '1px solid #F1F5F9',
-                      cursor: 'pointer',
+                      cursor: isServiceSelectionLocked ? 'default' : 'pointer',
                       transition: 'background 0.12s'
                     }}
                     onMouseEnter={(e) => {
@@ -1496,8 +1515,10 @@ export default function SuaChuaPage() {
                       <input
                         type="checkbox"
                         checked={row.checked}
+                        disabled={isServiceSelectionLocked}
                         onChange={() => {}} // handled by row click
-                        style={{ cursor: 'pointer', pointerEvents: 'none', accentColor: '#E65100', width: 15, height: 15 }}
+                        title={isServiceSelectionLocked ? 'Hạng mục đã khóa sau khi xác nhận sửa chữa' : ''}
+                        style={{ cursor: isServiceSelectionLocked ? 'not-allowed' : 'pointer', pointerEvents: 'none', accentColor: '#E65100', width: 15, height: 15 }}
                       />
                     </td>
 
@@ -1758,7 +1779,7 @@ export default function SuaChuaPage() {
                     Chưa có ảnh ở bước {processLabels[selectedImageState]} · Bấm để thêm nhiều ảnh
                   </button>
                 ) : visibleWorkflowImages.map((image, index) => {
-                  const source = image.ID ? (image.URL || workflow.imageUrl(image.ID)) : image.data;
+                  const source = image.ID ? workflow.imageUrl(image.ID) : image.data;
                   return (
                     <div key={image.ID || `${image.name}-${index}`} style={{ position: 'relative', flex: '0 0 54px', width: 54, height: 48, borderRadius: 5, overflow: 'hidden', border: '1px solid #CBD5E1', background: '#F1F5F9' }}>
                       <img src={source} alt={image.TENFILE || image.name || 'Ảnh trạng thái'} onClick={() => setPreviewImage(source)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} />

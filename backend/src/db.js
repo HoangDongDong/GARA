@@ -65,6 +65,31 @@ function execute(sql, params = []) {
   });
 }
 
+// Binary BLOBs are returned by node-firebird as reader functions tied to the
+// live connection. Keep that connection open until the stream is consumed.
+function queryBlob(sql, params = [], fieldName) {
+  return new Promise((resolve, reject) => {
+    acquireWrap().then((db) => {
+      db.query(sql, params, (err, rows) => {
+        if (err) { release(db); return reject(err); }
+        const row = rows?.[0];
+        if (!row || row[fieldName] == null) { release(db); return resolve(null); }
+        const blob = row[fieldName];
+        if (Buffer.isBuffer(blob)) { release(db); return resolve(blob); }
+        if (typeof blob !== 'function') { release(db); return resolve(Buffer.from(String(blob), 'utf8')); }
+        blob((blobError, name, stream) => {
+          if (blobError) { release(db); return reject(blobError); }
+          const chunks = [];
+          let length = 0;
+          stream.on('data', (chunk) => { chunks.push(chunk); length += chunk.length; });
+          stream.on('error', (streamError) => { release(db); reject(streamError); });
+          stream.on('end', () => { release(db); resolve(Buffer.concat(chunks, length)); });
+        });
+      });
+    }).catch(reject);
+  });
+}
+
 function transaction(fn) {
   return new Promise((resolve, reject) => {
     acquireWrap().then((db) => {
@@ -97,4 +122,4 @@ async function ping() {
   return rows[0];
 }
 
-module.exports = { query, execute, transaction, ping, uuidv4 };
+module.exports = { query, queryBlob, execute, transaction, ping, uuidv4 };
