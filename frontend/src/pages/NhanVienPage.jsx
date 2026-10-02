@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { 
   Users, User, Phone, Mail, Calendar, Award, Clock, Wrench, 
   Search, Plus, FileSpreadsheet, MoreVertical, Edit, Eye, 
-  CheckCircle, X, Shield, Briefcase
+  CheckCircle, X, Shield, Briefcase, ArrowLeft
 } from 'lucide-react';
 import { employees } from '../services';
 import EmployeeFormModal from '../components/EmployeeFormModal';
+import './NhanVienPage.css';
 
 const ROLE_BY_TYPE = {
   0: 'Nhân viên',
@@ -63,6 +64,7 @@ export default function NhanVienPage() {
   const [employeeList, setEmployeeList] = useState([]);
   const [selectedId, setSelectedId] = useState('NV001');
   const selectedStaff = employeeList.find(e => e.id === selectedId) || employeeList[0] || mapEmployee({ STATUS: 1 }, 0);
+  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'detail' | 'stats'
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -205,7 +207,7 @@ export default function NhanVienPage() {
   };
 
   return (
-    <div className="dashboard" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto' }}>
+    <div className="nv-page-container">
       
       {/* Toast Alert */}
       {toast && (
@@ -231,120 +233,155 @@ export default function NhanVienPage() {
       )}
 
       {/* Page Header */}
-      <div className="page-header" style={{ marginBottom: 4, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 15, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ background: '#E65100', color: 'white', width: 22, height: 22, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+      <div className="nv-header">
+        <h1 className="nv-header-title">
+          <span style={{ background: '#E65100', color: 'white', width: 26, height: 26, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
             🚗
           </span>
           Nhân viên / Kỹ thuật viên
         </h1>
-        <div className="page-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="nv-actions-group">
           <button 
             onClick={() => setShowAddModal(true)}
-            style={{ background: '#E65100', color: 'white', border: 'none', padding: '4px 12px', borderRadius: 4, fontWeight: 600, fontSize: 10.5, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+            className="nv-btn-add"
           >
-            + Thêm nhân viên
+            <Plus size={14} /> Thêm nhân viên
           </button>
-          <button 
-            onClick={() => showToastMsg('Tính năng Import Excel sẵn sàng')}
-            style={{ background: 'white', color: '#424242', border: '1px solid #E0E0E0', padding: '4px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, cursor: 'pointer' }}
-          >
-            <FileSpreadsheet size={13} color="#4CAF50" /> Import Excel
-          </button>
-          <button 
-            onClick={() => showToastMsg('Xuất file Excel danh sách nhân viên thành công!')}
-            style={{ background: 'white', color: '#424242', border: '1px solid #E0E0E0', padding: '4px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, cursor: 'pointer' }}
-          >
-            <FileSpreadsheet size={13} color="#1976D2" /> Xuất Excel
-          </button>
-          <button style={{ background: 'white', color: '#616161', border: '1px solid #E0E0E0', padding: '4px 8px', borderRadius: 4, fontSize: 10.5, cursor: 'pointer' }}>
-            <MoreVertical size={13} color="#616161" />
-          </button>
+          <div className="nv-actions-row-mobile">
+            <button 
+              type="button"
+              onClick={() => showToastMsg('Tính năng Import Excel sẵn sàng')}
+              className="nv-btn-outline"
+            >
+              <FileSpreadsheet size={14} color="#4CAF50" /> Import Excel
+            </button>
+            <button 
+              type="button"
+              onClick={() => showToastMsg('Xuất file Excel danh sách nhân viên thành công!')}
+              className="nv-btn-outline"
+            >
+              <FileSpreadsheet size={14} color="#1976D2" /> Xuất Excel
+            </button>
+            <button type="button" className="nv-btn-outline" style={{ padding: '6px 8px' }}>
+              <MoreVertical size={14} color="#616161" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div style={{ background: 'white', padding: '6px 10px', borderRadius: 6, border: '1px solid #E0E0E0', marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0 }}>
-        <div style={{ flex: 2, minWidth: 200 }}>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên, mã NV, SĐT, phòng ban..." 
-              style={{ width: '100%', padding: '4px 28px 4px 8px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10 }}
-            />
-            <Search size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+      <div className="nv-filter-bar">
+        <div className="nv-filter-row-1">
+          <div className="nv-search-box">
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm theo tên, mã NV, SĐT, phòng ban..." 
+                className="nv-search-input"
+              />
+              <Search size={13} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+            </div>
           </div>
         </div>
 
-        <div style={{ minWidth: 110 }}>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 1 }}>Phòng ban</label>
-          <select 
-            value={departmentFilter} 
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10 }}
-          >
-            <option value="">Tất cả</option>
-            <option>Sửa chữa</option>
-            <option>Dịch vụ</option>
-            <option>Kế toán</option>
-            <option>Kho hàng</option>
-            <option>Văn phòng</option>
-          </select>
+        <div className="nv-filter-row-2">
+          <div className="nv-filter-item">
+            <label className="nv-filter-label">Phòng ban</label>
+            <select 
+              value={departmentFilter} 
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="nv-filter-select"
+            >
+              <option value="">Tất cả</option>
+              <option>Sửa chữa</option>
+              <option>Dịch vụ</option>
+              <option>Kế toán</option>
+              <option>Kho hàng</option>
+              <option>Văn phòng</option>
+            </select>
+          </div>
+
+          <div className="nv-filter-item">
+            <label className="nv-filter-label">Chức vụ</label>
+            <select 
+              value={roleFilter} 
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="nv-filter-select"
+            >
+              <option value="">Tất cả</option>
+              <option>Nhân viên</option>
+              <option>Kỹ thuật viên</option>
+              <option>Cố vấn dịch vụ</option>
+              <option>Thủ kho</option>
+              <option>Thu ngân</option>
+            </select>
+          </div>
         </div>
 
-        <div style={{ minWidth: 110 }}>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 1 }}>Chức vụ</label>
-          <select 
-            value={roleFilter} 
-            onChange={(e) => setRoleFilter(e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10 }}
-          >
-            <option value="">Tất cả</option>
-            <option>Nhân viên</option>
-            <option>Kỹ thuật viên</option>
-            <option>Cố vấn dịch vụ</option>
-            <option>Thủ kho</option>
-            <option>Thu ngân</option>
-          </select>
-        </div>
-
-        <div style={{ minWidth: 120 }}>
-          <label style={{ fontSize: 9.5, color: '#616161', display: 'block', marginBottom: 1 }}>Trạng thái</label>
-          <select 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: '1px solid #E0E0E0', borderRadius: 4, fontSize: 10 }}
-          >
-            <option value="Đang làm việc">Đang làm việc</option>
-            <option value="Nghỉ phép">Nghỉ phép</option>
-            <option value="Nghỉ việc">Nghỉ việc</option>
-            <option value="Tất cả">Tất cả</option>
-          </select>
+        <div className="nv-filter-row-3">
+          <div className="nv-filter-item">
+            <label className="nv-filter-label">Trạng thái</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="nv-filter-select"
+            >
+              <option value="Đang làm việc">Đang làm việc</option>
+              <option value="Nghỉ phép">Nghỉ phép</option>
+              <option value="Nghỉ việc">Nghỉ việc</option>
+              <option value="Tất cả">Tất cả</option>
+            </select>
+          </div>
         </div>
       </div>
 
+      {/* Mobile Segmented Tabs */}
+      <div className="nv-mobile-tabs">
+        <button
+          type="button"
+          className={`nv-mobile-tab-btn ${mobileTab === 'list' ? 'active' : ''}`}
+          onClick={() => setMobileTab('list')}
+        >
+          <Users size={14} /> Danh sách ({filteredList.length})
+        </button>
+        <button
+          type="button"
+          className={`nv-mobile-tab-btn ${mobileTab === 'detail' ? 'active' : ''}`}
+          onClick={() => setMobileTab('detail')}
+        >
+          <User size={14} /> Chi tiết & Lịch
+        </button>
+        <button
+          type="button"
+          className={`nv-mobile-tab-btn ${mobileTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setMobileTab('stats')}
+        >
+          <Wrench size={14} /> Thống kê
+        </button>
+      </div>
+
       {/* Main Content: 2 Columns */}
-      <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0 }}>
+      <div className="nv-main-grid">
         
         {/* Cột Trái (~58%): Bảng danh sách + 2 Thống kê dưới */}
-        <div style={{ flex: 1.35, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+        <div className="nv-left-col">
           
           {/* Table: Danh sách nhân viên */}
-          <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1.35, minHeight: 290, overflow: 'hidden' }}>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              <table style={{ margin: 0, width: '100%', fontSize: 10, borderCollapse: 'collapse' }}>
+          <div className={`card ${mobileTab !== 'list' ? 'nv-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1.35, minHeight: 290, overflow: 'hidden' }}>
+            <div className="nv-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
+              <table className="nv-table-staff">
                 <thead>
-                  <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
-                    <th style={{ ...tableHeaderThStyle, width: 30, textAlign: 'center' }}>STT</th>
-                    <th style={{ ...tableHeaderThStyle, width: 60 }}>Mã NV</th>
-                    <th style={{ ...tableHeaderThStyle, width: 100 }}>Họ và tên</th>
-                    <th style={{ ...tableHeaderThStyle, width: 90 }}>Chức vụ</th>
-                    <th style={{ ...tableHeaderThStyle, width: 80 }}>Phòng ban</th>
-                    <th style={{ ...tableHeaderThStyle, width: 85 }}>SĐT</th>
-                    <th style={{ ...tableHeaderThStyle, width: 80, textAlign: 'center' }}>Trạng thái</th>
-                    <th style={{ ...tableHeaderThStyle, width: 55, textAlign: 'center' }}>Thao tác</th>
+                  <tr>
+                    <th style={{ width: 34, textAlign: 'center' }}>STT</th>
+                    <th style={{ width: 65 }}>Mã NV</th>
+                    <th style={{ minWidth: 120 }}>Họ và tên</th>
+                    <th style={{ width: 95 }}>Chức vụ</th>
+                    <th style={{ width: 85 }}>Phòng ban</th>
+                    <th style={{ width: 95 }}>SĐT</th>
+                    <th style={{ width: 85, textAlign: 'center' }}>Trạng thái</th>
+                    <th style={{ width: 65, textAlign: 'center' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -353,7 +390,12 @@ export default function NhanVienPage() {
                     return (
                       <tr 
                         key={item.id}
-                        onClick={() => setSelectedId(item.id)}
+                        onClick={() => {
+                          setSelectedId(item.id);
+                          if (window.innerWidth <= 768) {
+                            setMobileTab('detail');
+                          }
+                        }}
                         style={{ 
                           cursor: 'pointer',
                           background: isSelected ? '#FFF8E1' : (idx % 2 === 1 ? '#FAFAFA' : 'white'),
@@ -361,17 +403,17 @@ export default function NhanVienPage() {
                           borderBottom: '1px solid #F0F0F0'
                         }}
                       >
-                        <td style={{ padding: '4px 6px', textAlign: 'center', fontSize: 9.5 }}>{idx + 1}</td>
-                        <td style={{ padding: '4px 6px', fontWeight: 600, color: '#1976D2', fontSize: 9.5 }}>{item.id}</td>
-                        <td style={{ padding: '4px 6px', fontWeight: 600, color: '#212121', fontSize: 9.5 }}>{item.name}</td>
-                        <td style={{ padding: '4px 6px', color: '#424242', fontSize: 9.5 }}>{item.role}</td>
-                        <td style={{ padding: '4px 6px', color: '#616161', fontSize: 9.5 }}>{item.department}</td>
-                        <td style={{ padding: '4px 6px', color: '#424242', fontSize: 9.5 }}>{item.phone}</td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                        <td style={{ fontWeight: 600, color: '#1976D2' }}>{item.id}</td>
+                        <td style={{ fontWeight: 600, color: '#212121' }}>{item.name}</td>
+                        <td style={{ color: '#424242' }}>{item.role}</td>
+                        <td style={{ color: '#616161' }}>{item.department}</td>
+                        <td style={{ color: '#424242' }}>{item.phone}</td>
+                        <td style={{ textAlign: 'center' }}>
                           <span style={{
-                            padding: '1px 5px',
+                            padding: '1px 6px',
                             borderRadius: 10,
-                            fontSize: 8.5,
+                            fontSize: 9,
                             fontWeight: 600,
                             color: item.statusColor,
                             background: item.statusBg,
@@ -382,11 +424,11 @@ export default function NhanVienPage() {
                             {item.status}
                           </span>
                         </td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
-                            <Eye size={11} color="#1976D2" style={{ cursor: 'pointer' }} title="Xem" />
-                            <Edit size={11} color="#757575" style={{ cursor: 'pointer' }} title="Sửa" />
-                            <MoreVertical size={11} color="#9E9E9E" style={{ cursor: 'pointer' }} />
+                            <Eye size={12} color="#1976D2" style={{ cursor: 'pointer' }} title="Xem" onClick={(e) => { e.stopPropagation(); setSelectedId(item.id); setMobileTab('detail'); }} />
+                            <Edit size={12} color="#757575" style={{ cursor: 'pointer' }} title="Sửa" onClick={(e) => { e.stopPropagation(); showToastMsg(`Mở chỉnh sửa nhân viên ${item.name}`); }} />
+                            <MoreVertical size={12} color="#9E9E9E" style={{ cursor: 'pointer' }} onClick={(e) => e.stopPropagation()} />
                           </div>
                         </td>
                       </tr>
@@ -397,35 +439,35 @@ export default function NhanVienPage() {
             </div>
 
             {/* Footer Pagination */}
-            <div style={{ padding: '3px 8px', borderTop: '1px solid #E0E0E0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9.5, color: '#616161', background: '#FAFAFA', flexShrink: 0 }}>
+            <div className="nv-pagination-bar">
               <div>Tổng cộng: <b>{filteredList.length}</b> nhân viên</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button style={{ border: '1px solid #ccc', background: 'white', color: '#333', borderRadius: 3, padding: '1px 5px', fontSize: 9, cursor: 'pointer' }}>&lt;</button>
-                <button style={{ border: 'none', background: '#E65100', color: 'white', borderRadius: 3, padding: '1px 6px', fontSize: 9, fontWeight: 700 }}>1</button>
-                <button style={{ border: '1px solid #ccc', background: 'white', color: '#333', borderRadius: 3, padding: '1px 5px', fontSize: 9, cursor: 'pointer' }}>&gt;</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button type="button" className="nv-pagination-btn">&lt;</button>
+                <button type="button" className="nv-pagination-btn active">1</button>
+                <button type="button" className="nv-pagination-btn">&gt;</button>
               </div>
             </div>
           </div>
 
           {/* Bottom Left: 2 Thống kê (Phòng ban & Trạng thái) */}
-          <div style={{ display: 'flex', gap: 6, flex: 0.9, minHeight: 155 }}>
+          <div className={`nv-bottom-stats-row ${mobileTab !== 'stats' ? 'nv-mobile-hidden' : ''}`} style={{ display: 'flex', gap: 6, flex: 0.9, minHeight: 155 }}>
             
             {/* Card: Thống kê nhân sự theo phòng ban */}
-            <div className="card" style={{ flex: 1.1, padding: '5px 8px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #E0E0E0', paddingBottom: 3, marginBottom: 4 }}>
-                <span style={{ color: '#E65100', fontSize: 11 }}>📊</span>
-                <h3 style={{ fontSize: 10.5, fontWeight: 700, margin: 0, color: '#212121' }}>Thống kê nhân sự theo phòng ban</h3>
+            <div className="card" style={{ flex: 1.1, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #E0E0E0', paddingBottom: 4, marginBottom: 6 }}>
+                <span style={{ color: '#E65100', fontSize: 12 }}>📊</span>
+                <h3 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Thống kê nhân sự theo phòng ban</h3>
               </div>
 
               {/* Bar Chart theo dữ liệu nhân viên */}
-              <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '0 4px 4px 4px', borderBottom: '1px solid #E0E0E0' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '0 4px 6px 4px', borderBottom: '1px solid #E0E0E0', minHeight: 100 }}>
                 {departmentStats.map((item, i) => {
                   const barHeight = Math.round((item.count / maxDepartmentCount) * 85);
                   return (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '18%' }}>
-                      <span style={{ fontSize: 8.5, fontWeight: 700, color: '#333', marginBottom: 2 }}>{item.count}</span>
-                      <div style={{ width: '60%', height: barHeight, background: '#E65100', borderRadius: '2px 2px 0 0' }} />
-                      <span style={{ fontSize: 8, color: '#616161', marginTop: 4, whiteSpace: 'nowrap' }}>{item.name}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#333', marginBottom: 2 }}>{item.count}</span>
+                      <div style={{ width: '60%', height: Math.max(8, barHeight), background: '#E65100', borderRadius: '2px 2px 0 0' }} />
+                      <span style={{ fontSize: 8.5, color: '#616161', marginTop: 4, whiteSpace: 'nowrap' }}>{item.name}</span>
                     </div>
                   );
                 })}
@@ -433,19 +475,17 @@ export default function NhanVienPage() {
             </div>
 
             {/* Card: Thống kê trạng thái nhân viên (Donut Chart Đa sắc) */}
-            <div className="card" style={{ flex: 1, padding: '5px 8px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #E0E0E0', paddingBottom: 3, marginBottom: 4 }}>
-                <span style={{ color: '#E65100', fontSize: 11 }}>🍩</span>
-                <h3 style={{ fontSize: 10.5, fontWeight: 700, margin: 0, color: '#212121' }}>Thống kê trạng thái nhân viên</h3>
+            <div className="card" style={{ flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #E0E0E0', paddingBottom: 4, marginBottom: 6 }}>
+                <span style={{ color: '#E65100', fontSize: 12 }}>🍩</span>
+                <h3 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Thống kê trạng thái nhân viên</h3>
               </div>
 
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
-                {/* Donut circle representation với 3 màu xanh lá, xanh dương, cam */}
-                <div style={{ position: 'relative', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="90" height="90" viewBox="0 0 42 42">
-                    {/* Background */}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-around', minHeight: 100 }}>
+                {/* Donut circle representation */}
+                <div style={{ position: 'relative', width: 95, height: 95, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="95" height="95" viewBox="0 0 42 42">
                     <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#F5F5F5" strokeWidth="4" />
-                    
                     {statusSegments.map((item) => (
                       <circle
                         key={item.name}
@@ -461,15 +501,15 @@ export default function NhanVienPage() {
                     ))}
                   </svg>
                   <div style={{ position: 'absolute', textAlign: 'center' }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#212121', lineHeight: 1 }}>{employeeList.length}</div>
-                    <div style={{ fontSize: 7, color: '#757575', marginTop: 1 }}>Tổng nhân viên</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#212121', lineHeight: 1 }}>{employeeList.length}</div>
+                    <div style={{ fontSize: 7.5, color: '#757575', marginTop: 2 }}>Tổng nhân viên</div>
                   </div>
                 </div>
 
                 {/* Legend */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 8.5 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 9 }}>
                   {statusStats.map((item) => (
-                    <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#424242' }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: item.color }} /> {item.name}
                       </span>
@@ -485,20 +525,27 @@ export default function NhanVienPage() {
         </div>
 
         {/* Cột Phải (~42%): 4 Khối chi tiết */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+        <div className="nv-right-col">
           
           {/* Card 1: Thông tin nhân viên */}
-          <div className="card" style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+          <div className={`card ${mobileTab !== 'detail' ? 'nv-mobile-hidden' : ''}`} style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  className="nv-mobile-back-btn"
+                  onClick={() => setMobileTab('list')}
+                >
+                  <ArrowLeft size={12} /> Danh sách
+                </button>
                 <span style={{ color: '#E65100', fontSize: 13 }}>👤</span>
-                <h2 style={{ fontSize: 11.5, fontWeight: 700, margin: 0, color: '#212121' }}>Thông tin nhân viên</h2>
+                <h2 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: '#212121' }}>Thông tin nhân viên</h2>
               </div>
               <button 
                 onClick={() => showToastMsg(`Mở chỉnh sửa nhân viên ${selectedStaff.name}`)}
-                style={{ background: 'white', color: '#333333', border: '1px solid #ccc', padding: '2px 8px', borderRadius: 3, fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}
+                style={{ background: 'white', color: '#333333', border: '1px solid #ccc', padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}
               >
-                <Edit size={10} color="#333" /> Sửa
+                <Edit size={11} color="#333" /> Sửa
               </button>
             </div>
 
@@ -509,34 +556,38 @@ export default function NhanVienPage() {
               </div>
 
               {/* Thông tin nhân viên */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#212121' }}>{selectedStaff.name}</span>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: '#212121' }}>{selectedStaff.name}</span>
                   <span style={{
                     background: selectedStaff.statusBg,
                     color: selectedStaff.statusColor,
-                    padding: '1px 6px',
+                    padding: '2px 7px',
                     borderRadius: 10,
-                    fontSize: 8,
+                    fontSize: 9,
                     fontWeight: 600
                   }}>
                     {selectedStaff.status}
                   </span>
                 </div>
-                <div style={{ fontSize: 8.5, color: '#616161' }}>Mã NV: <b style={{ color: '#333' }}>{selectedStaff.id}</b></div>
-                <div style={{ fontSize: 8.5, color: '#616161' }}>Chức vụ: <b style={{ color: '#333' }}>{selectedStaff.role}</b></div>
-                <div style={{ fontSize: 8.5, color: '#616161' }}>Phòng ban: <b style={{ color: '#333' }}>{selectedStaff.department}</b></div>
-                <div style={{ fontSize: 8.5, color: '#1976D2', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Phone size={9} /> {selectedStaff.phone}
+                <div style={{ fontSize: 9.5, color: '#616161' }}>Mã NV: <b style={{ color: '#333' }}>{selectedStaff.id}</b></div>
+                <div style={{ fontSize: 9.5, color: '#616161' }}>Chức vụ: <b style={{ color: '#333' }}>{selectedStaff.role}</b></div>
+                <div style={{ fontSize: 9.5, color: '#616161' }}>Phòng ban: <b style={{ color: '#333' }}>{selectedStaff.department}</b></div>
+                <div style={{ fontSize: 9.5, color: '#1976D2' }}>
+                  <a href={`tel:${selectedStaff.phone}`} style={{ color: '#1976D2', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                    <Phone size={11} /> {selectedStaff.phone}
+                  </a>
                 </div>
-                <div style={{ fontSize: 8.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Mail size={9} /> {selectedStaff.email}
+                <div style={{ fontSize: 9.5, color: '#616161' }}>
+                  <a href={`mailto:${selectedStaff.email}`} style={{ color: '#616161', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Mail size={11} /> {selectedStaff.email}
+                  </a>
                 </div>
-                <div style={{ fontSize: 8.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Calendar size={9} /> Ngày vào làm: <span style={{ color: '#333' }}>{selectedStaff.startDate}</span>
+                <div style={{ fontSize: 9.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={11} /> Ngày vào làm: <span style={{ color: '#333' }}>{selectedStaff.startDate}</span>
                 </div>
-                <div style={{ fontSize: 8.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <User size={9} /> Quản lý trực tiếp: <span style={{ color: '#333' }}>{selectedStaff.manager}</span>
+                <div style={{ fontSize: 9.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <User size={11} /> Quản lý trực tiếp: <span style={{ color: '#333' }}>{selectedStaff.manager}</span>
                 </div>
               </div>
 
@@ -548,16 +599,16 @@ export default function NhanVienPage() {
           </div>
 
           {/* Card 2: Chứng chỉ / Kỹ năng */}
-          <div className="card" style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 3 }}>
+          <div className={`card ${mobileTab !== 'detail' ? 'nv-mobile-hidden' : ''}`} style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#E65100', fontSize: 11 }}>🛡️</span>
-                <h3 style={{ fontSize: 10.5, fontWeight: 700, margin: 0, color: '#212121' }}>Chứng chỉ / Kỹ năng</h3>
+                <span style={{ color: '#E65100', fontSize: 12 }}>🛡️</span>
+                <h3 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Chứng chỉ / Kỹ năng</h3>
               </div>
-              <span style={{ fontSize: 9, color: '#E65100', cursor: 'pointer', fontWeight: 500 }}>Xem chi tiết</span>
+              <span style={{ fontSize: 9.5, color: '#E65100', cursor: 'pointer', fontWeight: 500 }}>Xem chi tiết</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2.5, fontSize: 8.5, color: '#424242', padding: '2px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 9.5, color: '#424242', padding: '2px 0' }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 <span>•</span>
                 <span>{selectedStaff.cert}</span>
@@ -574,17 +625,17 @@ export default function NhanVienPage() {
           </div>
 
           {/* Card 3: Lịch làm việc */}
-          <div className="card" style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 3 }}>
+          <div className={`card ${mobileTab !== 'detail' ? 'nv-mobile-hidden' : ''}`} style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E0E0', paddingBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#E65100', fontSize: 11 }}>📅</span>
-                <h3 style={{ fontSize: 10.5, fontWeight: 700, margin: 0, color: '#212121' }}>Lịch làm việc</h3>
+                <span style={{ color: '#E65100', fontSize: 12 }}>📅</span>
+                <h3 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Lịch làm việc</h3>
               </div>
-              <span style={{ fontSize: 9, color: '#E65100', cursor: 'pointer', fontWeight: 500 }}>Xem lịch</span>
+              <span style={{ fontSize: 9.5, color: '#E65100', cursor: 'pointer', fontWeight: 500 }}>Xem lịch</span>
             </div>
 
             {/* 7 Days of week */}
-            <div className="responsive-grid-7" style={{ gap: 3 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
               {[
                 { day: 'Thứ 2', date: '29/09', active: false },
                 { day: 'Thứ 3', date: '30/09', active: true },
@@ -599,56 +650,56 @@ export default function NhanVienPage() {
                   style={{
                     background: d.active ? '#E65100' : '#F5F5F5',
                     color: d.active ? 'white' : '#424242',
-                    padding: '3px 2px',
-                    borderRadius: 3,
+                    padding: '4px 2px',
+                    borderRadius: 4,
                     textAlign: 'center',
                     border: d.active ? 'none' : '1px solid #E0E0E0'
                   }}
                 >
-                  <div style={{ fontSize: 7.5, fontWeight: d.active ? 700 : 500 }}>{d.day}</div>
-                  <div style={{ fontSize: 7 }}>{d.date}</div>
+                  <div style={{ fontSize: 8.5, fontWeight: d.active ? 700 : 500 }}>{d.day}</div>
+                  <div style={{ fontSize: 8 }}>{d.date}</div>
                 </div>
               ))}
             </div>
 
             {/* Status & time */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
               <span style={{
                 background: selectedStaff.statusBg,
                 color: selectedStaff.statusColor,
-                padding: '1px 6px',
+                padding: '2px 8px',
                 borderRadius: 4,
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: 600
               }}>
                 {selectedStaff.status}
               </span>
-              <span style={{ fontSize: 8.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Clock size={10} /> {selectedStaff.workingTime}
+              <span style={{ fontSize: 9.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={11} /> {selectedStaff.workingTime}
               </span>
             </div>
           </div>
 
           {/* Card 4: Kỹ thuật viên theo chuyên môn */}
-          <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 120, overflow: 'hidden' }}>
-            <div style={{ padding: '4px 8px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <span style={{ color: '#E65100', fontSize: 11 }}>👨‍🔧</span>
-              <h3 style={{ fontSize: 10.5, fontWeight: 700, margin: 0, color: '#212121' }}>Kỹ thuật viên theo chuyên môn</h3>
+          <div className={`card ${mobileTab !== 'stats' ? 'nv-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 140, overflow: 'hidden' }}>
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <span style={{ color: '#E65100', fontSize: 12 }}>👨‍🔧</span>
+              <h3 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Kỹ thuật viên theo chuyên môn</h3>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              <table style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
+              <table style={{ margin: 0, width: '100%', fontSize: 10, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
                     <th style={{ ...tableHeaderThStyle }}>Chuyên môn</th>
-                    <th style={{ ...tableHeaderThStyle, width: 80, textAlign: 'center' }}>Số lượng</th>
+                    <th style={{ ...tableHeaderThStyle, width: 85, textAlign: 'center' }}>Số lượng</th>
                   </tr>
                 </thead>
                 <tbody>
                   {specialtyStats.map((row, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F0F0F0' }}>
-                      <td style={{ padding: '3px 8px', color: '#333' }}>{row.spec}</td>
-                      <td style={{ padding: '3px 8px', textAlign: 'center', fontWeight: 700, color: row.count > 0 ? '#E65100' : '#9E9E9E' }}>
+                      <td style={{ padding: '5px 10px', color: '#333' }}>{row.spec}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'center', fontWeight: 700, color: row.count > 0 ? '#E65100' : '#9E9E9E' }}>
                         {row.count}
                       </td>
                     </tr>

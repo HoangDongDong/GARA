@@ -1,0 +1,404 @@
+/* ============================================
+   NHÂN VIÊN / KỸ THUẬT VIÊN - RESPONSIVE STYLES
+   ============================================ */
+
+.nv-page-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Header & Actions */
+.nv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nv-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.nv-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nv-btn-add {
+  background: #E65100;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.nv-btn-add:hover {
+  background: #D84315;
+}
+
+.nv-btn-outline {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #475569;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.nv-btn-outline:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+  color: #1E293B;
+}
+
+.nv-actions-row-mobile {
+  display: contents;
+}
+
+/* Filter Bar */
+.nv-filter-bar {
+  background: #FFFFFF;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.nv-filter-row-1,
+.nv-filter-row-2,
+.nv-filter-row-3 {
+  display: contents;
+}
+
+.nv-search-box {
+  flex: 2;
+  min-width: 200px;
+}
+
+.nv-search-input {
+  width: 100%;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.nv-search-input:focus {
+  border-color: #E65100;
+}
+
+.nv-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.nv-filter-label {
+  font-size: 10.5px;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.nv-filter-select {
+  padding: 6px 8px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  background: #FFFFFF;
+}
+
+.nv-filter-select:focus {
+  border-color: #E65100;
+}
+
+/* Mobile Tabs Control */
+.nv-mobile-tabs {
+  display: none;
+}
+
+/* Main 2-Column Grid */
+.nv-main-grid {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.nv-left-col {
+  flex: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nv-right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* Responsive Table Wrapper */
+.nv-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nv-table-staff {
+  margin: 0;
+  width: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.nv-table-staff th {
+  background: #E65100;
+  color: #FFFFFF;
+  padding: 7px 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nv-table-staff td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #F1F5F9;
+  vertical-align: middle;
+}
+
+/* Pagination Bar */
+.nv-pagination-bar {
+  padding: 6px 12px;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: #475569;
+  background: #F8FAFC;
+  flex-shrink: 0;
+}
+
+.nv-pagination-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #334155;
+  transition: all 0.15s;
+}
+
+.nv-pagination-btn.active {
+  background: #E65100;
+  border-color: #E65100;
+  color: #FFFFFF;
+}
+
+/* Mobile Back Button */
+.nv-mobile-back-btn {
+  display: none;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE BREAKPOINT (< 768px)
+   ============================================ */
+@media (max-width: 768px) {
+  .nv-page-container {
+    height: auto !important;
+    overflow-y: visible !important;
+    padding-bottom: 90px !important;
+  }
+
+  /* Header */
+  .nv-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .nv-actions-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .nv-btn-add {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .nv-actions-row-mobile {
+    display: flex;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .nv-actions-row-mobile .nv-btn-outline {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+
+  /* Filter Bar Mobile */
+  .nv-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .nv-filter-row-1 {
+    display: block;
+    width: 100%;
+  }
+
+  .nv-filter-row-1 .nv-search-box {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .nv-filter-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nv-filter-row-3 {
+    display: block;
+    width: 100%;
+  }
+
+  .nv-filter-row-3 .nv-filter-item {
+    width: 100%;
+  }
+
+  /* Mobile Tabs Control */
+  .nv-mobile-tabs {
+    display: flex;
+    gap: 4px;
+    background: #FFF3E0;
+    padding: 4px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #FFE0B2;
+  }
+
+  .nv-mobile-tab-btn {
+    flex: 1;
+    padding: 7px 4px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #8D6E63;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .nv-mobile-tab-btn.active {
+    background: #E65100;
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(230, 81, 0, 0.28);
+  }
+
+  /* Main Grid Stack */
+  .nv-main-grid {
+    flex-direction: column;
+    gap: 12px;
+    height: auto !important;
+  }
+
+  .nv-left-col,
+  .nv-right-col {
+    width: 100%;
+    flex: none;
+    overflow-y: visible !important;
+    height: auto !important;
+  }
+
+  /* Tab Visibility on Mobile */
+  .nv-mobile-hidden {
+    display: none !important;
+  }
+
+  /* Mobile Back Button */
+  .nv-mobile-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: #475569;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Bottom stats row on mobile */
+  .nv-bottom-stats-row {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 10px !important;
+  }
+}
