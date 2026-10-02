@@ -929,15 +929,6 @@ export default function NhapKhoPage() {
                 <FileSpreadsheet size={15} color="#E65100" />
                 Xuất Excel
               </button>
-
-              <button
-                type="button"
-                className="nk-btn-orange-outline"
-                onClick={() => showToast('Đang mở chức năng chia kho chi tiết...')}
-              >
-                <GitFork size={15} color="#E65100" />
-                Chia kho
-              </button>
             </div>
 
             {/* Trên Mobile: Hiển thị đầy đủ các nút tác vụ ở trên phiếu */}
@@ -1010,15 +1001,6 @@ export default function NhapKhoPage() {
                 >
                   <FileSpreadsheet size={14} color="#E65100" />
                   Xuất Excel
-                </button>
-
-                <button
-                  type="button"
-                  className="nk-btn-orange-outline"
-                  onClick={() => showToast('Đang mở chức năng chia kho chi tiết...')}
-                >
-                  <GitFork size={14} color="#E65100" />
-                  Chia kho
                 </button>
               </div>
 
