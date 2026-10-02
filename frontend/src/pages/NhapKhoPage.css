@@ -1,0 +1,215 @@
+/* ===== NHAP KHO PAGE RESPONSIVE STYLES ===== */
+
+.nk-form-row-2 {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: clamp(8px, 1.2vw, 16px);
+  align-items: center;
+}
+
+.nk-form-row-2-short {
+  display: grid;
+  grid-template-columns: 342px 1fr;
+  gap: clamp(6px, 1vw, 12px);
+  align-items: center;
+}
+
+.nk-top-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  align-items: center;
+}
+
+.nk-catalog-card {
+  flex: 0 0 35%;
+  background: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #E0E0E0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.nk-details-card {
+  flex: 1;
+  min-width: 0;
+  background: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #E0E0E0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.nk-quick-input-bar {
+  padding: 6px 8px;
+  border-bottom: 1px solid #E0E0E0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #F8FAFC;
+}
+
+.nk-quick-input-search {
+  position: relative;
+  flex: 1;
+}
+
+.nk-quick-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nk-footer-bar {
+  flex-shrink: 0;
+  height: clamp(34px, 4.4vh, 42px);
+  background: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #E0E0E0;
+  padding: 0 clamp(8px, 1vw, 14px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.nk-footer-left {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.nk-footer-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ===== TỐI ƯU GIAO DIỆN NHẬP KHO TRÊN MOBILE (<= 768px) ===== */
+@media (max-width: 768px) {
+  /* Các hàng form chia 1 cột trên mobile */
+  .nk-form-row-2,
+  .nk-form-row-2-short {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Nút thao tác nhanh trên đầu trượt ngang mượt mà */
+  .nk-top-actions {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+    width: 100% !important;
+  }
+
+  .nk-top-actions::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .nk-top-actions button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 30px !important;
+  }
+
+  /* 2 bảng danh mục và bảng chi tiết hàng nhập */
+  .nk-catalog-card,
+  .nk-details-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+
+  .nk-catalog-card .table-responsive {
+    max-height: 220px !important;
+    overflow-y: auto !important;
+  }
+
+  .nk-details-card .table-responsive {
+    max-height: 260px !important;
+    overflow-y: auto !important;
+  }
+
+  /* Thanh thêm nhanh mặt hàng trên mobile xếp gọn gàng */
+  .nk-quick-input-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .nk-quick-input-search {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  .nk-quick-input-search input {
+    height: 32px !important;
+  }
+
+  .nk-quick-controls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .nk-quick-controls input[type="number"] {
+    height: 30px !important;
+  }
+
+  .nk-quick-controls button {
+    height: 30px !important;
+    padding: 0 10px !important;
+  }
+
+  /* Thanh công cụ chân trang trên mobile: 2 hàng nút trượt ngang êm ái, không nhảy lung tung */
+  .nk-footer-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: auto !important;
+    padding: 8px !important;
+    margin-top: 8px !important;
+    gap: 8px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .nk-footer-left,
+  .nk-footer-right {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+    width: 100% !important;
+  }
+
+  .nk-footer-left::-webkit-scrollbar,
+  .nk-footer-right::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .nk-footer-bar button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 32px !important;
+    font-size: 11.5px !important;
+    padding: 0 10px !important;
+  }
+}

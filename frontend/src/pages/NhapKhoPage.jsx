@@ -6,6 +6,7 @@ import {
   Building2, Hash, UserCheck, AlertCircle, FileText
 } from 'lucide-react';
 import { employees, inventoryReceipts, masterData, parts, suppliers as supplierApi } from '../services';
+import './NhapKhoPage.css';
 
 const EMPTY_PART_FORM = {
   NAME: '', CODE: '', BARCODE: '', MAOEM: '',
@@ -773,7 +774,7 @@ export default function NhapKhoPage() {
           </div>
 
           {/* Hàng 2: Nhà cung cấp * (+), Diễn giải */}
-          <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 'clamp(8px, 1.2vw, 16px)', alignItems: 'center' }}>
+          <div className="nk-form-row-2" style={{ alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <label style={{ flexShrink: 0, color: '#333', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 Nhà cung cấp <span style={{ color: '#E53935' }}>*</span>
@@ -852,7 +853,7 @@ export default function NhapKhoPage() {
           </div>
 
           {/* Hàng 3: Kho nhập *, Ghi chú */}
-          <div style={{ display: 'grid', gridTemplateColumns: '342px 1fr', gap: 'clamp(6px, 1vw, 12px)', alignItems: 'center' }}>
+          <div className="nk-form-row-2-short" style={{ alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <label style={{ width: 95, flexShrink: 0, color: '#333', fontWeight: 500 }}>
                 Kho nhập <span style={{ color: '#E53935' }}>*</span>
@@ -901,7 +902,7 @@ export default function NhapKhoPage() {
           </div>
 
           {/* Hàng 4: Các nút tác vụ nhanh */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 2, alignItems: 'center' }}>
+          <div className="nk-top-actions">
             <button
               type="button"
               onClick={async () => {
@@ -1141,16 +1142,7 @@ export default function NhapKhoPage() {
           gap: 'clamp(6px, 0.8vw, 10px)'
         }}>
           {/* Bảng trái: Danh mục tra cứu nhanh */}
-          <div style={{
-            flex: '0 0 35%',
-            background: '#FFFFFF',
-            borderRadius: 6,
-            border: '1px solid #E0E0E0',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-          }}>
+          <div className="nk-catalog-card">
             {/* Thanh tìm kiếm danh mục */}
             <div style={{
               padding: '6px 8px',
@@ -1229,28 +1221,11 @@ export default function NhapKhoPage() {
           </div>
 
           {/* Bảng phải: Chi tiết các mặt hàng trong phiếu nhập */}
-          <div style={{
-            flex: 1,
-            minWidth: 0,
-            background: '#FFFFFF',
-            borderRadius: 6,
-            border: '1px solid #E0E0E0',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-          }}>
+          <div className="nk-details-card">
             {/* Thanh thao tác thêm nhanh dòng sản phẩm */}
-            <div style={{
-              padding: '6px 8px',
-              borderBottom: '1px solid #E0E0E0',
-              display: 'flex',
-              gap: 8,
-              alignItems: 'center',
-              background: '#F8FAFC'
-            }}>
+            <div className="nk-quick-input-bar">
               {/* Input tìm mã/tên hàng */}
-              <div style={{ position: 'relative', flex: 1 }}>
+              <div className="nk-quick-input-search">
                 <input
                   type="text"
                   value={quickInput.search}
@@ -1277,96 +1252,98 @@ export default function NhapKhoPage() {
                 />
               </div>
 
-              {/* Số lượng */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#475569', whiteSpace: 'nowrap' }}>Số lượng <span style={{ color: '#E53935' }}>*</span></span>
-                <input
-                  type="number"
-                  min="1"
-                  value={quickInput.qty}
-                  onChange={(e) => setQuickInput({ ...quickInput, qty: e.target.value })}
+              <div className="nk-quick-controls">
+                {/* Số lượng */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: '#475569', whiteSpace: 'nowrap' }}>Số lượng <span style={{ color: '#E53935' }}>*</span></span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={quickInput.qty}
+                    onChange={(e) => setQuickInput({ ...quickInput, qty: e.target.value })}
+                    style={{
+                      width: 55,
+                      height: 'clamp(24px, 3vh, 28px)',
+                      padding: '0 6px',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: 4,
+                      textAlign: 'center',
+                      fontSize: 'inherit',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Đơn giá nhập */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: '#475569', whiteSpace: 'nowrap' }}>Đơn giá <span style={{ color: '#E53935' }}>*</span></span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    value={quickInput.price}
+                    onChange={(e) => setQuickInput({ ...quickInput, price: e.target.value })}
+                    style={{
+                      width: 95,
+                      height: 'clamp(24px, 3vh, 28px)',
+                      padding: '0 6px',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: 4,
+                      textAlign: 'right',
+                      fontSize: 'inherit',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Nút + Thêm */}
+                <button
+                  type="button"
+                  onClick={handleAddQuickItem}
                   style={{
-                    width: 55,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                     height: 'clamp(24px, 3vh, 28px)',
-                    padding: '0 6px',
-                    border: '1px solid #CBD5E1',
+                    padding: '0 12px',
+                    background: '#E65100',
+                    color: '#fff',
+                    border: 'none',
                     borderRadius: 4,
-                    textAlign: 'center',
+                    fontWeight: 600,
                     fontSize: 'inherit',
-                    outline: 'none'
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }}
-                />
-              </div>
+                >
+                  <Plus size={14} />
+                  Thêm
+                </button>
 
-              {/* Đơn giá nhập */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#475569', whiteSpace: 'nowrap' }}>Đơn giá nhập <span style={{ color: '#E53935' }}>*</span></span>
-                <input
-                  type="number"
-                  min="0"
-                  step="5000"
-                  value={quickInput.price}
-                  onChange={(e) => setQuickInput({ ...quickInput, price: e.target.value })}
+                {/* Nút Mở mặt hàng NCC */}
+                <button
+                  type="button"
+                  onClick={openAddPartForm}
                   style={{
-                    width: 95,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                     height: 'clamp(24px, 3vh, 28px)',
-                    padding: '0 6px',
-                    border: '1px solid #CBD5E1',
+                    padding: '0 10px',
+                    background: '#FFFFFF',
+                    color: '#E65100',
+                    border: '1px solid #E65100',
                     borderRadius: 4,
-                    textAlign: 'right',
+                    fontWeight: 500,
                     fontSize: 'inherit',
-                    outline: 'none'
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }}
-                />
+                >
+                  <Truck size={14} />
+                  Mặt hàng NCC
+                </button>
               </div>
-
-              {/* Nút + Thêm */}
-              <button
-                type="button"
-                onClick={handleAddQuickItem}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  height: 'clamp(24px, 3vh, 28px)',
-                  padding: '0 12px',
-                  background: '#E65100',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  fontWeight: 600,
-                  fontSize: 'inherit',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                <Plus size={14} />
-                Thêm
-              </button>
-
-              {/* Nút Mở mặt hàng NCC */}
-              <button
-                type="button"
-                onClick={openAddPartForm}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  height: 'clamp(24px, 3vh, 28px)',
-                  padding: '0 10px',
-                  background: '#FFFFFF',
-                  color: '#E65100',
-                  border: '1px solid #E65100',
-                  borderRadius: 4,
-                  fontWeight: 500,
-                  fontSize: 'inherit',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                <Truck size={14} />
-                Mở mặt hàng NCC
-              </button>
             </div>
 
             {/* Bảng chi tiết */}
@@ -1460,20 +1437,9 @@ export default function NhapKhoPage() {
       </div>
 
       {/* Thanh công cụ chân trang (Action Footer Bar) */}
-      <div style={{
-        flexShrink: 0,
-        height: 'clamp(34px, 4.4vh, 42px)',
-        background: '#FFFFFF',
-        borderRadius: 6,
-        border: '1px solid #E0E0E0',
-        padding: '0 clamp(8px, 1vw, 14px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-      }}>
+      <div className="nk-footer-bar">
         {/* Cụm nút bên trái */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="nk-footer-left">
           <button
             type="button"
             onClick={async () => {
@@ -1568,26 +1534,27 @@ export default function NhapKhoPage() {
         </div>
 
         {/* Cụm nút bên phải */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="nk-footer-right">
           <button
             type="button"
-            onClick={cancelReceipt}
+            onClick={() => setShowPaymentModal(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '0 10px',
+              padding: '0 12px',
               height: 'clamp(26px, 3.2vh, 30px)',
-              background: '#FFFFFF',
-              color: '#DC2626',
-              border: '1px solid #FCA5A5',
+              background: '#E65100',
+              color: '#FFFFFF',
+              border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
+              fontWeight: 600,
               fontSize: 'inherit'
             }}
           >
-            <Ban size={13} />
-            Hủy phiếu
+            <CreditCard size={14} />
+            Thanh toán (F12)
           </button>
 
           <button
@@ -1637,24 +1604,23 @@ export default function NhapKhoPage() {
 
           <button
             type="button"
-            onClick={() => setShowPaymentModal(true)}
+            onClick={cancelReceipt}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '0 12px',
+              padding: '0 10px',
               height: 'clamp(26px, 3.2vh, 30px)',
-              background: '#E65100',
-              color: '#FFFFFF',
-              border: 'none',
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1px solid #FCA5A5',
               borderRadius: 4,
               cursor: 'pointer',
-              fontWeight: 600,
               fontSize: 'inherit'
             }}
           >
-            <CreditCard size={14} />
-            Thanh toán (F12)
+            <Ban size={13} />
+            Hủy phiếu
           </button>
 
           <button
