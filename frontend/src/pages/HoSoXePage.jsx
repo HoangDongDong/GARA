@@ -443,42 +443,6 @@ const VEHICLES_DATABASE = [
   }
 ];
 
-// Danh sách 7 ảnh xe chuẩn theo mockup giao diện
-const DEFAULT_VEHICLE_GALLERY = [
-  { id: 1, label: 'Toàn xe', url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80' },
-  { id: 2, label: 'Biển số', url: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=300&auto=format&fit=crop&q=80' },
-  { id: 3, label: 'Số khung', url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&auto=format&fit=crop&q=80' },
-  { id: 4, label: 'Số máy', url: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=300&auto=format&fit=crop&q=80' },
-  { id: 5, label: 'Trầy xước hàng', url: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=300&auto=format&fit=crop&q=80' },
-  { id: 6, label: 'Trầy xước / Hư hỏng', url: 'https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80' },
-  { id: 7, label: 'Trước - Sau sửa chữa', url: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=300&auto=format&fit=crop&q=80' },
-];
-
-// Lịch hẹn & nhắc việc chuẩn theo mockup
-const DEFAULT_APPOINTMENTS = [
-  { id: 1, date: '02/10/2025', service: 'Bảo dưỡng định kỳ', content: 'Kiểm tra tổng thể', status: 'Chờ xử lý', statusColor: '#E65100', statusBg: '#FFF3E0' },
-  { id: 2, date: '15/10/2025', service: 'Thay dầu', content: 'Thay dầu máy + lọc dầu', status: 'Đã xác nhận', statusColor: '#2E7D32', statusBg: '#E8F5E9' },
-  { id: 3, date: '30/10/2025', service: 'Kiểm tra phanh', content: 'Kiểm tra má phanh', status: 'Chưa đến', statusColor: '#0288D1', statusBg: '#E1F5FE' },
-];
-
-// Ghi chú chuẩn theo mockup
-const DEFAULT_NOTES = [
-  {
-    id: 1,
-    author: 'admin',
-    date: '30/09/2025 14:20',
-    avatarBg: '#E65100',
-    content: 'Xe đang hoạt động tốt, lần bảo dưỡng gần nhất ngày 15/09/2025.'
-  },
-  {
-    id: 2,
-    author: 'Kỹ thuật viên',
-    date: '25/09/2025 10:15',
-    avatarBg: '#C62828',
-    content: 'Cần kiểm tra lại hệ thống phanh sau 60.000km.'
-  }
-];
-
 const EMPTY_VEHICLE_PROFILE = {
   id: '', plate: '—', modelName: 'CHƯA CÓ HỒ SƠ XE', brand: '—', model: '—', variant: '—',
   year: '—', color: '—', fuel: '—', vin: '—', engine: '—', odo: '0 km',
@@ -486,7 +450,7 @@ const EMPTY_VEHICLE_PROFILE = {
   owner: { name: '—', phone: '—', email: '—', address: '—', note: '' },
   company: { name: '—', taxCode: '—', address: '—', phone: '—', contact: '—' },
   ownerHistory: [], avatar: '/parts/loc_dau_toyota.jpg', thumbnails: [],
-  repairs: [], replacedParts: [], warranties: [], media: [], notes: [],
+  repairs: [], replacedParts: [], warranties: [], appointments: [], media: [], notes: [],
 };
 
 const EMPTY_VEHICLE_FORM = {
@@ -540,7 +504,7 @@ const mapVehicleSummary = (row) => ({
   year: row.NAMSANXUAT || '—', color: row.MAUXE || '—', fuel: row.NHIENLIEU || '—',
   vin: row.SOKHUNG || '—', engine: row.SOMAY || '—', odo: `${Number(row.ODO || 0).toLocaleString('vi-VN')} km`,
   owner: { name: row.TEN_KH || '—', phone: row.DIENTHOAI || '—', email: '—', address: '—', note: '' },
-  avatar: '/parts/loc_dau_toyota.jpg', thumbnails: [],
+  avatar: Number(row.CO_ANHXE) === 1 ? vehicles.imageUrl(row.ID) : '/parts/loc_dau_toyota.jpg', thumbnails: [],
 });
 
 const mapVehicleProfile = (data) => {
@@ -601,6 +565,20 @@ const mapVehicleProfile = (data) => {
       daysLeft: days == null ? '—' : days >= 0 ? `Còn ${days} ngày` : 'Hết BH', supplier: 'KAZUKO AUTO', note: item.NOTE || '',
     };
   });
+  const appointments = (data?.appointments || []).map((item) => {
+    const dueDate = item.NGAY_DUKIEN ? new Date(item.NGAY_DUKIEN) : null;
+    const days = dueDate && !Number.isNaN(dueDate.getTime()) ? Math.ceil((dueDate - new Date()) / 86400000) : null;
+    const status = days == null ? 'Chưa xác định' : days < 0 ? 'Đến hạn' : days <= 7 ? 'Sắp đến' : 'Chưa đến';
+    return {
+      id: item.ID,
+      date: formatProfileDate(item.NGAY_DUKIEN),
+      service: item.LOAIBAODUONG || item.NAME || 'Bảo dưỡng',
+      content: item.NOTE || (item.ODO_DUKIEN ? `Dự kiến ${Number(item.ODO_DUKIEN).toLocaleString('vi-VN')} km` : 'Nhắc lịch bảo dưỡng'),
+      status,
+      statusColor: status === 'Đến hạn' ? '#C62828' : status === 'Sắp đến' ? '#E65100' : '#0288D1',
+      statusBg: status === 'Đến hạn' ? '#FFEBEE' : status === 'Sắp đến' ? '#FFF3E0' : '#E1F5FE',
+    };
+  });
   const receptionMedia = (data?.media || []).map((item) => ({
     id: item.ID, title: item.MOTA || 'Hình ảnh tiếp nhận xe',
     category: Number(item.LOAIHINH) === 2 ? 'sau' : Number(item.LOAIHINH) === 1 ? 'trong' : 'truoc',
@@ -633,7 +611,7 @@ const mapVehicleProfile = (data) => {
     owner: { name: row.TEN_KH || '—', phone: row.DIENTHOAI || '—', email: row.EMAIL || '—', address: row.DIACHI || '—', note: row.GHICHU_KH || row.NHOM_KH || '' },
     company: { name: row.NHOM_KH || row.TEN_KH || '—', taxCode: row.MASOTHUE || '—', address: row.DIACHI || '—', phone: row.DIENTHOAI || '—', contact: row.TEN_KH || '—' },
     ownerHistory: row.TEN_KH ? [{ period: `${row.NAMSANXUAT || '—'} - Hiện tại`, name: `${row.TEN_KH} (Chủ hiện tại)`, active: true }] : [],
-    repairs, replacedParts, warranties, media, notes: noteList,
+    repairs, replacedParts, warranties, appointments, media, notes: noteList,
   };
 };
 
@@ -643,10 +621,10 @@ export default function HoSoXePage() {
       const params = new URLSearchParams(window.location.search);
       return params.get('plate') || '';
     } catch (e) {}
-    return '51A-123.45';
+    return '';
   });
   const [vehicleList, setVehicleList] = useState([]);
-  const [currentVehicle, setCurrentVehicle] = useState(VEHICLES_DATABASE[0]);
+  const [currentVehicle, setCurrentVehicle] = useState(EMPTY_VEHICLE_PROFILE);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState('thong-tin-chung');
   const [copiedCode, setCopiedCode] = useState('');
@@ -677,6 +655,20 @@ export default function HoSoXePage() {
   const searchBoxRef = useRef(null);
 
   const currentNotes = vehicleNotes[currentVehicle.plate] || currentVehicle.notes || [];
+  const sideVehicleGallery = [
+    ...(currentVehicle.id ? [{
+      id: `vehicle-${currentVehicle.id}`,
+      title: 'Ảnh hồ sơ xe',
+      label: 'Ảnh hồ sơ',
+      url: currentVehicle.avatar,
+      date: '',
+      odo: currentVehicle.odo,
+    }] : []),
+    ...currentVehicle.media.map((item) => ({
+      ...item,
+      label: item.category === 'truoc' ? 'Trước sửa chữa' : item.category === 'trong' ? 'Đang sửa chữa' : 'Sau hoàn thiện',
+    })),
+  ].slice(0, 7);
   const mediaRepairGroups = currentVehicle.repairs.map((repair) => {
     const allMedia = currentVehicle.media.filter((item) => item.repairId === repair.id);
     const media = allMedia.filter((item) => mediaFilter === 'all' || item.category === mediaFilter);
@@ -731,13 +723,13 @@ export default function HoSoXePage() {
         setVehicleBrands(Array.isArray(meta?.brands) ? meta.brands : []);
         setVehicleModels(Array.isArray(meta?.models) ? meta.models : []);
         setCustomerOptions(Array.isArray(customerRows) ? customerRows : []);
-        const requestedPlate = (selectedPlate || '51A-123.45').toLowerCase();
-        const selected = mapped.find((vehicle) => vehicle.plate.toLowerCase() === requestedPlate);
+        const requestedPlate = selectedPlate.toLowerCase();
+        const selected = mapped.find((vehicle) => vehicle.plate.toLowerCase() === requestedPlate) || mapped[0];
         if (selected) {
           await loadVehicleProfile(selected);
         } else {
-          setCurrentVehicle(VEHICLES_DATABASE[0]);
-          setSelectedPlate(VEHICLES_DATABASE[0].plate);
+          setCurrentVehicle(EMPTY_VEHICLE_PROFILE);
+          setSelectedPlate('');
         }
       } catch (error) {
         showToast(error?.response?.data?.error || error.message || 'Không thể tải danh sách xe.');
@@ -2360,22 +2352,21 @@ export default function HoSoXePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { date: '02/10/2025', type: 'Bảo dưỡng', note: 'Kiểm tra tổng thể sau 5.000km', status: 'Chờ xử lý', color: '#E65100', bg: '#FFF3E0' },
-                        { date: '15/10/2025', type: 'Thay dầu', note: 'Dầu máy Castrol + lọc dầu', status: 'Đã xác nhận', color: '#2E7D32', bg: '#E8F5E9' },
-                        { date: '30/10/2025', type: 'Phanh', note: 'Kiểm tra độ mòn má phanh sau', status: 'Chưa đến', color: '#1565C0', bg: '#E3F2FD' }
-                      ].map((it, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      {currentVehicle.appointments.map((it) => (
+                        <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '5px 6px', color: '#334155' }}>{it.date}</td>
-                          <td style={{ padding: '5px 6px', fontWeight: 600 }}>{it.type}</td>
-                          <td style={{ padding: '5px 6px', color: '#64748B' }}>{it.note}</td>
+                          <td style={{ padding: '5px 6px', fontWeight: 600 }}>{it.service}</td>
+                          <td style={{ padding: '5px 6px', color: '#64748B' }}>{it.content}</td>
                           <td style={{ padding: '5px 6px', textAlign: 'center' }}>
-                            <span style={{ background: it.bg, color: it.color, padding: '2px 6px', borderRadius: 8, fontSize: '9.5px', fontWeight: 600 }}>
+                            <span style={{ background: it.statusBg, color: it.statusColor, padding: '2px 6px', borderRadius: 8, fontSize: '9.5px', fontWeight: 600 }}>
                               {it.status}
                             </span>
                           </td>
                         </tr>
                       ))}
+                      {!currentVehicle.appointments.length && (
+                        <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#94A3B8' }}>Chưa có lịch hẹn hoặc nhắc việc cho xe này.</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -2477,34 +2468,32 @@ export default function HoSoXePage() {
               </div>
               <div className="hsx-side-gallery">
                 <div className="hsx-gallery-row-top">
-                  {DEFAULT_VEHICLE_GALLERY.slice(0, 3).map((img) => (
+                  {sideVehicleGallery.slice(0, 3).map((img) => (
                     <div
                       key={img.id}
                       className="hsx-gallery-thumb"
-                      onClick={() => setPreviewImage(img.url)}
+                      onClick={() => setPreviewImage(img)}
                       style={{ cursor: 'pointer' }}
                     >
                       <img
                         src={img.url}
                         alt={img.label}
-                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80'; }}
                       />
                       <span>{img.label}</span>
                     </div>
                   ))}
                 </div>
                 <div className="hsx-gallery-row-bottom">
-                  {DEFAULT_VEHICLE_GALLERY.slice(3, 7).map((img) => (
+                  {sideVehicleGallery.slice(3, 7).map((img) => (
                     <div
                       key={img.id}
                       className="hsx-gallery-thumb"
-                      onClick={() => setPreviewImage(img.url)}
+                      onClick={() => setPreviewImage(img)}
                       style={{ cursor: 'pointer' }}
                     >
                       <img
                         src={img.url}
                         alt={img.label}
-                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&auto=format&fit=crop&q=80'; }}
                       />
                       <span>{img.label}</span>
                     </div>
@@ -2539,7 +2528,7 @@ export default function HoSoXePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DEFAULT_APPOINTMENTS.map((item) => (
+                    {currentVehicle.appointments.map((item) => (
                       <tr key={item.id}>
                         <td style={{ color: '#334155' }}>{item.date}</td>
                         <td style={{ fontWeight: 600, color: '#1E293B' }}>{item.service}</td>
@@ -2559,6 +2548,11 @@ export default function HoSoXePage() {
                         </td>
                       </tr>
                     ))}
+                    {!currentVehicle.appointments.length && (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '12px 8px', textAlign: 'center', color: '#94A3B8' }}>Xe này chưa có lịch hẹn hoặc nhắc việc.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2580,14 +2574,14 @@ export default function HoSoXePage() {
                 </button>
               </div>
               <div className="hsx-side-notes-list">
-                {DEFAULT_NOTES.map((n) => (
+                {currentNotes.slice(0, 3).map((n) => (
                   <div key={n.id} className="hsx-side-note-item">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <div style={{
                         width: 16,
                         height: 16,
                         borderRadius: '50%',
-                        background: n.avatarBg,
+                        background: n.priority === 'urgent' ? '#C62828' : n.priority === 'warning' ? '#E65100' : '#1565C0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -2605,6 +2599,9 @@ export default function HoSoXePage() {
                     </div>
                   </div>
                 ))}
+                {!currentNotes.length && (
+                  <div style={{ padding: '14px 8px', textAlign: 'center', color: '#94A3B8', fontSize: '10.5px' }}>Xe này chưa có ghi chú.</div>
+                )}
               </div>
             </div>
 

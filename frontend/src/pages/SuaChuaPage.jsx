@@ -8,6 +8,7 @@ import {
 import { customers, employees, invoices, masterData, parts as partsApi, repairOrders, vehicles, workflow } from '../services';
 import VehicleProfileModal from '../components/VehicleProfileModal';
 import EmployeeFormModal from '../components/EmployeeFormModal';
+import './SuaChuaPage.css';
 
 const MAX_WORKFLOW_IMAGES = 12;
 
@@ -1018,7 +1019,7 @@ export default function SuaChuaPage() {
   };
 
   return (
-    <div className="page-responsive-container" style={{
+    <div className="page-responsive-container suachua-page-container" style={{
       display: 'flex',
       flexDirection: 'column',
       width: '100%',
@@ -1343,14 +1344,14 @@ export default function SuaChuaPage() {
       </div>
 
       {/* Vùng thân trang: 2 cột (Trái ~71% Bảng kê, Phải ~29% Đã chọn & Ghi chú) */}
-      <div className="responsive-2col" style={{
+      <div className="responsive-2col suachua-main-split" style={{
         flex: 1,
         minHeight: 0,
         display: 'flex',
         gap: 'clamp(6px, 0.8vw, 10px)'
       }}>
         {/* CỘT TRÁI (~71%): Toolbar + Bảng danh sách dịch vụ */}
-        <div style={{
+        <div className="suachua-left-col" style={{
           flex: '1 1 71%',
           minWidth: 0,
           background: '#FFFFFF',
@@ -1563,7 +1564,7 @@ export default function SuaChuaPage() {
         </div>
 
         {/* CỘT PHẢI (~29%): Danh sách đã chọn + Ghi chú sửa chữa + Cụm nút hành động */}
-        <div style={{
+        <div className="suachua-right-col" style={{
           flex: '0 0 29%',
           minWidth: 0,
           display: 'flex',
@@ -1720,8 +1721,10 @@ export default function SuaChuaPage() {
             </div>
           </div>
 
-          {/* Ảnh được lưu riêng theo từng trạng thái của lượt sửa chữa */}
-          <div style={{ flex: '0 0 auto', background: '#fff', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          {/* Cụm cố định ở cuối trang trên mobile: Ảnh theo trạng thái + Nút hành động */}
+          <div className="suachua-bottom-action-panel">
+            {/* Ảnh được lưu riêng theo từng trạng thái của lượt sửa chữa */}
+            <div className="workflow-card" style={{ flex: '0 0 auto', background: '#fff', borderRadius: 6, border: '1px solid #E0E0E0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
             <div style={{ padding: '5px 8px', borderBottom: '1px solid #E2E8F0', background: '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#1E293B', fontSize: 11.5 }}>
                 <Images size={14} color="#E65100" /> Ảnh theo trạng thái
@@ -1749,7 +1752,7 @@ export default function SuaChuaPage() {
                 })}
               </div>
 
-              <div style={{ minHeight: 48, maxHeight: 100, overflowY: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div className="workflow-images-scroll" style={{ minHeight: 48, maxHeight: 100, overflowY: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
                 {visibleWorkflowImages.length === 0 ? (
                   <button type="button" onClick={() => workflowImageInputRef.current?.click()} style={{ width: '100%', height: 45, border: '1px dashed #CBD5E1', borderRadius: 5, background: '#F8FAFC', color: '#94A3B8', fontSize: 10.5, cursor: 'pointer' }}>
                     Chưa có ảnh ở bước {processLabels[selectedImageState]} · Bấm để thêm nhiều ảnh
@@ -1860,6 +1863,7 @@ export default function SuaChuaPage() {
               </button>
             </div>
           </div>
+          </div> {/* End suachua-bottom-action-panel */}
         </div>
       </div>
 
