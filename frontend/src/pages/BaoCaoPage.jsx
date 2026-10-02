@@ -3,8 +3,10 @@ import {
   FileText, Calendar, RotateCcw, Search, Car, DollarSign,
   Users, Wrench, Package, User, SlidersHorizontal, ArrowUpRight,
   TrendingUp, TrendingDown, Clock, Printer, FileSpreadsheet,
-  CheckCircle, ChevronRight, Eye, Download, Filter, HelpCircle, X
+  CheckCircle, ChevronRight, Eye, Download, Filter, HelpCircle, X,
+  BarChart3, Zap
 } from 'lucide-react';
+import './BaoCaoPage.css';
 
 export default function BaoCaoPage() {
   // Bộ lọc
@@ -14,6 +16,9 @@ export default function BaoCaoPage() {
   const [reportType, setReportType] = useState('all');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [activeCategory, setActiveCategory] = useState('tong-quan');
+
+  // Mobile navigation tab ('charts' | 'recent' | 'quick')
+  const [mobileTab, setMobileTab] = useState('charts');
 
   // Modal xem báo cáo
   const [selectedReport, setSelectedReport] = useState(null);
@@ -186,15 +191,7 @@ export default function BaoCaoPage() {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 'clamp(4px, 0.8vh, 10px)',
-      height: '100%',
-      width: '100%',
-      boxSizing: 'border-box',
-      overflow: 'hidden'
-    }}>
+    <div className="bc-page-container">
       {/* Toast thông báo */}
       {toastMessage && (
         <div style={{
@@ -218,155 +215,29 @@ export default function BaoCaoPage() {
         </div>
       )}
 
-      {/* Header & Thanh lọc kết hợp siêu gọn 1 dòng */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: 6,
-        padding: 'clamp(4px, 0.6vh, 8px) 12px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        flexShrink: 0
-      }}>
-        {/* Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <div style={{
-            width: 24,
-            height: 24,
-            borderRadius: 4,
-            background: '#E65100',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white'
-          }}>
-            <FileText size={14} />
-          </div>
-          <h1 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#212121' }}>
-            Báo cáo
-          </h1>
-        </div>
-
-        {/* Filter items on single row */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flex: 1,
-          justifyContent: 'flex-end',
-          flexWrap: 'nowrap'
-        }}>
-          {/* Từ ngày */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}>
-            <span style={{ color: '#616161' }}>Từ ngày</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type="text"
-                value="01/09/2025"
-                readOnly
-                style={{
-                  width: 82,
-                  padding: '3px 6px 3px 20px',
-                  borderRadius: 4,
-                  border: '1px solid #DEDEDE',
-                  fontSize: 11,
-                  background: 'white',
-                  color: '#333'
-                }}
-              />
-              <Calendar size={11} style={{ position: 'absolute', left: 5, color: '#757575', pointerEvents: 'none' }} />
+      {/* Header & Thanh lọc */}
+      <div className="bc-header-filter">
+        {/* Title row */}
+        <div className="bc-mobile-header-top">
+          <div className="bc-title-box">
+            <div style={{
+              width: 24,
+              height: 24,
+              borderRadius: 4,
+              background: '#E65100',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white'
+            }}>
+              <FileText size={14} />
             </div>
+            <h1 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#212121' }}>
+              Báo cáo
+            </h1>
           </div>
 
-          {/* Đến ngày */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}>
-            <span style={{ color: '#616161' }}>Đến ngày</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type="text"
-                value="30/09/2025"
-                readOnly
-                style={{
-                  width: 82,
-                  padding: '3px 6px 3px 20px',
-                  borderRadius: 4,
-                  border: '1px solid #DEDEDE',
-                  fontSize: 11,
-                  background: 'white',
-                  color: '#333'
-                }}
-              />
-              <Calendar size={11} style={{ position: 'absolute', left: 5, color: '#757575', pointerEvents: 'none' }} />
-            </div>
-          </div>
-
-          {/* Chi nhánh */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}>
-            <span style={{ color: '#616161' }}>Chi nhánh</span>
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              style={{
-                padding: '3px 6px',
-                borderRadius: 4,
-                border: '1px solid #DEDEDE',
-                fontSize: 11,
-                background: 'white',
-                color: '#333',
-                width: 75
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="cn1">Âu Cơ</option>
-              <option value="cn2">Bình Tân</option>
-            </select>
-          </div>
-
-          {/* Loại báo cáo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}>
-            <span style={{ color: '#616161' }}>Loại báo cáo</span>
-            <select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-              style={{
-                padding: '3px 6px',
-                borderRadius: 4,
-                border: '1px solid #DEDEDE',
-                fontSize: 11,
-                background: 'white',
-                color: '#333',
-                width: 80
-              }}
-            >
-              <option value="all">Tất cả</option>
-              <option value="doanhthu">Doanh thu</option>
-              <option value="xe">Xe & DV</option>
-            </select>
-          </div>
-
-          {/* Search box */}
-          <div style={{ position: 'relative', width: 140, flexShrink: 0 }}>
-            <input
-              type="text"
-              placeholder="Nhập tên báo cáo..."
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '3px 22px 3px 8px',
-                borderRadius: 4,
-                border: '1px solid #DEDEDE',
-                fontSize: 11,
-                background: 'white',
-                boxSizing: 'border-box'
-              }}
-            />
-            <Search size={12} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
-          </div>
-
-          {/* Nút Làm mới */}
+          {/* Nút Làm mới (Hiện bên phải title trên mobile) */}
           <button
             onClick={() => {
               setBranch('all');
@@ -393,83 +264,202 @@ export default function BaoCaoPage() {
             Làm mới
           </button>
         </div>
-      </div>
 
-      {/* Row 7 Danh mục Báo cáo (Tự thích ứng) */}
-      <div className="responsive-grid-7" style={{
-        flexShrink: 0
-      }}>
-        {categories.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = activeCategory === cat.id;
-          return (
-            <div
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              style={{
-                background: '#FFFFFF',
-                borderRadius: 6,
-                padding: 'clamp(4px, 0.6vh, 8px) 8px',
-                border: isActive ? '1.5px solid #E65100' : '1px solid #EEEEEE',
-                boxShadow: isActive ? '0 1px 4px rgba(230,81,0,0.15)' : '0 1px 2px rgba(0,0,0,0.03)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                transition: 'all 0.1s ease',
-                minHeight: 'clamp(36px, 5vh, 48px)',
-                boxSizing: 'border-box'
-              }}
-            >
-              <div style={{
-                width: 'clamp(22px, 3.2vh, 28px)',
-                height: 'clamp(22px, 3.2vh, 28px)',
-                borderRadius: 4,
-                background: '#E65100',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Icon size={14} />
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: isActive ? '#E65100' : '#212121',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  lineHeight: '1.2'
-                }}>
-                  {cat.title}
-                </div>
-                <div style={{
-                  fontSize: 9,
-                  color: '#757575',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  lineHeight: '1.2'
-                }}>
-                  {cat.subtitle}
-                </div>
+        {/* Filter items */}
+        <div className="bc-filter-group">
+          {/* Row 1 on mobile: Dates */}
+          <div className="bc-filter-row-dates">
+            {/* Từ ngày */}
+            <div className="bc-filter-item">
+              <span>Từ ngày</span>
+              <div className="bc-filter-item-input-wrap">
+                <input
+                  type="text"
+                  value="01/09/2025"
+                  readOnly
+                  style={{
+                    padding: '3px 6px 3px 20px',
+                    borderRadius: 4,
+                    border: '1px solid #DEDEDE',
+                    fontSize: 11,
+                    background: 'white',
+                    color: '#333'
+                  }}
+                />
+                <Calendar size={11} style={{ position: 'absolute', left: 6, color: '#757575', pointerEvents: 'none' }} />
               </div>
             </div>
-          );
-        })}
+
+            {/* Đến ngày */}
+            <div className="bc-filter-item">
+              <span>Đến ngày</span>
+              <div className="bc-filter-item-input-wrap">
+                <input
+                  type="text"
+                  value="30/09/2025"
+                  readOnly
+                  style={{
+                    padding: '3px 6px 3px 20px',
+                    borderRadius: 4,
+                    border: '1px solid #DEDEDE',
+                    fontSize: 11,
+                    background: 'white',
+                    color: '#333'
+                  }}
+                />
+                <Calendar size={11} style={{ position: 'absolute', left: 6, color: '#757575', pointerEvents: 'none' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2 on mobile: Selects */}
+          <div className="bc-filter-row-selects">
+            {/* Chi nhánh */}
+            <div className="bc-filter-item">
+              <span>Chi nhánh</span>
+              <select
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                style={{
+                  padding: '3px 6px',
+                  borderRadius: 4,
+                  border: '1px solid #DEDEDE',
+                  fontSize: 11,
+                  background: 'white',
+                  color: '#333'
+                }}
+              >
+                <option value="all">Tất cả</option>
+                <option value="cn1">Âu Cơ</option>
+                <option value="cn2">Bình Tân</option>
+              </select>
+            </div>
+
+            {/* Loại báo cáo */}
+            <div className="bc-filter-item">
+              <span>Loại báo cáo</span>
+              <select
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                style={{
+                  padding: '3px 6px',
+                  borderRadius: 4,
+                  border: '1px solid #DEDEDE',
+                  fontSize: 11,
+                  background: 'white',
+                  color: '#333'
+                }}
+              >
+                <option value="all">Tất cả</option>
+                <option value="doanhthu">Doanh thu</option>
+                <option value="xe">Xe & DV</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 3 on mobile: Search box */}
+          <div className="bc-search-box">
+            <input
+              type="text"
+              placeholder="Nhập tên báo cáo..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '3px 24px 3px 8px',
+                borderRadius: 4,
+                border: '1px solid #DEDEDE',
+                fontSize: 11,
+                background: 'white',
+                boxSizing: 'border-box'
+              }}
+            />
+            <Search size={12} style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', color: '#757575' }} />
+          </div>
+        </div>
       </div>
 
-      {/* Hàng 1 (3 Cột): Doanh thu theo tháng | Doanh thu theo dịch vụ | Top 5 khách hàng (flex: 1) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1.25fr 1fr 1fr',
-        gap: 'clamp(4px, 0.6vw, 8px)',
-        flex: 1,
-        minHeight: 0
-      }}>
+      {/* Row 7 Danh mục Báo cáo */}
+      <div className="bc-categories-wrap">
+        <div className="bc-categories-grid">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = activeCategory === cat.id;
+            return (
+              <div
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`bc-category-card ${isActive ? 'active' : ''}`}
+              >
+                <div style={{
+                  width: 'clamp(22px, 3.2vh, 28px)',
+                  height: 'clamp(22px, 3.2vh, 28px)',
+                  borderRadius: 4,
+                  background: '#E65100',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Icon size={14} />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: isActive ? '#E65100' : '#212121',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: '1.2'
+                  }}>
+                    {cat.title}
+                  </div>
+                  <div style={{
+                    fontSize: 9,
+                    color: '#757575',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: '1.2'
+                  }}>
+                    {cat.subtitle}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Thanh chuyển Tab trên Mobile */}
+      <div className="bc-mobile-tabs">
+        <button
+          className={`bc-mobile-tab-btn ${mobileTab === 'charts' ? 'active' : ''}`}
+          onClick={() => setMobileTab('charts')}
+        >
+          <BarChart3 size={13} />
+          Biểu đồ & Chỉ số
+        </button>
+        <button
+          className={`bc-mobile-tab-btn ${mobileTab === 'recent' ? 'active' : ''}`}
+          onClick={() => setMobileTab('recent')}
+        >
+          <FileText size={13} />
+          Báo cáo gần đây ({recentReports.length})
+        </button>
+        <button
+          className={`bc-mobile-tab-btn ${mobileTab === 'quick' ? 'active' : ''}`}
+          onClick={() => setMobileTab('quick')}
+        >
+          <Zap size={13} />
+          Thao tác nhanh
+        </button>
+      </div>
+
+      {/* Hàng 1 (3 Cột): Doanh thu theo tháng | Doanh thu theo dịch vụ | Top 5 khách hàng */}
+      <div className={`bc-row-1 ${mobileTab !== 'charts' ? 'bc-mobile-hidden' : ''}`}>
         {/* Cột 1: Doanh thu theo tháng */}
         <div style={{
           background: '#FFFFFF',
@@ -772,13 +762,7 @@ export default function BaoCaoPage() {
       </div>
 
       {/* Hàng 2 (3 Cột): Tình hình xe trong xưởng | Doanh thu - Chi phí - Lợi nhuận | Công nợ (flex: 1) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1.25fr 1fr',
-        gap: 'clamp(4px, 0.6vw, 8px)',
-        flex: 1,
-        minHeight: 0
-      }}>
+      <div className={`bc-row-2 ${mobileTab !== 'charts' ? 'bc-mobile-hidden' : ''}`}>
         {/* Cột 1: Tình hình xe trong xưởng */}
         <div style={{
           background: '#FFFFFF',
@@ -1107,25 +1091,11 @@ export default function BaoCaoPage() {
         </div>
       </div>
 
-      {/* Hàng 3 (2 Cột): Báo cáo gần đây (Trái) & Thao tác nhanh (Phải) (flex: 1.1) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '2.25fr 1fr',
-        gap: 'clamp(4px, 0.6vw, 8px)',
-        flex: 1.1,
-        minHeight: 0
-      }}>
+      {/* Hàng 3 (2 Cột): Báo cáo gần đây (Trái) & Thao tác nhanh (Phải) */}
+      <div className={`bc-row-3 ${(mobileTab !== 'recent' && mobileTab !== 'quick') ? 'bc-mobile-hidden' : ''}`}>
         {/* Cột Trái: Báo cáo gần đây */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          boxSizing: 'border-box'
+        <div className={`bc-card ${mobileTab !== 'recent' ? 'bc-mobile-hidden' : ''}`} style={{
+          overflow: 'hidden'
         }}>
           {/* Header */}
           <div style={{
@@ -1150,8 +1120,8 @@ export default function BaoCaoPage() {
             <span style={{ fontSize: 11.5, fontWeight: 700, color: '#212121' }}>Báo cáo gần đây</span>
           </div>
 
-          {/* Table */}
-          <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* Table Responsive */}
+          <div className="bc-table-responsive" style={{ overflowY: 'auto', flex: 1 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
               <thead>
                 <tr>
@@ -1224,18 +1194,7 @@ export default function BaoCaoPage() {
         </div>
 
         {/* Cột Phải: Thao tác nhanh */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
+        <div className={`bc-card ${mobileTab !== 'quick' ? 'bc-mobile-hidden' : ''}`}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{
@@ -1254,11 +1213,12 @@ export default function BaoCaoPage() {
           </div>
 
           {/* Quick buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(3px, 0.6vh, 8px)', flex: 1, justifyContent: 'space-around' }}>
+          <div className="bc-quick-actions-list" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(3px, 0.6vh, 8px)', flex: 1, justifyContent: 'space-around' }}>
             {/* Row 1: Xuất Excel | In báo cáo */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <button
                 onClick={() => showToast('Đang tải file Excel báo cáo...')}
+                className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1280,6 +1240,7 @@ export default function BaoCaoPage() {
 
               <button
                 onClick={() => showToast('Đang mở trang in báo cáo...')}
+                className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1304,6 +1265,7 @@ export default function BaoCaoPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <button
                 onClick={() => showToast('Đang tạo tài liệu PDF báo cáo...')}
+                className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1325,6 +1287,7 @@ export default function BaoCaoPage() {
 
               <button
                 onClick={() => showToast('Mở danh sách lịch sử kết xuất báo cáo')}
+                className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1348,6 +1311,7 @@ export default function BaoCaoPage() {
             {/* Row 3: Tạo báo cáo theo mẫu */}
             <button
               onClick={() => setShowTemplateModal(true)}
+              className="bc-quick-btn-full"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1380,16 +1344,9 @@ export default function BaoCaoPage() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10000,
-          padding: 20
+          padding: 16
         }}>
-          <div style={{
-            background: 'white',
-            borderRadius: 8,
-            width: '100%',
-            maxWidth: 500,
-            overflow: 'hidden',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
-          }}>
+          <div className="bc-modal-card">
             <div style={{
               background: '#E65100',
               color: 'white',
@@ -1497,16 +1454,9 @@ export default function BaoCaoPage() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10000,
-          padding: 20
+          padding: 16
         }}>
-          <div style={{
-            background: 'white',
-            borderRadius: 8,
-            width: '100%',
-            maxWidth: 480,
-            overflow: 'hidden',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
-          }}>
+          <div className="bc-modal-card">
             <div style={{
               background: '#E65100',
               color: 'white',

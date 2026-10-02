@@ -1,0 +1,366 @@
+/* ==========================================================================
+   BaoCaoPage.css - Mobile Responsive Styles for Reports Page
+   Preserves 100% Desktop layout while providing mobile-optimized tabs & cards
+   ========================================================================== */
+
+/* Main outer container */
+.bc-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.8vh, 10px);
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Header & Filter Bar */
+.bc-header-filter {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: clamp(4px, 0.6vh, 8px) 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bc-title-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bc-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.bc-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.bc-search-box {
+  position: relative;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+/* Category Grid on Desktop */
+.bc-categories-wrap {
+  flex-shrink: 0;
+}
+
+.bc-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: clamp(4px, 0.6vw, 8px);
+}
+
+.bc-category-card {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: clamp(4px, 0.6vh, 8px) 8px;
+  border: 1px solid #EEEEEE;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  min-height: clamp(36px, 5vh, 48px);
+  box-sizing: border-box;
+}
+
+.bc-category-card.active {
+  border: 1.5px solid #E65100;
+  box-shadow: 0 1px 4px rgba(230,81,0,0.15);
+}
+
+/* Mobile Segmented Tab bar (hidden on Desktop) */
+.bc-mobile-tabs {
+  display: none;
+}
+
+/* Desktop Grid Rows */
+.bc-row-1 {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: clamp(4px, 0.6vw, 8px);
+  flex: 1;
+  min-height: 0;
+}
+
+.bc-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: clamp(4px, 0.6vw, 8px);
+  flex: 1;
+  min-height: 0;
+}
+
+.bc-row-3 {
+  display: grid;
+  grid-template-columns: 2.25fr 1fr;
+  gap: clamp(4px, 0.6vw, 8px);
+  flex: 1.1;
+  min-height: 0;
+}
+
+/* Common Card */
+.bc-card {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: clamp(6px, 1vh, 10px) 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  border: 1px solid #EEEEEE;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Table Responsive wrapper */
+.bc-table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+/* Modal responsive base */
+.bc-modal-card {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE STYLES (Screen width <= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .bc-page-container {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    padding-bottom: 95px !important;
+    gap: 8px !important;
+    display: block !important;
+  }
+
+  /* Header & Filter Bar on Mobile */
+  .bc-header-filter {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+    margin-bottom: 8px;
+  }
+
+  .bc-mobile-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .bc-filter-group {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .bc-filter-row-dates {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .bc-filter-row-selects {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .bc-filter-item {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
+  }
+
+  .bc-filter-item span {
+    font-size: 10.5px !important;
+    color: #616161 !important;
+    font-weight: 500 !important;
+  }
+
+  .bc-filter-item-input-wrap {
+    width: 100% !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .bc-filter-item input,
+  .bc-filter-item select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    height: 32px !important;
+    font-size: 11.5px !important;
+  }
+
+  .bc-search-box {
+    width: 100% !important;
+  }
+
+  .bc-search-box input {
+    height: 32px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Category pills - horizontal smooth scrolling on mobile */
+  .bc-categories-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .bc-categories-wrap::-webkit-scrollbar {
+    height: 3px !important;
+  }
+  .bc-categories-wrap::-webkit-scrollbar-thumb {
+    background: #FFCCBC !important;
+    border-radius: 3px !important;
+  }
+
+  .bc-categories-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: max-content !important;
+  }
+
+  .bc-category-card {
+    min-height: 40px !important;
+    padding: 6px 10px !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  /* Segmented Mobile Tab Switch */
+  .bc-mobile-tabs {
+    display: flex !important;
+    background: #EFEBE9 !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+    gap: 4px !important;
+    margin-bottom: 10px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
+  }
+
+  .bc-mobile-tab-btn {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 8px 6px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: #5D4037 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    white-space: nowrap !important;
+  }
+
+  .bc-mobile-tab-btn.active {
+    background: #E65100 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 1px 4px rgba(230,81,0,0.3) !important;
+  }
+
+  /* Tab visibility on mobile */
+  .bc-mobile-hidden {
+    display: none !important;
+  }
+
+  /* Convert 3-col and 2-col rows to single column on mobile */
+  .bc-row-1,
+  .bc-row-2,
+  .bc-row-3 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    height: auto !important;
+    flex: none !important;
+    margin-bottom: 10px !important;
+  }
+
+  .bc-card {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Chart containers comfortable height on mobile */
+  .bc-bar-chart-area {
+    min-height: 180px !important;
+  }
+
+  .bc-line-chart-area {
+    min-height: 160px !important;
+  }
+
+  /* Quick Actions button grid on mobile */
+  .bc-quick-actions-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .bc-quick-btn-full {
+    grid-column: span 2 !important;
+  }
+
+  .bc-quick-actions-btn {
+    padding: 10px 8px !important;
+    font-size: 11.5px !important;
+    height: auto !important;
+  }
+
+  /* Table styling on mobile */
+  .bc-table-responsive table {
+    min-width: 560px !important;
+  }
+
+  /* Modals on mobile */
+  .bc-modal-card {
+    max-width: calc(100vw - 28px) !important;
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+  }
+}
