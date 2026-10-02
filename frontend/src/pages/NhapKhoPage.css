@@ -229,16 +229,24 @@
   align-items: center;
 }
 
+.nk-table-scroll {
+  overflow-y: auto;
+}
+
 /* ===== TỐI ƯU GIAO DIỆN NHẬP KHO TRÊN MOBILE (<= 768px) ===== */
 @media (max-width: 768px) {
   /* Container toàn trang không bị giới hạn chiều cao */
+  .nk-page-container,
   .page-responsive-container {
     height: auto !important;
     min-height: auto !important;
     display: flex !important;
     flex-direction: column !important;
+    overflow: visible !important;
     overflow-y: visible !important;
-    padding-bottom: 0 !important;
+    overflow-x: visible !important;
+    padding-bottom: 24px !important;
+    width: 100% !important;
   }
 
   /* Khối thông tin phiếu nhập trên mobile xếp theo cột dọc */
@@ -246,6 +254,13 @@
     flex-direction: column !important;
     width: 100% !important;
     gap: 10px !important;
+  }
+
+  .nk-top-left,
+  .nk-top-right {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
   }
 
   /* Khối danh sách hàng hóa tự động ôm sát nội dung, KHÔNG được co/giãn flex gây đè lên bảng */
@@ -257,6 +272,8 @@
     display: flex !important;
     flex-direction: column !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 
   .nk-main-section .responsive-2col {
@@ -267,6 +284,8 @@
     display: flex !important;
     flex-direction: column !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 
   /* Lưới form trên mobile chuyển sang 1 cột thông thoáng */
@@ -315,21 +334,18 @@
     flex: none !important;
     height: auto !important;
     min-height: auto !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
-  .nk-catalog-card .table-responsive {
-    max-height: 240px !important;
+  .nk-catalog-card .table-responsive,
+  .nk-details-card .table-responsive,
+  .nk-table-scroll {
+    max-height: none !important;
     height: auto !important;
     flex: none !important;
-    overflow-y: auto !important;
-  }
-
-  .nk-details-card .table-responsive {
-    max-height: 280px !important;
-    height: auto !important;
-    flex: none !important;
-    overflow-y: auto !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    display: block !important;
   }
 
   /* Thanh thêm nhanh mặt hàng trên mobile xếp gọn gàng */

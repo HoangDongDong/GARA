@@ -1094,9 +1094,7 @@ export default function BaoCaoPage() {
       {/* Hàng 3 (2 Cột): Báo cáo gần đây (Trái) & Thao tác nhanh (Phải) */}
       <div className={`bc-row-3 ${(mobileTab !== 'recent' && mobileTab !== 'quick') ? 'bc-mobile-hidden' : ''}`}>
         {/* Cột Trái: Báo cáo gần đây */}
-        <div className={`bc-card ${mobileTab !== 'recent' ? 'bc-mobile-hidden' : ''}`} style={{
-          overflow: 'hidden'
-        }}>
+        <div className={`bc-card ${mobileTab !== 'recent' ? 'bc-mobile-hidden' : ''}`}>
           {/* Header */}
           <div style={{
             padding: 'clamp(4px, 0.8vh, 8px) 10px',
@@ -1121,7 +1119,7 @@ export default function BaoCaoPage() {
           </div>
 
           {/* Table Responsive */}
-          <div className="bc-table-responsive" style={{ overflowY: 'auto', flex: 1 }}>
+          <div className="bc-table-responsive" style={{ flex: 1 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
               <thead>
                 <tr>

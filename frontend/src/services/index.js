@@ -219,7 +219,12 @@ export const workflow = {
   dashboard:      () => list('workflow/dashboard'),
   byPlate:        (plate) => list('workflow/by-plate/' + encodeURIComponent(plate)),
   byVehicle:      (dxid) => list('workflow/by-vehicle/' + dxid),
+  byVehicleAll:   (dxid) => list('workflow/by-vehicle/' + dxid + '/all'),
   transition:     (payload) => create('workflow/transition', payload),
+  images:         (workflowId, state) => list(`workflow/${workflowId}/images`, state == null ? {} : { state }),
+  uploadImages:   (payload) => create('workflow/images', payload),
+  deleteImage:    (id) => remove('workflow/images', id),
+  imageUrl:       (id) => `/api/workflow/images/${id}/content`,
 };
 
 /* ===== AUTH ===== */

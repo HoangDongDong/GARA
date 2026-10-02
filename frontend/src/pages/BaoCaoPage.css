@@ -155,10 +155,14 @@
   .bc-page-container {
     height: auto !important;
     min-height: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
     overflow-y: visible !important;
-    padding-bottom: 0 !important;
+    padding-bottom: 24px !important;
     gap: 8px !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
   }
 
   /* Header & Filter Bar on Mobile */
@@ -316,14 +320,20 @@
     gap: 10px !important;
     width: 100% !important;
     height: auto !important;
+    min-height: auto !important;
     flex: none !important;
     margin-bottom: 10px !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 
   .bc-card {
     height: auto !important;
     min-height: auto !important;
     padding: 10px 12px !important;
+    overflow: visible !important;
+    flex: none !important;
   }
 
   /* Chart containers comfortable height on mobile */
@@ -353,6 +363,15 @@
   }
 
   /* Table styling on mobile */
+  .bc-table-responsive {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: none !important;
+    display: block !important;
+  }
+
   .bc-table-responsive table {
     min-width: 560px !important;
   }

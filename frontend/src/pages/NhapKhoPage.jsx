@@ -627,14 +627,12 @@ export default function NhapKhoPage() {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   return (
-    <div className="page-responsive-container" style={{
+    <div className="page-responsive-container nk-page-container" style={{
       display: 'flex',
       flexDirection: 'column',
       gap: 'clamp(4px, 0.7vh, 8px)',
-      height: '100%',
       width: '100%',
       boxSizing: 'border-box',
-      overflow: 'hidden',
       fontSize: 'clamp(11px, 0.85vw, 13px)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     }}>
@@ -692,7 +690,7 @@ export default function NhapKhoPage() {
         flexShrink: 0
       }}>
         {/* Khối bên trái: Các trường nhập liệu phiếu */}
-        <div style={{
+        <div className="nk-top-left" style={{
           flex: '1 1 73%',
           background: '#FFFFFF',
           borderRadius: 6,
@@ -1055,7 +1053,7 @@ export default function NhapKhoPage() {
         </div>
 
         {/* Khối bên phải: Tổng cộng thanh toán */}
-        <div style={{
+        <div className="nk-top-right" style={{
           flex: '0 0 27%',
           background: '#FFFFFF',
           borderRadius: 6,
@@ -1255,7 +1253,7 @@ export default function NhapKhoPage() {
             </div>
 
             {/* Bảng dữ liệu catalog */}
-            <div className="table-responsive" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <div className="table-responsive nk-table-scroll" style={{ flex: 1, minHeight: 0 }}>
               <table style={{ width: '100%', minWidth: 260, borderCollapse: 'collapse', fontSize: 'inherit' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr style={{ background: '#FFE0B2', color: '#BF360C', fontWeight: 700 }}>
@@ -1427,7 +1425,7 @@ export default function NhapKhoPage() {
             </div>
 
             {/* Bảng chi tiết */}
-            <div className="table-responsive" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <div className="table-responsive nk-table-scroll" style={{ flex: 1, minHeight: 0 }}>
               <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse', fontSize: 'inherit' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr style={{ background: '#FFE0B2', color: '#BF360C', fontWeight: 700 }}>
