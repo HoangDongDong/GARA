@@ -1,6 +1,6 @@
 /* ========================================================
-   HỒ SƠ CHỜ DUYỆT & TIẾN ĐỘ DỊCH VỤ - AUTOSIZE RESPONSIVE
-   Tối ưu toàn diện: Laptop, 21", 24", Tablet & Mobile
+   HỒ SƠ CHỜ DUYỆT & TIẾN ĐỘ DỊCH VỤ - CSS CHUẨN ĐẸP TOÀN DIỆN
+   Tối ưu: Desktop (21", 24"), Laptop, Tablet và Mobile
    ======================================================== */
 
 .hscd-page {
@@ -12,7 +12,7 @@
   background: #f8fafc;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #1e293b;
-  overflow-x: hidden; /* Cấm tuyệt đối cuộn ngang ngoài trang */
+  overflow-x: hidden;
 }
 
 /* ===== HEADER BAR ===== */
@@ -90,7 +90,6 @@
   margin-left: auto;
 }
 
-/* Switcher chế độ xem */
 .hscd-view-toggle {
   display: flex;
   background: #e2e8f0;
@@ -163,7 +162,7 @@
   filter: brightness(1.08);
 }
 
-/* ===== METRICS CARDS: 5 Ô TỔNG HỢP ===== */
+/* ===== METRICS CARDS ===== */
 .hscd-stats-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -264,18 +263,17 @@
 .stage-3 .hscd-stat-icon-wrap { background: #cffafe; color: #0891b2; }
 .stage-4 .hscd-stat-icon-wrap { background: #d1fae5; color: #059669; }
 
-/* ===== FILTER BAR ===== */
+/* ===== FILTER BAR (KHÔNG THỪA KHOẢNG TRẮNG, GỌN GÀNG) ===== */
 .hscd-filter-bar {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 9px;
-  padding: 6px 10px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
-  flex-wrap: wrap;
-  gap: 6px 10px;
+  gap: 8px 12px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -284,34 +282,41 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 300px;
+  flex: 1 1 320px;
   min-width: 0;
 }
 
+/* Khung Search chuẩn, icon bám sát input, không bao giờ bị dạt xa */
 .hscd-search-box {
   position: relative;
+  display: flex;
+  align-items: center;
   flex: 1 1 200px;
   max-width: 320px;
   min-width: 140px;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 .hscd-search-icon {
   position: absolute;
-  left: 9px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
   color: #94a3b8;
   pointer-events: none;
+  z-index: 1;
 }
 
 .hscd-search-input {
   width: 100%;
+  height: 36px;
   box-sizing: border-box;
-  padding: 6px 10px 6px 30px;
+  padding: 0 12px 0 34px;
   background: #f8fafc;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 11.5px;
+  border-radius: 7px;
+  font-size: 12px;
   color: #1e293b;
   outline: none;
   transition: all 0.15s;
@@ -324,33 +329,40 @@
 }
 
 .hscd-filter-select {
-  padding: 6px 10px;
+  height: 36px;
+  padding: 0 10px;
   background: #f8fafc;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 11.5px;
+  border-radius: 7px;
+  font-size: 12px;
   color: #334155;
   font-weight: 500;
   outline: none;
   cursor: pointer;
+  box-sizing: border-box;
   max-width: 180px;
 }
 
+.hscd-filter-select:focus {
+  border-color: #e65100;
+}
+
+/* Status tabs: Hàng nút bo góc mềm mại, xếp ngay ngắn */
 .hscd-status-tabs {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .hscd-status-tab {
-  padding: 4px 7px;
-  border-radius: 5px;
-  border: 1px solid transparent;
-  background: transparent;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   color: #64748b;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -360,15 +372,18 @@
 .hscd-status-tab:hover {
   background: #f1f5f9;
   color: #0f172a;
+  border-color: #cbd5e1;
 }
 
 .hscd-status-tab.active {
   background: #e65100;
-  color: white;
+  color: #ffffff;
   border-color: #e65100;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(230, 81, 0, 0.25);
 }
 
-/* ===== KANBAN BOARD VIEW (DESKTOP: AUTOSIZE 100% BỀ RỘNG) ===== */
+/* ===== KANBAN BOARD VIEW (DESKTOP) ===== */
 .hscd-kanban-board {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -618,7 +633,6 @@
   transition: width 0.3s ease;
 }
 
-/* Nút hành động */
 .hscd-card-actions {
   display: flex;
   align-items: center;
@@ -763,7 +777,6 @@
   border-color: #fed7aa;
 }
 
-/* Mobile Card List trong Table View */
 .hscd-table-mobile {
   display: none;
   padding: 8px;
@@ -1070,10 +1083,10 @@
 /* ===== MOBILE NATIVE UX (Dưới 768px: iPhone, Android) ===== */
 @media (max-width: 768px) {
   .hscd-page {
-    padding: 8px 8px calc(75px + env(safe-area-inset-bottom, 16px)); /* Tránh bị che bởi thanh menu dưới */
+    padding: 8px 8px calc(75px + env(safe-area-inset-bottom, 16px));
   }
 
-  /* Header trên Mobile: Thu gọn, bố trí 2 hàng hợp lý */
+  /* Header trên Mobile: 2 hàng gọn gàng */
   .hscd-header {
     flex-direction: column;
     align-items: stretch;
@@ -1131,7 +1144,7 @@
     gap: 8px;
     padding-bottom: 4px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Ẩn thanh cuộn xấu */
+    scrollbar-width: none;
   }
 
   .hscd-stats-grid::-webkit-scrollbar {
@@ -1152,35 +1165,68 @@
     font-size: 16px;
   }
 
-  /* Bộ lọc trên Mobile: Full width và lướt tab nhanh */
+  /* BỘ LỌC TRÊN MOBILE: KHÔNG CÒN KHOẢNG TRẮNG THỪA */
   .hscd-filter-bar {
-    padding: 6px 8px;
-    gap: 6px;
+    padding: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .hscd-filter-left {
+    display: flex;
     flex-direction: column;
     width: 100%;
     gap: 6px;
+    align-items: stretch;
+    flex: none;
   }
 
+  /* Input tìm kiếm chiếm đúng 100% bề rộng và chiều cao 36px cố định */
   .hscd-search-box {
-    max-width: 100%;
     width: 100%;
+    max-width: 100%;
+    height: 36px;
+    flex: none;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .hscd-search-input {
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    padding: 0 12px 0 34px;
+    box-sizing: border-box;
+    font-size: 12.5px;
+  }
+
+  .hscd-search-icon {
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .hscd-filter-select {
-    max-width: 100%;
     width: 100%;
+    max-width: 100%;
+    height: 36px;
+    box-sizing: border-box;
+    font-size: 12.5px;
+    flex: none;
   }
 
+  /* CÁC NÚT TRẠNG THÁI: LƯỚT NGANG GỌN GÀNG, KHÔNG BỊ XẾP BẬC THANG LUNG TUNG */
   .hscd-status-tabs {
     width: 100%;
     overflow-x: auto;
     white-space: nowrap;
     display: flex;
-    gap: 4px;
-    padding: 2px 0;
+    flex-wrap: nowrap; /* Bắt buộc 1 hàng duy nhất */
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 2px 1px 4px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
@@ -1190,9 +1236,20 @@
   }
 
   .hscd-status-tab {
-    padding: 3.5px 8px;
-    font-size: 10.5px;
     flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 11.5px;
+    border-radius: 9999px; /* Bo tròn dạng pill hiện đại */
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+  }
+
+  .hscd-status-tab.active {
+    background: #e65100;
+    color: white;
+    border-color: #e65100;
+    box-shadow: 0 2px 6px rgba(230, 81, 0, 0.25);
   }
 
   /* Kanban trên Mobile: Lướt ngang thẻ cột dạng Carousel snap */
