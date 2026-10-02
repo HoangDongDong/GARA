@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, Lock, Eye, EyeOff, LogIn, Fingerprint, QrCode } from 'lucide-react';
 import './LoginPage.css';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [quickLoginMsg, setQuickLoginMsg] = useState('');
   const nav = useNavigate();
 
   const handleLogin = (e) => {
@@ -25,105 +29,218 @@ export default function LoginPage() {
         setError('Tên đăng nhập hoặc mật khẩu không đúng');
       }
       setLoading(false);
-    }, 500);
+    }, 400);
+  };
+
+  const handleQuickLogin = (type) => {
+    if (type === 'windows') {
+      setUsername('Admin');
+      setPassword('admin');
+      setQuickLoginMsg('Đã xác thực tài khoản Windows thành công!');
+      setTimeout(() => {
+        localStorage.setItem('garage_user', JSON.stringify({
+          USERNAME: 'Admin',
+          TEN_HIEN_THI: 'Admin (Windows)',
+        }));
+        nav('/');
+      }, 500);
+    } else if (type === 'fingerprint') {
+      setQuickLoginMsg('Đang xác thực vân tay...');
+      setTimeout(() => {
+        localStorage.setItem('garage_user', JSON.stringify({
+          USERNAME: 'Admin',
+          TEN_HIEN_THI: 'Admin (Vân tay)',
+        }));
+        nav('/');
+      }, 600);
+    } else if (type === 'qr') {
+      setQuickLoginMsg('Mở ứng dụng Kazuko trên điện thoại và quét mã QR');
+    }
   };
 
   return (
-    <div className="login-page-container">
-      {/* Left - Branding */}
-      <div className="login-branding">
-        <div className="branding-content">
-          <div className="branding-car-icon">🚗</div>
-          <h1 className="branding-title">
-            KAZUKO <span className="branding-title-sub">Auto</span>
-          </h1>
-          <p className="branding-slogan">
-            Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!
-          </p>
-
-          <div className="branding-info-box">
-            <p style={{ margin: 0 }}>
-              CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM<br/>
-              925/15 Âu Cơ - Tân Sơn Nhì - TPHCM<br/>
-              📞 Hotline: <strong style={{ color: '#FFD54F' }}>0917 66 4444</strong>
-            </p>
-          </div>
-
-          <div className="branding-features">
-            {[
-              { n: '🔧', t: 'Sửa chữa' },
-              { n: '📦', t: 'Phụ tùng' },
-              { n: '📊', t: 'Báo cáo' },
-              { n: '👥', t: 'Khách hàng' }
-            ].map((f, i) => (
-              <div key={i} className="branding-feature-item">
-                <div className="branding-feature-icon">{f.n}</div>
-                <div className="branding-feature-label">{f.t}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="kazuko-login-page">
+      {/* Banner bên trái cho Desktop */}
+      <div className="login-left-banner">
+        <img 
+          src="/login-banner-desktop.png" 
+          alt="KAZUKO POS - Quản lý bán hàng đa ngành" 
+          className="login-desktop-img"
+        />
       </div>
 
-      {/* Right - Login Form */}
-      <div className="login-form-wrapper">
+      {/* Banner đầu trang cho Mobile */}
+      <div className="login-mobile-banner">
+        <img 
+          src="/login-banner-mobile.png" 
+          alt="KAZUKO POS" 
+          className="login-mobile-img"
+        />
+      </div>
+
+      {/* Khung thẻ đăng nhập bên phải / bên dưới */}
+      <div className="login-right-panel">
         <div className="login-card">
-          <div className="login-card-header">
-            <div className="lock-icon">🔐</div>
-            <h2>Đăng nhập hệ thống</h2>
-            <p>Hệ thống quản lý sửa chữa ô tô - phụ tùng</p>
+          {/* Logo & Tiêu đề trên Desktop */}
+          <div className="login-card-header desktop-header">
+            <div className="card-brand-logo">
+              <ShoppingCart size={28} className="cart-icon" />
+              <div className="brand-text-col">
+                <span className="brand-name">
+                  KAZUKO<span className="brand-pos">POS</span>
+                </span>
+                <span className="brand-sub">ALL IN ONE BUSINESS</span>
+              </div>
+            </div>
+            <h2 className="login-title">Đăng nhập</h2>
+            <p className="login-welcome">Chào mừng bạn quay trở lại!</p>
           </div>
 
-          <form onSubmit={handleLogin}>
-            <div className="login-input-group">
-              <label>👤 Tên đăng nhập</label>
+          {/* Tiêu đề trên Mobile */}
+          <div className="login-card-header mobile-header">
+            <h2 className="login-title-mobile">
+              <span className="title-dot">•</span> Đăng nhập <span className="title-dot">•</span>
+            </h2>
+            <p className="login-welcome">Chào mừng bạn quay trở lại!</p>
+          </div>
+
+          {/* Form đăng nhập */}
+          <form onSubmit={handleLogin} className="login-form">
+            {/* Input Tên đăng nhập */}
+            <div className="login-input-field">
+              <User size={18} className="field-icon" />
               <input
                 type="text"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="Nhập tên đăng nhập"
-                className="login-input"
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Tên đăng nhập"
                 required
+                className="field-input"
               />
             </div>
 
-            <div className="login-input-group">
-              <label>🔒 Mật khẩu</label>
+            {/* Input Mật khẩu */}
+            <div className="login-input-field">
+              <Lock size={18} className="field-icon" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu"
-                className="login-input"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mật khẩu"
                 required
+                className="field-input"
               />
+              <button
+                type="button"
+                className="toggle-eye-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
-            <div className="login-row-options">
-              <label className="login-remember">
-                <input type="checkbox" style={{ width: 16, height: 16 }} />
-                Ghi nhớ đăng nhập
+            {/* Tùy chọn: Ghi nhớ & Quên mật khẩu */}
+            <div className="login-options-row">
+              <label className="remember-box">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <span>Ghi nhớ mật khẩu</span>
               </label>
-              <a href="#" className="login-forgot">Quên mật khẩu?</a>
+              <a 
+                href="#forgot" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert('Vui lòng liên hệ Hotline: 0917 66 444 để được hỗ trợ đặt lại mật khẩu.');
+                }}
+                className="forgot-link"
+              >
+                Quên mật khẩu?
+              </a>
             </div>
 
-            {error && (
-              <div className="login-error-alert">
-                ⚠️ {error}
-              </div>
-            )}
+            {/* Thông báo lỗi & trạng thái */}
+            {error && <div className="login-error-msg">⚠️ {error}</div>}
+            {quickLoginMsg && <div className="login-info-msg">ℹ️ {quickLoginMsg}</div>}
 
+            {/* Nút Đăng nhập */}
             <button
               type="submit"
               disabled={loading}
-              className="login-submit-btn"
+              className="login-submit-button"
             >
-              {loading ? '⏳ Đang đăng nhập...' : '🔑 Đăng nhập'}
+              <LogIn size={18} />
+              <span>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</span>
             </button>
+
+            {/* Chưa có tài khoản */}
+            <div className="register-prompt">
+              <span>Chưa có tài khoản? </span>
+              <a 
+                href="#register" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert('Vui lòng liên hệ Hotline: 0917 66 444 để đăng ký tài khoản mới.');
+                }}
+                className="register-link"
+              >
+                Đăng ký
+              </a>
+            </div>
+
+            {/* Hoặc đăng nhập nhanh (Desktop) */}
+            <div className="quick-login-section">
+              <div className="quick-login-divider">
+                <span>Hoặc đăng nhập nhanh</span>
+              </div>
+              <div className="quick-login-buttons">
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('windows')}
+                  className="quick-btn"
+                  title="Đăng nhập Windows"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#0078D4">
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.902-1.799"/>
+                  </svg>
+                  <span>Windows</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('fingerprint')}
+                  className="quick-btn"
+                  title="Đăng nhập Vân tay"
+                >
+                  <Fingerprint size={18} color="#059669" />
+                  <span>Vân tay</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('qr')}
+                  className="quick-btn"
+                  title="Đăng nhập Quét mã QR"
+                >
+                  <QrCode size={18} color="#4F46E5" />
+                  <span>Quét mã QR</span>
+                </button>
+              </div>
+            </div>
           </form>
 
-          <div className="login-card-footer">
-            KAZUKO AUTO © 2025 · Version 1.0.0
+          {/* Footer thông tin công ty */}
+          <div className="login-company-footer">
+            <div className="company-name">PHẦN MỀM ĐƯỢC PHÁT TRIỂN BỞI CTY KAZUKO VIỆT NAM</div>
+            <div className="company-contact">
+              Hotline: <a href="tel:091766444">0917 66 444</a> - <a href="tel:0967041111">0967 04 1111</a>
+            </div>
+            <div className="company-contact">
+              Website: <a href="https://kazukovietnam.com" target="_blank" rel="noreferrer">kazukovietnam.com</a>
+            </div>
           </div>
         </div>
       </div>
