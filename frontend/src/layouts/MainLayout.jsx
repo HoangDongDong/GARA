@@ -106,9 +106,16 @@ export default function MainLayout() {
       }
     };
 
+    const contentEl = contentRef.current || document.querySelector('.app-content');
+    if (contentEl) {
+      contentEl.addEventListener('scroll', onScroll, { passive: true });
+    }
     window.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
     return () => {
+      if (contentEl) {
+        contentEl.removeEventListener('scroll', onScroll);
+      }
       window.removeEventListener('scroll', onScroll, { capture: true });
     };
   }, [isSuaChua, loc.pathname]);
