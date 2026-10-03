@@ -821,7 +821,8 @@ export default function SuaChuaPage() {
             DONGIA: item.price, NOTE: item.note,
           })),
         });
-        setRepairFlow({ repairId: result.id, workflowId: result.workflowId || repairFlow.workflowId, receptionId, workflowState: 0 });
+        const savedWorkflowState = Number(result.workflowState ?? 1);
+        setRepairFlow({ repairId: result.id, workflowId: result.workflowId || repairFlow.workflowId, receptionId, workflowState: savedWorkflowState });
         setVehicleInfo((current) => ({ ...current, receiptCode: result.code || current.receiptCode }));
         const createdWorkflowId = result.workflowId || repairFlow.workflowId;
         const refreshedFlows = await workflow.byVehicleAll(vehicleInfo.vehicleId).catch(() => []);
@@ -837,15 +838,15 @@ export default function SuaChuaPage() {
             });
             setDraftWorkflowImages([]);
             await refreshWorkflowImages(createdWorkflowId);
-            showToast(`Đã lưu Tiếp nhận & Báo giá cùng ${draftWorkflowImages.length} ảnh.`);
+            showToast(`Đã lưu Tiếp nhận & Báo giá cùng ${draftWorkflowImages.length} ảnh. Hồ sơ đang chờ xác nhận sửa chữa.`);
           } catch (imageError) {
             showToast(imageError?.response?.data?.error || 'Phiếu đã lưu nhưng chưa thể lưu ảnh trạng thái.');
           }
         } else {
-          showToast('Đã lưu Tiếp nhận & Báo giá vào database.');
+          showToast('Đã hoàn tất Tiếp nhận & Báo giá. Hồ sơ đã chuyển sang Xác nhận sửa chữa.');
         }
         setShowRepairConfirmation(true);
-      } else if (repairFlow.workflowState === 0) {
+      } else if (repairFlow.workflowState === 0 || repairFlow.workflowState === 1) {
         setShowRepairConfirmation(true);
       } else if (repairFlow.workflowState < 3) {
         const nextState = repairFlow.workflowState + 1;
@@ -874,12 +875,15 @@ export default function SuaChuaPage() {
   const handleConfirmRepair = async () => {
     setSavingProcess(true);
     try {
-      await workflow.transition({
-        DXEID: vehicleInfo.vehicleId, TRANGTHAI: 1,
-        DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
-        LYDO: 'Khach hang da xac nhan bao gia va dong y sua chua',
-        GHICHU: repairNotes,
-      });
+      // Ho tro phieu cu van con o buoc Tiep nhan & Bao gia.
+      if (Number(repairFlow.workflowState) === 0) {
+        await workflow.transition({
+          DXEID: vehicleInfo.vehicleId, TRANGTHAI: 1,
+          DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
+          LYDO: 'Hoan tat tiep nhan va bao gia, cho xac nhan sua chua',
+          GHICHU: repairNotes,
+        });
+      }
       await workflow.transition({
         DXEID: vehicleInfo.vehicleId, TRANGTHAI: 2,
         DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
@@ -1231,7 +1235,8 @@ export default function SuaChuaPage() {
               Km hiện tại
             </label>
             <input
-              type="text"
+              type="number"
+              min="0"
               value={vehicleInfo.currentKm}
               onChange={(e) => setVehicleInfo({ ...vehicleInfo, currentKm: e.target.value })}
               style={{

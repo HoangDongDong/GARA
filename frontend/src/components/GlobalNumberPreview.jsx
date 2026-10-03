@@ -14,54 +14,101 @@ function formatWithCommas(val) {
   return (isNegative ? '-' : '') + parts.join('.');
 }
 
-// Kiểm tra xem ô input có phải là ô nhập số / tiền / số lượng không
+// Kiểm tra xem ô input có phải là ô BẮT BUỘC NHẬP SỐ không
+// TUYỆT ĐỐI không áp dụng cho ô văn bản / chuỗi (string)
 function isTargetNumericInput(input) {
   if (!input || input.tagName !== 'INPUT') return false;
   if (input.readOnly || input.disabled) return false;
 
   const type = (input.type || 'text').toLowerCase();
-  // Loại trừ các type rõ ràng không phải tiền/số
-  if (['checkbox', 'radio', 'file', 'password', 'email', 'date', 'time', 'datetime-local', 'color', 'submit', 'button', 'hidden', 'range'].includes(type)) {
+
+  // Loại trừ tất cả các type chuỗi / phi số
+  if ([
+    'text', // Mặc định type=text là chuỗi, trừ khi có đánh dấu số cụ thể bên dưới
+    'password', 'email', 'date', 'time', 'datetime-local',
+    'checkbox', 'radio', 'file', 'color', 'submit', 'button',
+    'hidden', 'range', 'search', 'url', 'tel'
+  ].includes(type) && type !== 'text') {
     return false;
   }
 
-  // Loại trừ số điện thoại, biển số, mã vạch, tìm kiếm chung
+  // 1. Nếu là type="number" thì CHẮC CHẮN là ô bắt buộc nhập số
+  if (type === 'number') {
+    return true;
+  }
+
+  // 2. Nếu có inputMode được cấu hình là numeric hoặc decimal
+  if (input.inputMode === 'numeric' || input.inputMode === 'decimal') {
+    return true;
+  }
+
+  // 3. Nếu có data-type="number" hoặc data-numeric="true"
+  if (input.dataset?.type === 'number' || input.dataset?.numeric === 'true') {
+    return true;
+  }
+
+  // 4. Nếu có thuộc tính chỉ số (step hoặc min kiểu số)
+  if (input.hasAttribute('step') || (input.hasAttribute('min') && !isNaN(Number(input.getAttribute('min'))))) {
+    return true;
+  }
+
+  // Đối với các ô input type="text":
+  // TUYỆT ĐỐI KHÔNG tự động coi là ô số chỉ vì người dùng gõ số.
+  // Chỉ chấp nhận nếu ô đó thực sự là ô tiền/lượng dựa vào thuộc tính định danh:
   const metaText = [
     input.name,
     input.id,
-    input.placeholder,
     input.className,
     input.getAttribute('aria-label')
   ].filter(Boolean).join(' ').toLowerCase();
 
+  // Danh sách các trường chắc chắn là chuỗi văn bản (String)
   if (
+    metaText.includes('search') ||
+    metaText.includes('timkiem') ||
+    metaText.includes('filter') ||
+    metaText.includes('note') ||
+    metaText.includes('ghichu') ||
+    metaText.includes('diengiai') ||
+    metaText.includes('mota') ||
+    metaText.includes('description') ||
+    metaText.includes('address') ||
+    metaText.includes('diachi') ||
+    metaText.includes('name') ||
+    metaText.includes('hoten') ||
+    metaText.includes('ten') ||
+    metaText.includes('bienso') ||
+    metaText.includes('plate') ||
     metaText.includes('phone') ||
     metaText.includes('dienthoai') ||
     metaText.includes('sdt') ||
-    metaText.includes('bienso') ||
-    metaText.includes('plate') ||
     metaText.includes('barcode') ||
     metaText.includes('sokhung') ||
     metaText.includes('somay') ||
     metaText.includes('vin') ||
-    metaText.includes('timkiem') ||
-    metaText.includes('search') ||
-    metaText.includes('password')
+    metaText.includes('sophieu') ||
+    metaText.includes('maphieu') ||
+    metaText.includes('sku') ||
+    metaText.includes('code')
   ) {
     return false;
   }
 
-  // Các trường hợp chắc chắn là số
-  if (type === 'number') return true;
-  if (input.inputMode === 'numeric' || input.inputMode === 'decimal') return true;
+  // Chỉ kích hoạt nếu có keyword rõ ràng của ô số
+  const hasNumericMarker = (
+    metaText.includes('soluong') ||
+    metaText.includes('quantity') ||
+    metaText.includes('dongia') ||
+    metaText.includes('giaban') ||
+    metaText.includes('gianhap') ||
+    metaText.includes('thanhtien') ||
+    metaText.includes('sotien') ||
+    metaText.includes('currentkm') ||
+    metaText.includes('kmhientai') ||
+    metaText.includes('tamung')
+  );
 
-  // Hoặc giá trị đang gõ là chuỗi số (có thể có dấu phẩy / chấm)
-  const val = String(input.value || '').replace(/,/g, '').trim();
-  if (val.length >= 1 && /^-?\d+(\.\d*)?$/.test(val)) {
-    return true;
-  }
-
-  return false;
+  return hasNumericMarker;
 }
 
 export default function GlobalNumberPreview() {
@@ -78,6 +125,7 @@ export default function GlobalNumberPreview() {
 
   useEffect(() => {
     const updatePreview = (input) => {
+      // Chỉ xử lý nếu đúng là ô bắt buộc nhập số
       if (!isTargetNumericInput(input)) {
         setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
         return;
@@ -90,7 +138,7 @@ export default function GlobalNumberPreview() {
       }
 
       const clean = String(rawVal).replace(/,/g, '').trim();
-      if (!clean || isNaN(Number(clean))) {
+      if (!clean || isNaN(Number(clean)) || !isFinite(Number(clean))) {
         setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
         return;
       }
@@ -127,6 +175,9 @@ export default function GlobalNumberPreview() {
       if (isTargetNumericInput(e.target)) {
         activeInputRef.current = e.target;
         updatePreview(e.target);
+      } else {
+        setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        activeInputRef.current = null;
       }
     };
 
@@ -134,6 +185,9 @@ export default function GlobalNumberPreview() {
       if (isTargetNumericInput(e.target)) {
         activeInputRef.current = e.target;
         updatePreview(e.target);
+      } else {
+        setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        activeInputRef.current = null;
       }
     };
 
