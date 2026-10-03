@@ -20,6 +20,12 @@ export const protectedMediaUrl = (path) => {
   return `${path}${separator}access_token=${encodeURIComponent(token)}`;
 };
 
+const protectedApiUrl = (path) => {
+  const token = localStorage.getItem('garage_token');
+  const separator = String(path).includes('?') ? '&' : '?';
+  return token ? `${path}${separator}access_token=${encodeURIComponent(token)}` : path;
+};
+
 /* Auto attach user info (neu co) de backend log */
 api.interceptors.request.use((config) => {
   try {
@@ -32,6 +38,19 @@ api.interceptors.request.use((config) => {
   } catch {}
   return config;
 });
+
+/* Auto redirect to login neu token bi het han (401) */
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
+      localStorage.removeItem('garage_token');
+      localStorage.removeItem('garage_user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 /* Wrapper: GET list */
 const list = async (resource, params = {}) => {
@@ -100,6 +119,20 @@ export const masterData = {
   cashCategories: () => list('master-data/cash_categories'),
 };
 
+/* ===== PRINT TEMPLATES (STEMPLATE in the main GARAGE.FDB database) ===== */
+export const printTemplates = {
+  list: () => api.get('/print-templates').then((response) => response.data),
+  openDesigner: (id) => api.post(`/print-templates/${encodeURIComponent(id)}/designer`).then((response) => response.data?.data),
+  designerStatus: (sessionId) => api.get(`/print-templates/designer-sessions/${encodeURIComponent(sessionId)}`).then((response) => response.data?.data),
+  content: (id) => api.get(`/print-templates/${encodeURIComponent(id)}/content`, {
+    responseType: 'text',
+    transformResponse: [(value) => value],
+  }).then((response) => response.data),
+  contentUrl: (id) => protectedApiUrl(`/api/print-templates/${encodeURIComponent(id)}/content`),
+  saveContent: (id, content) => api.put(`/print-templates/${encodeURIComponent(id)}/content`, { content }).then((response) => response.data),
+  setDefault: (id) => api.put(`/print-templates/${encodeURIComponent(id)}/default`).then((response) => response.data),
+};
+
 /* ===== CUSTOMERS (DKHACHHANG) ===== */
 export const customers = {
   list:    (params) => list('customers', params),
@@ -119,6 +152,7 @@ export const vehicles = {
   meta:   () => list('vehicles/meta/brands'),
   profile: (id) => list(`vehicles/${id}/profile`),
   imageUrl: (id) => protectedMediaUrl(`/api/vehicles/${id}/image`),
+  analyzeImage: (image) => api.post('/ocr/analyze-vehicle', { image }, { timeout: 60000 }).then((response) => response.data?.data),
 };
 
 /* ===== EMPLOYEES (DNHANVIEN) ===== */

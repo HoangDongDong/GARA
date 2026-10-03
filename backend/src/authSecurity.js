@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 const TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'kazuko-garage-local-access-control';
-const TOKEN_TTL_SECONDS = 12 * 60 * 60;
+const TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 ngày (tránh hết hạn phiên đột ngột)
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
