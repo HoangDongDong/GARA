@@ -18,6 +18,7 @@ import CauHinhPage       from './pages/CauHinhPage.jsx';
 import NhapKhoPage       from './pages/NhapKhoPage.jsx';
 import HoSoChoDuyetPage from './pages/HoSoChoDuyetPage.jsx';
 import PlaceholderPage   from './pages/PlaceholderPage.jsx';
+import GlobalNumberPreview from './components/GlobalNumberPreview.jsx';
 
 function RequireAuth({ children }) {
   const u = localStorage.getItem('garage_user');
@@ -39,7 +40,9 @@ const secured = (code, element) => <PermissionGate code={code}>{element}</Permis
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <GlobalNumberPreview />
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/"
@@ -68,6 +71,7 @@ export default function App() {
         <Route path="cau-hinh"      element={secured('SETTINGS', <CauHinhPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }
