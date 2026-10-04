@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="UTF-8"><title>Part image form test</title></head>
+<body><div id="root"></div><script type="module">
+import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import PartFormModal from '../src/components/PartFormModal.jsx';
+function Fixture() {
+  const [form, setForm] = useState({ NAME: 'Test part', CODE: 'CHECK', ANH: '', DNHOMMATHANGID: '', DDONVITINHID: '', DHANGSANXUATID: '', DVITRIKHOID: '', GIANHAP: '', GIABAN: '', BAOHANH: '', TONTOITHIEU: '', TONTOIDA: '' });
+  window.partImageForm = form;
+  return React.createElement(PartFormModal, { partForm: form, setPartForm: setForm, savingPart: false, partFormError: '', partMeta: { nhom: [], dvt: [], hangsx: [], vitri: [] }, setShowAddPartModal: () => {}, handleCreatePart: event => { event.preventDefault(); window.partImageSaved = form; }, openAddPartOption: () => {} });
+}
+createRoot(document.getElementById('root')).render(React.createElement(Fixture));
+</script></body></html>

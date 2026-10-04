@@ -21,7 +21,8 @@ import {
   Settings,
   Menu,
   X,
-  ClipboardCheck
+  ClipboardCheck,
+  Folders
 } from 'lucide-react';
 
 const NAV = [
@@ -37,6 +38,7 @@ const NAV = [
   { to: '/nha-cung-cap',   code: 'SUPPLIERS', icon: <Contact size={18} />, label: 'Nhà cung cấp' },
   { to: '/khach-hang',     code: 'CUSTOMERS', icon: <Users size={18} />, label: 'Khách hàng' },
   { to: '/ho-so-xe',       code: 'VEHICLES', icon: <FileText size={18} />, label: 'Hồ sơ xe & Lịch sử' },
+  { to: '/danh-muc',       code: 'SETTINGS', icon: <Folders size={18} />, label: 'Danh mục' },
   { to: '/bao-hanh',       code: 'WARRANTY', icon: <ShieldCheck size={18} />, label: 'Bảo hành' },
   { to: '/thu-chi',        code: 'FINANCE', icon: <CircleDollarSign size={18} />, label: 'Thu - Chi / Công nợ' },
   { to: '/nhan-vien',      code: 'EMPLOYEES', icon: <UserCog size={18} />, label: 'Nhân viên &\nKỹ thuật viên' },

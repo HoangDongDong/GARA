@@ -52,7 +52,7 @@ router.post('/tiep-nhan', async (req, res) => {
     if (active.length) return res.status(409).json({ error: 'Xe dang co quy trinh sua chua chua hoan thanh' });
 
     const id = db.uuidv4();
-    const ma = 'TN' + Date.now().toString().slice(-8);
+    const ma = await require('../services/documentNumbers').nextNumber('TiepNhan');
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     await db.execute(
       `INSERT INTO TTIEPNHANXE
@@ -163,7 +163,7 @@ router.post('/', async (req, res) => {
       const id = uuidv4();
       const workflowId = activeFlow?.ID || uuidv4();
       const historyId = uuidv4();
-      const ma = 'LSC' + Date.now().toString().slice(-8);
+      const ma = await require('../services/documentNumbers').nextInTransaction('LenhSuaChua',query,execute);
       let tongCong = 0;
       let tongPT = 0;
       for (const it of items) {
@@ -215,18 +215,20 @@ router.post('/', async (req, res) => {
         );
       }
 
-      // Trang thai 0 = buoc nghiep vu "Tiep nhan & Bao gia".
+      // Khi bang ke dich vu va bao gia da duoc luu thanh cong, buoc
+      // "Tiep nhan & Bao gia" da hoan tat va ho so cho khach xac nhan sua chua.
+      const quoteCompletedState = 1;
       if (activeFlow) {
         await execute(
           `UPDATE TTRANGTHAIXE
               SET TLENHSUACHUAID=?, TTIEPNHANXEID=COALESCE(TTIEPNHANXEID, ?),
-                  TRANGTHAI=0, NGAY_TRANGTHAI=CURRENT_TIMESTAMP,
+                  TRANGTHAI=?, NGAY_TRANGTHAI=CURRENT_TIMESTAMP,
                   DNHANVIENKTVID=COALESCE(DNHANVIENKTVID, ?),
                   DNHANVIENCOOVANID=COALESCE(DNHANVIENCOOVANID, ?),
                   LYDO=?, GHICHU=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
             WHERE ID=?`,
-          [id, TTIEPNHANXEID || null, technicianId, advisorId,
-            'Da lap bang ke dich vu va bao gia', NOTE || null, actor, workflowId]
+          [id, TTIEPNHANXEID || null, quoteCompletedState, technicianId, advisorId,
+            'Da hoan tat tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor, workflowId]
         );
       } else {
         await execute(
@@ -235,10 +237,11 @@ router.post('/', async (req, res) => {
               TRANGTHAI, NGAY_VAO, NGAY_TRANGTHAI, DNHANVIENKTVID,
               DNHANVIENCOOVANID, LYDO, GHICHU, MUCUU_TIEN,
               STATUS, USERCREATEDID, TIMECREATED)
-           VALUES (?, ?, ?, ?, ?, ?, 0, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP,
+           VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP,
                    ?, ?, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP)`,
           [workflowId, `WF-${ma}`, DXEID, DKHACHHANGID, TTIEPNHANXEID || null, id,
-            NGAY, technicianId, advisorId, 'Da lap bang ke dich vu va bao gia', NOTE || null, actor]
+            quoteCompletedState, NGAY, technicianId, advisorId,
+            'Da hoan tat tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor]
         );
       }
       await execute(
@@ -246,11 +249,12 @@ router.post('/', async (req, res) => {
            (ID, TTRANGTHAIXEID, DXEID, TRANGTHAI_CU, TRANGTHAI_MOI,
             NGAY, DNHANVIENID, LYDO, GHICHU, STT,
             STATUS, USERCREATEDID, TIMECREATED)
-         VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, NULL, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, NULL, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
         [historyId, workflowId, DXEID, activeFlow ? Number(activeFlow.TRANGTHAI) : null,
-          'Tiep nhan xe, lap dich vu va bao gia', NOTE || null, activeFlow ? 2 : 1, actor]
+          quoteCompletedState, 'Hoan tat tiep nhan va bao gia, chuyen sang xac nhan sua chua',
+          NOTE || null, activeFlow ? 2 : 1, actor]
       );
-      return { id, workflowId, code: ma };
+      return { id, workflowId, code: ma, workflowState: quoteCompletedState };
     });
 
     res.json({ ok: true, ...result });

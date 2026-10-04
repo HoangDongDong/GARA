@@ -543,6 +543,27 @@
   text-overflow: ellipsis;
 }
 
+.hscd-ticket-with-time {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.hscd-ticket-with-time > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #64748b;
+  font-size: 8.5px;
+  font-weight: 500;
+}
+
+.hscd-table td .hscd-ticket-with-time {
+  align-items: flex-start;
+}
+
 .hscd-card-car {
   font-size: clamp(11.5px, 0.82vw, 12.5px);
   font-weight: 700;

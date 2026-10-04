@@ -1,3 +1,4 @@
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useState, useRef, useEffect } from 'react';
 import { 
   Car, Search, FileSpreadsheet, Plus, MoreHorizontal, FileText, ClipboardList,
@@ -557,7 +558,7 @@ const mapVehicleProfile = (data) => {
     const end = item.NGAYKETTHUC ? new Date(item.NGAYKETTHUC) : null;
     const days = end && !Number.isNaN(end.getTime()) ? Math.ceil((end - new Date()) / 86400000) : null;
     return {
-      id: item.NAME || item.ID, item: item.TEN_MATHANG || item.TEN_DICHVU || item.NOTE || 'Hạng mục bảo hành',
+      id: item.NAME || item.ID, recordId: item.ID, item: item.TEN_MATHANG || item.TEN_DICHVU || item.NOTE || 'Hạng mục bảo hành',
       type: Number(item.LOAI) === 1 ? 'Dịch vụ' : 'Phụ tùng thay thế',
       startDate: formatProfileDate(item.NGAYBATDAU), endDate: formatProfileDate(item.NGAYKETTHUC),
       duration: item.NGAYKETTHUC ? 'Theo thời hạn phiếu' : '—', odoStart: summary.odo,
@@ -1753,7 +1754,7 @@ export default function HoSoXePage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => showToast('In phiếu sửa chữa ' + row.id)}
+                              onClick={() => openDocumentPrint({ type: 'MauPhieuSuaChua', id: row.recordId })}
                               title="In phiếu sửa chữa"
                               style={{
                                 background: '#F1F5F9',
@@ -2086,7 +2087,7 @@ export default function HoSoXePage() {
                         <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                           <button
                             type="button"
-                            onClick={() => showToast('In chứng nhận bảo hành ' + bh.id)}
+                            onClick={() => openDocumentPrint({ type: 'MauPhieuBaoHanh', id: bh.recordId })}
                             style={{
                               background: '#FFF3E0',
                               border: '1px solid #FFCC80',
@@ -2610,7 +2611,7 @@ export default function HoSoXePage() {
               <button
                 type="button"
                 className="hsx-side-action-btn"
-                onClick={() => showToast('Đang gửi lệnh in phiếu xe ' + currentVehicle.plate)}
+                onClick={() => openDocumentPrint({ type: 'MauHoSoXe', id: currentVehicle.id })}
               >
                 <Printer size={12} color="#E65100" />
                 <span>In phiếu xe</span>
@@ -3140,7 +3141,7 @@ export default function HoSoXePage() {
               <button
                 type="button"
                 onClick={() => {
-                  showToast('In phiếu sửa chữa ' + selectedRepair.id);
+                  openDocumentPrint({ type: 'MauPhieuSuaChua', id: selectedRepair.recordId });
                   setSelectedRepair(null);
                 }}
                 style={{

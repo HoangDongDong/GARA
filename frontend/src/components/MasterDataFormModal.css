@@ -1,0 +1,10 @@
+.master-form-backdrop{position:fixed;inset:0;z-index:10050;background:#0007;display:flex;align-items:center;justify-content:center;padding:16px}
+.master-form-modal{width:520px;max-width:100%;max-height:92vh;overflow:auto;background:#fff;border-radius:8px;box-shadow:0 12px 35px #0004}
+.master-form-modal header{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--primary);color:#fff;padding:13px 16px}
+.master-form-modal h2{margin:0;font-size:15px}.master-form-modal header button{background:transparent;border:0;padding:3px}
+.master-form-fields{padding:18px;display:grid;gap:12px}.master-form-fields label{font-size:12px;font-weight:600}.master-form-fields label span{color:#c62828}
+.master-form-fields input,.master-form-fields select,.master-form-fields textarea{display:block;width:100%;margin-top:5px;border:1px solid #cbd5e1;border-radius:4px;padding:9px;font:inherit;font-weight:400;background:#fff;color:#334155}
+.master-form-modal footer{padding:12px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+.master-form-modal footer button:first-child{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.master-form-error{color:#c62828;background:#fff1f1;padding:9px;border-radius:4px}.master-form-unavailable{color:#9a3412;background:#fff7ed;padding:10px;font-size:12px;border-radius:4px}
+@media(max-width:600px){.master-form-fields input,.master-form-fields select,.master-form-fields textarea{font-size:16px}}

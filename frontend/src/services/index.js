@@ -119,8 +119,18 @@ export const masterData = {
   cashCategories: () => list('master-data/cash_categories'),
 };
 
+/* ===== CATALOG: real data, explicit availability for tables not created yet ===== */
+export const catalog = {
+  load: (type) => api.get(`/catalog/${encodeURIComponent(type)}`).then((response) => response.data),
+  resource: (resource) => api.get(`/catalog/resources/${encodeURIComponent(resource)}`).then((response) => response.data),
+  create: (resource, payload) => create(`catalog/resources/${resource}`, payload),
+  update: (resource, id, payload) => update(`catalog/resources/${resource}`, id, payload),
+  setStatus: (resource, id, status) => api.patch(`/catalog/resources/${resource}/${encodeURIComponent(id)}/status`, { status }).then((response) => response.data),
+};
+
 /* ===== PRINT TEMPLATES (STEMPLATE in the main GARAGE.FDB database) ===== */
 export const printTemplates = {
+  create: (name, content, configName) => api.post('/print-templates', { name, content, configName }).then(response => response.data),
   list: () => api.get('/print-templates').then((response) => response.data),
   openDesigner: (id) => api.post(`/print-templates/${encodeURIComponent(id)}/designer`).then((response) => response.data?.data),
   designerStatus: (sessionId) => api.get(`/print-templates/designer-sessions/${encodeURIComponent(sessionId)}`).then((response) => response.data?.data),
@@ -130,7 +140,8 @@ export const printTemplates = {
   }).then((response) => response.data),
   contentUrl: (id) => protectedApiUrl(`/api/print-templates/${encodeURIComponent(id)}/content`),
   saveContent: (id, content) => api.put(`/print-templates/${encodeURIComponent(id)}/content`, { content }).then((response) => response.data),
-  setDefault: (id) => api.put(`/print-templates/${encodeURIComponent(id)}/default`).then((response) => response.data),
+  setDefault: (id, configName) => api.put(`/print-templates/${encodeURIComponent(id)}/default`, { configName }).then((response) => response.data),
+  assign: (id, configName) => api.put(`/print-templates/${encodeURIComponent(id)}/assignment`, { configName }).then((response) => response.data),
 };
 
 /* ===== CUSTOMERS (DKHACHHANG) ===== */
@@ -166,6 +177,7 @@ export const employees = {
 /* ===== PARTS (DMATHANG) ===== */
 export const parts = {
   list:   (params) => list('parts', params),
+  imageUrl: (id) => protectedMediaUrl(`/api/parts/${encodeURIComponent(id)}/image?v=${Date.now()}`),
   meta:   () => list('parts/meta/options'),
   create: (payload) => create('parts', payload),
   update: (id, payload) => update('parts', id, payload),
@@ -183,6 +195,11 @@ export const sales = {
   },
   get: (id) => get('sales', id),
   create: (payload) => create('sales', payload),
+  printPdf: (id, templateId) => api.get(`/sales/${encodeURIComponent(id)}/print`, {
+    params: templateId ? { templateId } : undefined,
+    responseType: 'blob',
+    timeout: 90000,
+  }).then((response) => response.data),
 };
 
 /* ===== INVENTORY RECEIPTS (TNHAPKHO + TNHAPKHOCHITIET) ===== */

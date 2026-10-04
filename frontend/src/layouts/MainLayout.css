@@ -343,6 +343,7 @@
 /* ===== MAIN CONTENT ===== */
 .app-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: clamp(6px, 1vh, 12px) clamp(8px, 1vw, 14px);

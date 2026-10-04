@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Garage.FastReportDesigner</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup>
+    <FastReportDemoDir>$(UserProfile)\.nuget\packages\fastreport.net.demo\2026.2.7\lib\net6.0-windows7.0</FastReportDemoDir>
+    <FastReportCompatDir>$(UserProfile)\.nuget\packages\fastreport.compat\2026.2.7\lib\net6.0-windows7.0</FastReportCompatDir>
+    <FastReportDataVisualizationDir>$(UserProfile)\.nuget\packages\fastreport.datavisualization\2026.2.7\lib\net6.0-windows7.0</FastReportDataVisualizationDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Required by FastReport to compile report expressions/scripts at Prepare() time (headless render mode). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.0.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="FastReport">
+      <HintPath>$(FastReportDemoDir)\FastReport.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FastReport.Bars">
+      <HintPath>$(FastReportDemoDir)\FastReport.Bars.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FastReport.Editor">
+      <HintPath>$(FastReportDemoDir)\FastReport.Editor.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FastReport.Compat">
+      <HintPath>$(FastReportCompatDir)\FastReport.Compat.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FastReport.DataVisualization">
+      <HintPath>$(FastReportDataVisualizationDir)\FastReport.DataVisualization.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

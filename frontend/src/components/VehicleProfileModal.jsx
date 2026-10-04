@@ -46,7 +46,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
   const [existingVehicles, setExistingVehicles] = useState([]);
-  const [fuelOptions, setFuelOptions] = useState(['Xăng', 'Dầu', 'Điện', 'Hybrid', 'LPG', 'Khác']);
+  const [fuelOptions, setFuelOptions] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [subForm, setSubForm] = useState(null);
@@ -78,7 +78,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     setBrands(Array.isArray(meta?.brands) ? meta.brands : []);
     setModels(Array.isArray(meta?.models) ? meta.models : []);
     setExistingVehicles(Array.isArray(vehicleRows) ? vehicleRows : []);
-    setFuelOptions([...new Set(['Xăng', 'Dầu', 'Điện', 'Hybrid', 'LPG', 'Khác', ...(Array.isArray(vehicleRows) ? vehicleRows.map((item) => item.NHIENLIEU).filter(Boolean) : [])])]);
+    setFuelOptions(Array.isArray(meta?.fuels) ? meta.fuels : []);
     return { customerRows, groupRows, meta };
   };
 
@@ -258,219 +258,66 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     return `${prefix[1]}-${digits.length > 3 ? `${digits.slice(0, 3)}.${digits.slice(3)}` : digits}`;
   };
 
-  const loadScanBitmap = async (source) => {
-    if (source instanceof Blob) return createImageBitmap(source);
-    const response = await fetch(source);
-    return createImageBitmap(await response.blob());
-  };
-
-  const otsuThreshold = (data) => {
-    const histogram = new Array(256).fill(0);
-    for (let i = 0; i < data.length; i += 4) histogram[Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114)] += 1;
-    const total = data.length / 4;
-    let sum = 0; for (let i = 0; i < 256; i++) sum += i * histogram[i];
-    let bgW = 0, bgSum = 0, bestVar = 0, thresh = 145;
-    for (let i = 0; i < 256; i++) {
-      bgW += histogram[i]; if (!bgW) continue;
-      const fgW = total - bgW; if (!fgW) break;
-      bgSum += i * histogram[i];
-      const bgM = bgSum / bgW, fgM = (sum - bgSum) / fgW;
-      const v = bgW * fgW * (bgM - fgM) ** 2;
-      if (v > bestVar) { bestVar = v; thresh = i; }
-    }
-    return thresh;
-  };
-
-  // Tăng tương phản rồi binarize – giúp Tesseract đọc tốt hơn trên ảnh thực tế
-  const preprocessCanvas = (ctx, w, h) => {
-    const img = ctx.getImageData(0, 0, w, h);
-    const d = img.data;
-    // Bước 1: tăng tương phản (contrast stretch)
-    let minG = 255, maxG = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-      if (g < minG) minG = g;
-      if (g > maxG) maxG = g;
-    }
-    const range = maxG - minG || 1;
-    for (let i = 0; i < d.length; i += 4) {
-      const g = Math.round(((d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) - minG) / range * 255);
-      d[i] = g; d[i + 1] = g; d[i + 2] = g;
-    }
-    // Bước 2: Otsu threshold -> nhị phân
-    const thresh = otsuThreshold(d);
-    for (let i = 0; i < d.length; i += 4) {
-      const v = d[i] > thresh ? 255 : 0;
-      d[i] = v; d[i + 1] = v; d[i + 2] = v;
-    }
-    ctx.putImageData(img, 0, 0);
-  };
-
-  const buildPlateVariants = async (source) => {
-    const bitmap = await loadScanBitmap(source);
-    // Nhiều vùng crop khác nhau để tăng khả năng bắt được biển số
-    const regions = [
-      { x: 0.05, y: 0.60, width: 0.90, height: 0.32 }, // vùng dưới (biển số thường ở đây)
-      { x: 0.10, y: 0.55, width: 0.80, height: 0.38 },
-      { x: 0.20, y: 0.62, width: 0.60, height: 0.28 },
-      { x: 0.02, y: 0.45, width: 0.96, height: 0.50 }, // nửa dưới toàn bộ
-      { x: 0.00, y: 0.00, width: 1.00, height: 1.00 }, // toàn ảnh (fallback)
-    ];
-    const variants = regions.map((r) => {
-      const sw = Math.max(1, Math.round(bitmap.width * r.width));
-      const sh = Math.max(1, Math.round(bitmap.height * r.height));
-      const scale = Math.min(4, Math.max(2, 1600 / sw));
-      const c = document.createElement('canvas');
-      c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
-      const ctx = c.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(bitmap, Math.round(bitmap.width * r.x), Math.round(bitmap.height * r.y), sw, sh, 0, 0, c.width, c.height);
-      preprocessCanvas(ctx, c.width, c.height);
-      return c.toDataURL('image/png');
-    });
-    bitmap.close?.();
-    return variants;
-  };
-
-  const applyRecognition = (text) => {
-    const plate = formatPlate(text);
+  const applyVehicleAnalysis = (analysis) => {
+    const plate = formatPlate(analysis?.plate || '');
     const normalizedPlate = compactText(plate);
     const knownVehicle = existingVehicles.find((item) => compactText(item.BIENSO) === normalizedPlate);
-    const normalizedOcr = normalizeText(text);
-    const detectedBrand = knownVehicle
-      ? brands.find((item) => item.ID === knownVehicle.DHANGXEID)
-      : brands.find((item) => normalizedOcr.includes(normalizeText(item.NAME)));
-    const brandId = knownVehicle?.DHANGXEID || detectedBrand?.ID || '';
-    const candidateModels = models.filter((item) => !brandId || item.DHANGXEID === brandId);
-    const detectedModel = knownVehicle
-      ? models.find((item) => item.ID === knownVehicle.DDONGXEID)
-      : candidateModels.find((item) => normalizedOcr.includes(normalizeText(item.NAME)));
+    const brandId = knownVehicle?.DHANGXEID || analysis?.brandId || '';
+    const modelId = knownVehicle?.DDONGXEID || analysis?.modelId || '';
+    const detectedFuel = analysis?.fuel || knownVehicle?.NHIENLIEU || '';
+    if (detectedFuel) setFuelOptions((current) => [...new Set([...current, detectedFuel])]);
 
     setForm((current) => ({
       ...current,
       ...(plate ? { BIENSO: plate } : {}),
       ...(brandId ? { DHANGXEID: brandId } : {}),
-      ...(detectedModel?.ID ? { DDONGXEID: detectedModel.ID } : {}),
-      ...(knownVehicle?.PHIENBAN && !current.PHIENBAN ? { PHIENBAN: knownVehicle.PHIENBAN } : {}),
+      ...(modelId ? { DDONGXEID: modelId } : {}),
+      ...((knownVehicle?.PHIENBAN || analysis?.variant) ? { PHIENBAN: knownVehicle?.PHIENBAN || analysis.variant } : {}),
+      ...((knownVehicle?.NAMSANXUAT || analysis?.year) ? { NAMSANXUAT: String(knownVehicle?.NAMSANXUAT || analysis.year) } : {}),
+      ...((knownVehicle?.MAUXE || analysis?.color) ? { MAUXE: knownVehicle?.MAUXE || analysis.color } : {}),
+      ...(detectedFuel ? { NHIENLIEU: detectedFuel } : {}),
     }));
 
-    if (!plate) return 'Không đọc được biển số. Hãy chụp gần hơn, đủ sáng và giữ camera thẳng.';
-    if (knownVehicle) return `Đã nhận diện ${plate} và tải hãng/dòng xe từ hồ sơ hiện có.`;
-    if (brandId && detectedModel?.ID) return `Đã nhận diện ${plate}, ${detectedBrand?.NAME || ''} ${detectedModel.NAME}.`;
-    if (brandId) return `Đã nhận diện ${plate} và hãng ${detectedBrand?.NAME || ''}; chưa đọc được dòng xe.`;
-    return `Đã nhận diện biển số ${plate}; chưa đọc được hãng và dòng xe, vui lòng chọn thủ công.`;
-  };
-
-  // -------- OCR Service (YOLO License Plate Recognition) --------
-  const scanWithYoloService = async (imageSource) => {
-    let b64 = '';
-    if (imageSource instanceof Blob) {
-      b64 = await new Promise((res) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.readAsDataURL(imageSource);
-      });
-    } else if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
-      b64 = imageSource;
-    } else {
-      const resp = await fetch(imageSource);
-      const blob = await resp.blob();
-      b64 = await new Promise((res) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    setScanStatus('Đang quét biển số bằng AI YOLO...');
-    setScanProgress(40);
-
-    // Ưu tiên gọi qua Backend API /api/ocr/scan-plate, fallback sang port 5050
-    let response;
-    try {
-      response = await fetch('/api/ocr/scan-plate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: b64 }),
-        signal: AbortSignal.timeout(15000),
-      });
-    } catch {
-      response = await fetch('http://localhost:5050/api/ocr/plate-base64', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: b64 }),
-        signal: AbortSignal.timeout(15000),
-      });
-    }
-
-    if (!response.ok) throw new Error(`OCR service HTTP ${response.status}`);
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-
-    setScanProgress(90);
-    const recognizedPlate = data.plate || (data.candidates || [])[0] || '';
-    setScanStatus(`YOLO AI: ${recognizedPlate || '(không tìm thấy)'} (${data.elapsed_s || 0}s)`);
-
-    const message = applyRecognition(recognizedPlate);
-    return { message, plate: recognizedPlate, confidence: 1.0, elapsed: data.elapsed_s };
+    const identified = [analysis?.brand, analysis?.model, analysis?.variant].filter(Boolean).join(' ');
+    const confidence = Math.round(Number(analysis?.confidence || 0) * 100);
+    const catalogWarning = analysis?.brand && !brandId
+      ? ' Hãng xe chưa có trong danh mục.'
+      : analysis?.model && !modelId ? ' Dòng xe chưa có trong danh mục.' : '';
+    const estimatedFields = [
+      analysis?.variant && analysis?.variantEstimated
+        ? `phiên bản (${Math.round(Number(analysis.variantConfidence || 0) * 100)}%)` : '',
+      analysis?.year && analysis?.yearEstimated
+        ? `năm sản xuất (${Math.round(Number(analysis.yearConfidence || 0) * 100)}%)` : '',
+    ].filter(Boolean);
+    const estimateWarning = estimatedFields.length
+      ? ` ${estimatedFields.join(' và ')} là kết quả ước đoán từ ngoại hình, vui lòng xác nhận trước khi lưu.`
+      : '';
+    if (knownVehicle) return `Gemini nhận diện ${plate} và đã đối chiếu hồ sơ xe hiện có.`;
+    if (!plate && !identified) return 'Gemini chưa đủ thông tin để nhận diện xe. Hãy dùng ảnh rõ đầu/đuôi xe và biển số.';
+    return `Gemini đã nhận diện${plate ? ` ${plate}` : ''}${identified ? ` · ${identified}` : ''} (${confidence}%).${catalogWarning}${estimateWarning}${analysis?.notes ? ` ${analysis.notes}` : ''}`;
   };
 
   const scanVehicleImage = async (imageSource) => {
-    setScanning(true); setScanProgress(0); setScanStatus('Đang khởi tạo nhận dạng AI...'); setCameraError('');
+    setScanning(true); setScanProgress(10); setScanStatus('Đang gửi ảnh đến Google Gemini...'); setCameraError('');
     try {
-      // 1. Quét bằng YOLO AI
-      try {
-        const { message } = await scanWithYoloService(imageSource);
-        setScanProgress(100);
-        setScanStatus(message);
-        notify(message);
-        return;
-      } catch (e) {
-        console.warn('YOLO AI OCR unavailable or error, falling back to Tesseract:', e);
-        setScanStatus(`YOLO AI chưa phản hồi, chuyển sang Tesseract...`);
-        setScanProgress(20);
+      let image = imageSource;
+      if (imageSource instanceof Blob) {
+        image = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Không thể đọc ảnh đã chọn.'));
+          reader.readAsDataURL(imageSource);
+        });
       }
-
-      // ----- Fallback: Tesseract.js -----
-      setScanStatus('Đang dùng Tesseract.js (dự phòng)...');
-      const { createWorker, OEM, PSM } = await import('tesseract.js');
-      const assetBase = `${import.meta.env.BASE_URL}ocr`;
-      const worker = await createWorker('eng', OEM.LSTM_ONLY, {
-        workerPath: `${assetBase}/worker.min.js`,
-        corePath: `${assetBase}/core`,
-        langPath: assetBase,
-        logger: (m) => {
-          if (typeof m.progress === 'number') setScanProgress(Math.round(m.progress * 100));
-          if (m.status) setScanStatus(m.status === 'recognizing text' ? 'Đang đọc biển số...' : 'Đang chuẩn bị...');
-        },
-      });
-      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, preserve_interword_spaces: '1' });
-      const result = await worker.recognize(imageSource);
-      let recognizedText = result?.data?.text || '';
-      if (!formatPlate(recognizedText)) {
-        setScanStatus('Đang khoanh vùng và làm rõ biển số...');
-        const variants = await buildPlateVariants(imageSource);
-        for (const psm of [PSM.SINGLE_LINE, PSM.SINGLE_BLOCK, PSM.SPARSE_TEXT]) {
-          await worker.setParameters({
-            tessedit_pageseg_mode: psm,
-            tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-.',
-            preserve_interword_spaces: '0',
-          });
-          for (let i = 0; i < variants.length; i++) {
-            setScanProgress(50 + Math.round(((i + 1) / variants.length) * 45));
-            const r = await worker.recognize(variants[i]);
-            recognizedText += `\n${r?.data?.text || ''}`;
-            if (formatPlate(recognizedText)) break;
-          }
-          if (formatPlate(recognizedText)) break;
-        }
-      }
-      await worker.terminate();
-      const message = applyRecognition(recognizedText);
-      setScanStatus(message);
-      notify(message);
+      setScanProgress(45); setScanStatus('Gemini đang nhận diện thông tin xe...');
+      const analysis = await vehicles.analyzeImage(image);
+      if (analysis?.catalogCreated?.brand || analysis?.catalogCreated?.model) await reloadOptions();
+      setScanProgress(90);
+      const message = applyVehicleAnalysis(analysis || {});
+      setScanProgress(100); setScanStatus(message); notify(message);
     } catch (error) {
-      const message = error?.message || 'Không thể nhận dạng ảnh xe.';
-      setCameraError(message); notify(message);
+      const message = error?.response?.data?.error || error?.message || 'Không thể nhận dạng ảnh xe bằng Gemini.';
+      setCameraError(message); setScanStatus(message); notify(message);
     } finally { setScanning(false); }
   };
 
@@ -504,9 +351,11 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
     const image = canvas.toDataURL('image/jpeg', 0.92);
     stopCamera();
-    try { setVehicleImage(await prepareVehicleImage(image, 'anh-quet-bien-so.jpg')); }
-    catch (error) { notify(error.message || 'Không thể thêm ảnh chụp vào hồ sơ xe.'); }
-    await scanVehicleImage(image);
+    try {
+      const prepared = await prepareVehicleImage(image, 'anh-nhan-dien-xe.jpg');
+      setVehicleImage(prepared);
+      await scanVehicleImage(prepared.data);
+    } catch (error) { notify(error.message || 'Không thể xử lý ảnh chụp xe.'); }
   };
 
   const chooseImage = async (event) => {
@@ -514,9 +363,11 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     event.target.value = '';
     if (!file) return;
     stopCamera();
-    try { setVehicleImage(await prepareVehicleImage(file, file.name)); }
-    catch (error) { notify(error.message || 'Không thể thêm ảnh vào hồ sơ xe.'); }
-    await scanVehicleImage(file);
+    try {
+      const prepared = await prepareVehicleImage(file, file.name);
+      setVehicleImage(prepared);
+      await scanVehicleImage(prepared.data);
+    } catch (error) { notify(error.message || 'Không thể xử lý ảnh xe.'); }
   };
 
   const chooseProfileImage = async (event) => {
@@ -524,10 +375,11 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     event.target.value = '';
     if (!file) return;
     try {
-      setVehicleImage(await prepareVehicleImage(file, file.name));
-      notify('Đã thêm ảnh vào hồ sơ xe.');
+      const prepared = await prepareVehicleImage(file, file.name);
+      setVehicleImage(prepared);
+      await scanVehicleImage(prepared.data);
     } catch (error) {
-      notify(error.message || 'Không thể thêm ảnh vào hồ sơ xe.');
+      notify(error.message || 'Không thể xử lý ảnh xe.');
     }
   };
 
@@ -539,7 +391,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
           {error && <div style={{ marginBottom: 10, padding: 8, background: '#FFEBEE', color: '#C62828', borderRadius: 5 }}>{error}</div>}
           <div style={{ color: '#C2410C', fontWeight: 800, marginBottom: 8, display: 'flex', gap: 5 }}><FileText size={14}/> Thông tin hồ sơ và chủ xe</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 11, marginBottom: 16 }}>
-            <label style={fieldLabel}>Biển số xe <span style={{color:'#DC2626'}}>*</span><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><input autoFocus value={form.BIENSO} onChange={(e)=>update('BIENSO',e.target.value.toUpperCase())} placeholder="Ví dụ: 51A-123.45" style={{...fieldInput,flex:1,minWidth:140}}/><button type="button" disabled={scanning} onClick={openCamera} title="Quét đầu xe bằng camera" style={{...addButtonStyle,display:'flex',alignItems:'center',gap:5,opacity:scanning ? 0.65 : 1}}><Camera size={15}/> {scanning?'Đang quét':'Quét xe'}</button><button type="button" disabled={scanning} onClick={()=>fileInputRef.current?.click()} title="Chọn ảnh đầu xe từ thiết bị" style={{...addButtonStyle,display:'flex',alignItems:'center',gap:5,background:'#fff',color:'#E65100',border:'1px solid #E65100',opacity:scanning ? 0.65 : 1}}><ImageUp size={15}/> Chọn ảnh</button><input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={chooseImage} hidden/><input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" onChange={chooseImage} hidden/></div></label>
+            <label style={fieldLabel}>Biển số xe <span style={{color:'#DC2626'}}>*</span><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><input autoFocus value={form.BIENSO} onChange={(e)=>update('BIENSO',e.target.value.toUpperCase())} placeholder="Ví dụ: 51A-123.45" style={{...fieldInput,flex:1,minWidth:140}}/><button type="button" disabled={scanning} onClick={openCamera} title="Chụp xe và nhận diện bằng Gemini" style={{...addButtonStyle,display:'flex',alignItems:'center',gap:5,opacity:scanning ? 0.65 : 1}}><Camera size={15}/> {scanning?'Đang nhận diện':'Quét xe'}</button><button type="button" disabled={scanning} onClick={()=>fileInputRef.current?.click()} title="Chọn ảnh để Gemini nhận diện thông tin xe" style={{...addButtonStyle,display:'flex',alignItems:'center',gap:5,background:'#fff',color:'#E65100',border:'1px solid #E65100',opacity:scanning ? 0.65 : 1}}><ImageUp size={15}/> Chọn ảnh</button><input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={chooseImage} hidden/><input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" onChange={chooseImage} hidden/></div></label>
             <label style={fieldLabel}>Khách hàng / Chủ xe <span style={{ color: '#94A3B8', fontWeight: 400 }}>(không bắt buộc)</span><div style={{display:'flex',gap:6}}><select value={form.DKHACHHANGID} onChange={(e)=>update('DKHACHHANGID',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chưa có chủ xe --</option>{customersList.map(x=><option key={x.ID} value={x.ID}>{x.MAKHACH?`${x.MAKHACH} - `:''}{x.NAME}{x.DIENTHOAI?` - ${x.DIENTHOAI}`:''}</option>)}</select><button type="button" onClick={openCustomer} style={addButtonStyle}>＋ Thêm</button></div></label>
           </div>
           {(scanning || scanStatus) && <div style={{margin:'-7px 0 12px',padding:'7px 9px',borderRadius:5,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#9A3412',fontSize:11}}><div style={{display:'flex',alignItems:'center',gap:6,fontWeight:700}}><ScanLine size={14}/>{scanStatus || 'Đang nhận dạng...'}</div>{scanning&&<div style={{height:4,marginTop:6,borderRadius:4,background:'#FFEDD5',overflow:'hidden'}}><div style={{width:`${scanProgress}%`,height:'100%',background:'#E65100',transition:'width .2s'}}/></div>}</div>}
@@ -562,7 +414,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
                 </div>
               </>
             ) : (
-              <div style={{ width: '100%', textAlign: 'center', color: '#94A3B8', fontSize: 11 }}>Chưa chọn ảnh hồ sơ xe. Bấm “Thêm ảnh” hoặc chọn ảnh để quét biển số.</div>
+              <div style={{ width: '100%', textAlign: 'center', color: '#94A3B8', fontSize: 11 }}>Chưa chọn ảnh hồ sơ xe. Khi thêm ảnh, Gemini sẽ tự nhận diện biển số và thông tin xe.</div>
             )}
           </div>
           <div style={{ color: '#C2410C', fontWeight: 800, marginBottom: 8, display: 'flex', gap: 5 }}><Wrench size={14}/> Thông số kỹ thuật</div>

@@ -1,3 +1,4 @@
+import DocumentPrintDialog from './components/DocumentPrintDialog.jsx';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage         from './pages/LoginPage.jsx';
 import MainLayout        from './layouts/MainLayout.jsx';
@@ -15,6 +16,7 @@ import BaoHanhPage       from './pages/BaoHanhPage.jsx';
 import ThuChiPage        from './pages/ThuChiPage.jsx';
 import QuanTriPage       from './pages/QuanTriPage.jsx';
 import CauHinhPage       from './pages/CauHinhPage.jsx';
+import DanhMucPage       from './pages/DanhMucPage.jsx';
 import NhapKhoPage       from './pages/NhapKhoPage.jsx';
 import HoSoChoDuyetPage from './pages/HoSoChoDuyetPage.jsx';
 import PlaceholderPage   from './pages/PlaceholderPage.jsx';
@@ -42,6 +44,7 @@ export default function App() {
   return (
     <>
       <GlobalNumberPreview />
+      <DocumentPrintDialog />
       <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
@@ -69,6 +72,7 @@ export default function App() {
         <Route path="bao-cao"       element={secured('REPORTS', <BaoCaoPage />)} />
         <Route path="quan-tri"      element={secured('ADMIN', <QuanTriPage />)} />
         <Route path="cau-hinh"      element={secured('SETTINGS', <CauHinhPage />)} />
+        <Route path="danh-muc"      element={secured('SETTINGS', <DanhMucPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

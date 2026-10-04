@@ -1,3 +1,5 @@
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
+import useDocumentNumber from '../hooks/useDocumentNumber';
 import { useState, useEffect } from 'react';
 import { 
   ClipboardList, User, Car, Activity, FileText, History, Notebook,
@@ -55,7 +57,7 @@ export default function TiepNhanXePage() {
 
   // Dữ liệu tiếp nhận
   const [reception, setReception] = useState({
-    ticketCode: 'TNX-20250930-001',
+    ticketCode: '',
     checkinTime: '30/09/2025 14:28',
     advisor: 'Nguyễn Văn A',
     technician: 'Trần Văn B',
@@ -64,6 +66,7 @@ export default function TiepNhanXePage() {
   });
 
   // Load danh sách khách hàng từ backend nếu có
+  const draftNumber=useDocumentNumber('TiepNhan');
   useEffect(() => {
     axios.get('http://localhost:4000/api/customers')
       .then(res => {
@@ -179,7 +182,8 @@ export default function TiepNhanXePage() {
 
   // Tạo phiếu mới
   const handleNewTicket = () => {
-    const code = 'TNX-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+    const code = '';
+    draftNumber.refresh();
     setReception(prev => ({
       ...prev,
       ticketCode: code,
@@ -199,7 +203,7 @@ export default function TiepNhanXePage() {
       condition: 'Bình thường',
       request: ''
     });
-    showToastMsg(`Đã tạo phiếu tiếp nhận mới: ${code}`);
+    showToastMsg('Đã mở phiếu tiếp nhận mới.');
   };
 
   // Lưu phiếu
@@ -208,7 +212,7 @@ export default function TiepNhanXePage() {
       showToastMsg('Vui lòng nhập Biển số xe!', 'error');
       return;
     }
-    showToastMsg(`💾 Đã lưu thành công Phiếu tiếp nhận [${reception.ticketCode}] cho khách hàng ${selectedCustomer.NAME || ''}!`);
+    showToastMsg('Thông tin tiếp nhận đang ở bản nháp; hãy lưu qua màn hình Sửa chữa để tạo phiếu trong hệ thống.', 'error');
   };
 
   return (
@@ -260,7 +264,7 @@ export default function TiepNhanXePage() {
           </button>
           <button 
             className="btn" 
-            onClick={() => setShowPrintModal(true)}
+            onClick={() => openDocumentPrint({ type: 'MauPhieuTiepNhan' })}
             style={{ background: 'white', border: '1px solid #E0E0E0', padding: '4px 8px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, cursor: 'pointer' }}
           >
             🖨️ In phiếu
@@ -843,7 +847,7 @@ export default function TiepNhanXePage() {
                <h3 style={{ fontSize: 10, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}><span style={{color:'#E65100'}}>📝</span> Phiếu tiếp nhận</h3>
             </div>
             <div style={{ padding: '4px 8px' }}>
-              <div className="detail-row" style={{ padding: '1px 0' }}><div className="detail-label" style={{ width: 60, fontSize: 9 }}>Mã phiếu</div><div className="detail-value" style={{ color: '#E65100', fontWeight: 600, fontSize: 9 }}>{reception.ticketCode}</div></div>
+              <div className="detail-row" style={{ padding: '1px 0' }}><div className="detail-label" style={{ width: 60, fontSize: 9 }}>Mã phiếu</div><div className="detail-value" style={{ color: '#E65100', fontWeight: 600, fontSize: 9 }}>{reception.ticketCode || draftNumber.code}</div></div>
               <div className="detail-row" style={{ padding: '1px 0' }}>
                 <div className="detail-label" style={{ width: 60, fontSize: 9 }}>Khách hàng</div>
                 <div className="detail-value" style={{ fontWeight: 600, fontSize: 9, color: '#1976D2' }}>
@@ -863,7 +867,7 @@ export default function TiepNhanXePage() {
 
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <button 
-              onClick={() => setShowPrintModal(true)}
+              onClick={() => openDocumentPrint({ type: 'MauPhieuTiepNhan' })}
               style={{ flex: 1.2, background: '#E65100', color: 'white', padding: '6px 2px', borderRadius: 4, border: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 9, cursor: 'pointer' }}
             >
               🖨️ In phiếu
@@ -1010,7 +1014,7 @@ export default function TiepNhanXePage() {
                   <div style={{ fontSize: 10, color: '#555' }}>Hotline: 0917 66 4444</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#E65100' }}>MÃ: {reception.ticketCode}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#E65100' }}>MÃ: {reception.ticketCode || draftNumber.code}</div>
                   <div style={{ fontSize: 9, color: '#777' }}>Ngày vào: {reception.checkinTime}</div>
                 </div>
               </div>
@@ -1041,7 +1045,7 @@ export default function TiepNhanXePage() {
             </div>
             <div style={{ padding: '8px 16px', background: '#F5F5F5', borderTop: '1px solid #E0E0E0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setShowPrintModal(false)} style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>Đóng</button>
-              <button onClick={() => window.print()} style={{ padding: '6px 16px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <button onClick={() => openDocumentPrint({ type: 'MauPhieuTiepNhan' })} style={{ padding: '6px 16px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <Printer size={14} /> In phiếu
               </button>
             </div>

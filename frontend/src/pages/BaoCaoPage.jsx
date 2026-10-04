@@ -1,3 +1,4 @@
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useState } from 'react';
 import {
   FileText, Calendar, RotateCcw, Search, Car, DollarSign,
@@ -10,8 +11,8 @@ import './BaoCaoPage.css';
 
 export default function BaoCaoPage() {
   // Bộ lọc
-  const [fromDate, setFromDate] = useState('2025-09-01');
-  const [toDate, setToDate] = useState('2025-09-30');
+  const [fromDate, setFromDate] = useState(() => new Date().toISOString().slice(0,7)+'-01');
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0,10));
   const [branch, setBranch] = useState('all');
   const [reportType, setReportType] = useState('all');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -1237,7 +1238,7 @@ export default function BaoCaoPage() {
               </button>
 
               <button
-                onClick={() => showToast('Đang mở trang in báo cáo...')}
+                onClick={() => openDocumentPrint({ type: 'MauBaoCao', from: fromDate, to: toDate })}
                 className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
@@ -1255,14 +1256,14 @@ export default function BaoCaoPage() {
                 }}
               >
                 <Printer size={13} color="#E65100" />
-                In báo cáo
+                In tổng hợp GARA
               </button>
             </div>
 
             {/* Row 2: Xuất PDF | Lịch sử báo cáo */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <button
-                onClick={() => showToast('Đang tạo tài liệu PDF báo cáo...')}
+                onClick={() => openDocumentPrint({ type: 'MauBaoCao', from: fromDate, to: toDate })}
                 className="bc-quick-actions-btn"
                 style={{
                   display: 'flex',
@@ -1280,7 +1281,7 @@ export default function BaoCaoPage() {
                 }}
               >
                 <FileText size={13} color="#D32F2F" />
-                Xuất PDF
+                PDF tổng hợp
               </button>
 
               <button
@@ -1308,7 +1309,7 @@ export default function BaoCaoPage() {
 
             {/* Row 3: Tạo báo cáo theo mẫu */}
             <button
-              onClick={() => setShowTemplateModal(true)}
+              onClick={() => openDocumentPrint({ type:'MauBaoCao',types:['MauBaoCao','MauCongNoKhachHang','MauCongNoNhaCungCap','MauLichSuSuaChua','MauBangLuong'],from:fromDate,to:toDate })}
               className="bc-quick-btn-full"
               style={{
                 display: 'flex',

@@ -1,1299 +1,160 @@
-import { useState } from 'react';
-import {
-  Settings, Building2, Sliders, Printer, Radio, Share2,
-  Database, FileText, DollarSign, Calendar, Clock, Lock,
-  Shield, UploadCloud, RefreshCw, Folder, Trash2, Eye,
-  CheckCircle, ChevronRight, X, Camera, AlertCircle, HardDrive
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Settings, Folder, Save, RefreshCw, Search, Printer, Loader2 } from 'lucide-react';
+import PrintTemplatesPanel from '../components/PrintTemplatesPanel';
+import DocumentNumberControl from '../components/DocumentNumberControl';
+import api from '../api';
+import { compressCompanyLogo } from '../utils/compressCompanyLogo';
+import './CauHinhPage.css';
+
+const fields = { 1: 'TEXTVALUE', 2: 'DATETIMEVALUE', 3: 'INTVALUE', 4: 'DECIMALVALUE', 5: 'BLOBVALUE' };
+const messageOf = error => error.response?.data?.error || error.message;
+function dateInput(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export default function CauHinhPage() {
-  const [activeTab, setActiveTab] = useState('thong-tin-cong-ty');
-  const [toastMessage, setToastMessage] = useState('');
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
+  const [groups, setGroups] = useState([]);
+  const [values, setValues] = useState({});
+  const [original, setOriginal] = useState({});
+  const [activeId, setActiveId] = useState(null);
+  const [convention, setConvention] = useState('garage');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [compressingLogo, setCompressingLogo] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [notice, setNotice] = useState(null);
+  const [search, setSearch] = useState('');
+  const searchRef = useRef(null);
+  const noticeTimer = useRef(null);
+  const busy = loading || saving || compressingLogo;
+  const changed = Object.keys(values).filter(id => values[id] !== original[id]);
+  const showToast = (message, type = 'ok') => {
+    clearTimeout(noticeTimer.current);
+    setNotice({ message, type });
+    noticeTimer.current = setTimeout(() => setNotice(null), 4500);
   };
-
-  // 7 Tab trên cùng
-  const tabs = [
-    { id: 'thong-tin-cong-ty', label: 'Thông tin công ty', icon: Building2 },
-    { id: 'thiet-lap-chung', label: 'Thiết lập chung', icon: Sliders },
-    { id: 'in-an', label: 'In ấn & mẫu', icon: Printer },
-    { id: 'ket-noi-thiet-bi', label: 'Kết nối thiết bị', icon: Radio },
-    { id: 'tich-hop', label: 'Tích hợp', icon: Share2 },
-    { id: 'sao-luu-phuc-hoi', label: 'Sao lưu & phục hồi', icon: Database },
-    { id: 'nhat-ky-he-thong', label: 'Nhật ký hệ thống', icon: FileText }
-  ];
-
-  // Form State: Thông tin công ty
-  const [companyInfo, setCompanyInfo] = useState({
-    name: 'CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM',
-    address: '925/15 Âu Cơ - P. Tân Sơn Nhì - TP.HCM',
-    phone: '0917 66 4444 - 0967 04 1111',
-    zalo: '0917664444',
-    email: 'kazukovietnamcompany@gmail.com',
-    website: 'https://kazukovietnam.com',
-    facebook: 'kazukovietnam'
-  });
-
-  // Form State: Đơn vị tiền tệ & tỷ giá
-  const [currency, setCurrency] = useState('VND');
-  const [exchangeRate, setExchangeRate] = useState('1.00');
-  const [rateUpdateDate, setRateUpdateDate] = useState('30/09/2025');
-
-  // Form State: Thời gian & làm việc
-  const [startDate, setStartDate] = useState('01/01/2025');
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('17:30');
-  const [offDay, setOffDay] = useState('Chủ nhật');
-  const [autoShiftDay, setAutoShiftDay] = useState(true);
-
-  // Form State: Cài đặt chung
-  const [language, setLanguage] = useState('Tiếng Việt');
-  const [dateFormat, setDateFormat] = useState('dd/MM/yyyy');
-  const [timeFormat, setTimeFormat] = useState('HH:mm');
-  const [gridRows, setGridRows] = useState('50');
-  const [workMode, setWorkMode] = useState('Bình thường');
-  const [allowEditLocked, setAllowEditLocked] = useState(false);
-  const [autoSave, setAutoSave] = useState(true);
-
-  // Form State: Kết nối cơ sở dữ liệu
-  const [dbType, setDbType] = useState('SQL Server');
-  const [dbServer, setDbServer] = useState('(local)');
-  const [dbName, setDbName] = useState('KazukoAutoDB');
-  const [dbUser, setDbUser] = useState('sa');
-  const [dbPass, setDbPass] = useState('••••••••');
-  const [isDbConnected, setIsDbConnected] = useState(true);
-
-  // Form State: Phân quyền & bảo mật
-  const [adminPass, setAdminPass] = useState('••••••••');
-  const [passExpireDays, setPassExpireDays] = useState('90');
-  const [enable2FA, setEnable2FA] = useState(false);
-  const [logLogin, setLogLogin] = useState(true);
-  const [limitIp, setLimitIp] = useState(false);
-
-  // Form State: Sao lưu dữ liệu
-  const [backupDir, setBackupDir] = useState('D:\\KazukoAuto\\Backup');
-  const [autoBackupPeriod, setAutoBackupPeriod] = useState('Hàng ngày');
-  const [backupTime, setBackupTime] = useState('02:00');
-
-  // Modal State
-  const [modalTitle, setModalTitle] = useState('');
-  const [showModal, setShowModal] = useState(false);
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 'clamp(4px, 0.8vh, 10px)',
-      height: '100%',
-      width: '100%',
-      boxSizing: 'border-box',
-      overflow: 'hidden'
-    }}>
-      {/* Toast thông báo */}
-      {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          top: 15,
-          right: 15,
-          background: '#2E7D32',
-          color: 'white',
-          padding: '8px 16px',
-          borderRadius: 6,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontWeight: 600,
-          fontSize: 12
-        }}>
-          <CheckCircle size={15} />
-          {toastMessage}
-        </div>
-      )}
-
-      {/* Header & 7 Tabs gọn 1 hàng */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: 6,
-        padding: 'clamp(4px, 0.6vh, 8px) 12px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        flexShrink: 0
-      }}>
-        {/* Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <div style={{
-            width: 24,
-            height: 24,
-            borderRadius: 4,
-            background: '#E65100',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white'
-          }}>
-            <Settings size={14} />
-          </div>
-          <h1 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: '#212121' }}>
-            Cấu hình hệ thống
-          </h1>
-        </div>
-
-        {/* 7 Tabs */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          overflowX: 'auto',
-          flexWrap: 'nowrap'
-        }}>
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  showToast(`Chuyển cấu hình: ${tab.label}`);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                  fontSize: 10.5,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: isActive ? 'none' : '1px solid #DEDEDE',
-                  background: isActive ? '#E65100' : 'white',
-                  color: isActive ? 'white' : '#424242',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Icon size={12} color={isActive ? 'white' : '#616161'} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Hàng 1 (3 Cột): Thông tin công ty (Kèm Logo) | Đơn vị tiền tệ | Thời gian & làm việc (flex: 1.15) */}
-      <div className="responsive-grid-3" style={{
-        flex: 1.15,
-        minHeight: 0
-      }}>
-        {/* Cột 1: Thông tin công ty (Form + Logo bên phải) */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-            <div style={{
-              width: 15,
-              height: 15,
-              borderRadius: 3,
-              background: '#E65100',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white'
-            }}>
-              <Building2 size={10} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Thông tin công ty</span>
-          </div>
-
-          <div className="responsive-grid-2" style={{ flex: 1, minHeight: 0 }}>
-            {/* Form fields */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Tên công ty</span>
-                <input
-                  type="text"
-                  value={companyInfo.name}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Địa chỉ</span>
-                <input
-                  type="text"
-                  value={companyInfo.address}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Điện thoại</span>
-                <input
-                  type="text"
-                  value={companyInfo.phone}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Zalo</span>
-                <input
-                  type="text"
-                  value={companyInfo.zalo}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, zalo: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Email</span>
-                <input
-                  type="text"
-                  value={companyInfo.email}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, email: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Website</span>
-                <input
-                  type="text"
-                  value={companyInfo.website}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, website: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '65px 1fr', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#616161' }}>Facebook</span>
-                <input
-                  type="text"
-                  value={companyInfo.facebook}
-                  onChange={(e) => setCompanyInfo({ ...companyInfo, facebook: e.target.value })}
-                  style={{ padding: 'clamp(1px, 0.3vh, 3px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-            </div>
-
-            {/* Logo Preview & Upload Box */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
-              {/* Logo Box */}
-              <div style={{
-                background: '#FAFAFA',
-                border: '1px solid #EEEEEE',
-                borderRadius: 4,
-                padding: 'clamp(4px, 0.8vh, 10px) 8px',
-                textAlign: 'center',
-                width: '100%',
-                boxSizing: 'border-box'
-              }}>
-                <div style={{ fontSize: 'clamp(13px, 1.8vh, 16px)', fontWeight: 900, color: '#D32F2F', letterSpacing: 0.5 }}>
-                  KAZUKO <span style={{ color: '#E65100', fontStyle: 'italic' }}>AUTO</span>
-                </div>
-                <div style={{ fontSize: 7.5, color: '#E65100', fontWeight: 600 }}>
-                  Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!
-                </div>
-              </div>
-
-              {/* Upload Dashed Box */}
-              <div
-                onClick={() => showToast('Mở cửa sổ chọn logo công ty...')}
-                style={{
-                  border: '1px dashed #BDBDBD',
-                  borderRadius: 4,
-                  background: '#FCFCFC',
-                  padding: 'clamp(6px, 1vh, 12px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <Camera size={16} color="#757575" />
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#333', marginTop: 2 }}>Chọn logo công ty</span>
-                <span style={{ fontSize: 7.5, color: '#888' }}>(PNG, JPG - 300x120)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cột 2: Đơn vị tiền tệ & tỷ giá */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <DollarSign size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Đơn vị tiền tệ & tỷ giá</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(3px, 0.6vh, 6px)', fontSize: 9.5 }}>
-              <div>
-                <span style={{ color: '#616161', display: 'block', marginBottom: 1 }}>Loại tiền tệ</span>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(2px, 0.4vh, 4px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="VND">VND - Việt Nam Đồng</option>
-                  <option value="USD">USD - Đô la Mỹ</option>
-                </select>
-              </div>
-
-              <div>
-                <span style={{ color: '#616161', display: 'block', marginBottom: 1 }}>Tỷ giá mặc định</span>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'clamp(2px, 0.4vh, 4px) 5px', background: '#FAFAFA', border: '1px solid #DEDEDE', borderRadius: 3 }}>
-                  <span>1.00</span>
-                  <span style={{ color: '#888' }}>1.00</span>
-                </div>
-              </div>
-
-              <div>
-                <span style={{ color: '#616161', display: 'block', marginBottom: 1 }}>Cập nhật tỷ giá</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={rateUpdateDate}
-                    onChange={(e) => setRateUpdateDate(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(2px, 0.4vh, 4px) 20px clamp(2px, 0.4vh, 4px) 5px', fontSize: 9.5, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Calendar size={10} style={{ position: 'absolute', right: 5, color: '#757575' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => showToast('Đã cập nhật tỷ giá ngoại tệ mới nhất')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              background: '#E65100',
-              color: 'white',
-              border: 'none',
-              borderRadius: 3,
-              padding: 'clamp(4px, 0.7vh, 8px)',
-              fontSize: 9.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginTop: 2
-            }}
-          >
-            <RefreshCw size={10} />
-            Cập nhật tỷ giá
-          </button>
-        </div>
-
-        {/* Cột 3: Thời gian & làm việc */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <Calendar size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Thời gian & làm việc</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(3px, 0.6vh, 6px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Ngày bắt đầu làm việc</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1.5px, 0.3vh, 3px) 18px clamp(1.5px, 0.3vh, 3px) 5px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Calendar size={9} style={{ position: 'absolute', right: 4, color: '#757575' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Giờ bắt đầu làm việc</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1.5px, 0.3vh, 3px) 18px clamp(1.5px, 0.3vh, 3px) 5px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Clock size={9} style={{ position: 'absolute', right: 4, color: '#757575' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Giờ kết thúc làm việc</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1.5px, 0.3vh, 3px) 18px clamp(1.5px, 0.3vh, 3px) 5px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Clock size={9} style={{ position: 'absolute', right: 4, color: '#757575' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Ngày nghỉ cố định</span>
-                <select
-                  value={offDay}
-                  onChange={(e) => setOffDay(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1.5px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="Chủ nhật">Chủ nhật</option>
-                  <option value="Thứ 7 & Chủ nhật">Thứ 7 & Chủ nhật</option>
-                  <option value="Không nghỉ">Không nghỉ</option>
-                </select>
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginTop: 1 }}>
-                <input
-                  type="checkbox"
-                  checked={autoShiftDay}
-                  onChange={(e) => setAutoShiftDay(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Tự động chuyển ngày làm việc</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Hàng 2 (3 Cột): Cài đặt chung | Kết nối cơ sở dữ liệu | Phân quyền & bảo mật (flex: 1.25) */}
-      <div className="responsive-grid-3" style={{
-        flex: 1.25,
-        minHeight: 0
-      }}>
-        {/* Cột 1: Cài đặt chung */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <Settings size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Cài đặt chung</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2.5px, 0.5vh, 5px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Ngôn ngữ</span>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="Tiếng Việt">Tiếng Việt</option>
-                  <option value="English">English</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Định dạng ngày</span>
-                <select
-                  value={dateFormat}
-                  onChange={(e) => setDateFormat(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="dd/MM/yyyy">dd/MM/yyyy</option>
-                  <option value="yyyy-MM-dd">yyyy-MM-dd</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Định dạng giờ</span>
-                <select
-                  value={timeFormat}
-                  onChange={(e) => setTimeFormat(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="HH:mm">HH:mm</option>
-                  <option value="hh:mm a">hh:mm a</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Số dòng hiển thị (grid)</span>
-                <select
-                  value={gridRows}
-                  onChange={(e) => setGridRows(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="20">20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Chế độ làm việc</span>
-                <select
-                  value={workMode}
-                  onChange={(e) => setWorkMode(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="Bình thường">Bình thường</option>
-                  <option value="Offline">Offline</option>
-                </select>
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginTop: 1 }}>
-                <input
-                  type="checkbox"
-                  checked={allowEditLocked}
-                  onChange={(e) => setAllowEditLocked(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Cho phép sửa chứng từ đã khóa</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={autoSave}
-                  onChange={(e) => setAutoSave(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Tự động lưu dữ liệu</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Cột 2: Kết nối cơ sở dữ liệu */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <Database size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Kết nối cơ sở dữ liệu</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px, 0.4vh, 4px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Loại CSDL</span>
-                <select
-                  value={dbType}
-                  onChange={(e) => setDbType(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="SQL Server">SQL Server</option>
-                  <option value="Firebird">Firebird (.FDB)</option>
-                  <option value="MySQL">MySQL</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Máy chủ (Server)</span>
-                <input
-                  type="text"
-                  value={dbServer}
-                  onChange={(e) => setDbServer(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Tên CSDL</span>
-                <input
-                  type="text"
-                  value={dbName}
-                  onChange={(e) => setDbName(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Tài khoản</span>
-                <input
-                  type="text"
-                  value={dbUser}
-                  onChange={(e) => setDbUser(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Mật khẩu</span>
-                <input
-                  type="password"
-                  value={dbPass}
-                  onChange={(e) => setDbPass(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Buttons & Status row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <button
-              onClick={() => {
-                setIsDbConnected(true);
-                showToast('Kết nối cơ sở dữ liệu thành công!');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                background: '#E65100',
-                color: 'white',
-                border: 'none',
-                borderRadius: 3,
-                padding: 'clamp(3px, 0.5vh, 6px) 8px',
-                fontSize: 9.5,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Radio size={10} />
-              Kiểm tra kết nối
-            </button>
-
-            {isDbConnected && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#2E7D32', fontSize: 9.5, fontWeight: 600 }}>
-                <CheckCircle size={12} color="#2E7D32" />
-                <span>Kết nối thành công</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Cột 3: Phân quyền & bảo mật */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <Shield size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Phân quyền & bảo mật</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px, 0.4vh, 4px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Mật khẩu quản trị</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="password"
-                    value={adminPass}
-                    onChange={(e) => setAdminPass(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 18px clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Eye size={9} style={{ position: 'absolute', right: 4, color: '#757575', cursor: 'pointer' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Thời gian hết hạn mật khẩu</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="text"
-                    value={passExpireDays}
-                    onChange={(e) => setPassExpireDays(e.target.value)}
-                    style={{ width: 40, padding: 'clamp(1px, 0.3vh, 3px) 3px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3, textAlign: 'center' }}
-                  />
-                  <span style={{ color: '#616161', fontSize: 9 }}>ngày</span>
-                </div>
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginTop: 1 }}>
-                <input
-                  type="checkbox"
-                  checked={enable2FA}
-                  onChange={(e) => setEnable2FA(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Bật xác thực 2 lớp (2FA)</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={logLogin}
-                  onChange={(e) => setLogLogin(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Ghi log đăng nhập</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={limitIp}
-                  onChange={(e) => setLimitIp(e.target.checked)}
-                  style={{ accentColor: '#E65100' }}
-                />
-                <span style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Giới hạn IP đăng nhập</span>
-              </label>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setModalTitle('Quản lý phân quyền người dùng');
-              setShowModal(true);
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              background: 'white',
-              color: '#D32F2F',
-              border: '1px solid #FFCDD2',
-              borderRadius: 3,
-              padding: 'clamp(3px, 0.6vh, 6px) 8px',
-              fontSize: 9.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginTop: 4
-            }}
-          >
-            👤 Quản lý người dùng
-          </button>
-        </div>
-      </div>
-
-      {/* Hàng 3 (3 Cột): Sao lưu dữ liệu | Phiên bản phần mềm | Khác (4 Ô) (flex: 0.95) */}
-      <div className="responsive-grid-3" style={{
-        flex: 0.95,
-        minHeight: 0
-      }}>
-        {/* Cột 1: Sao lưu dữ liệu */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <UploadCloud size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Sao lưu dữ liệu</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px, 0.4vh, 4px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Thư mục lưu backup</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={backupDir}
-                    onChange={(e) => setBackupDir(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 18px clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Folder size={9} style={{ position: 'absolute', right: 4, color: '#757575', cursor: 'pointer' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Tự động sao lưu</span>
-                <select
-                  value={autoBackupPeriod}
-                  onChange={(e) => setAutoBackupPeriod(e.target.value)}
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                >
-                  <option value="Hàng ngày">Hàng ngày</option>
-                  <option value="Hàng tuần">Hàng tuần</option>
-                  <option value="Hàng tháng">Hàng tháng</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Thời gian sao lưu</span>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={backupTime}
-                    onChange={(e) => setBackupTime(e.target.value)}
-                    style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 18px clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #DEDEDE', borderRadius: 3 }}
-                  />
-                  <Clock size={9} style={{ position: 'absolute', right: 4, color: '#757575' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 1 }}>
-            <button
-              onClick={() => showToast('Đang tiến hành sao lưu dữ liệu toàn diện...')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                background: '#E65100',
-                color: 'white',
-                border: 'none',
-                borderRadius: 3,
-                padding: 'clamp(3px, 0.5vh, 6px) 8px',
-                fontSize: 9.5,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Database size={10} />
-              Sao lưu ngay
-            </button>
-          </div>
-        </div>
-
-        {/* Cột 2: Phiên bản phần mềm */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-              <div style={{
-                width: 15,
-                height: 15,
-                borderRadius: 3,
-                background: '#E65100',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white'
-              }}>
-                <AlertCircle size={10} />
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Phiên bản phần mềm</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px, 0.4vh, 4px)', fontSize: 9.5 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Phiên bản hiện tại</span>
-                <input
-                  type="text"
-                  value="v5.9.18.5"
-                  readOnly
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #EEEEEE', borderRadius: 3, background: '#FAFAFA' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Ngày phát hành</span>
-                <input
-                  type="text"
-                  value="30/09/2025"
-                  readOnly
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #EEEEEE', borderRadius: 3, background: '#FAFAFA' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center' }}>
-                <span style={{ color: '#616161' }}>Build</span>
-                <input
-                  type="text"
-                  value="20250930.1428"
-                  readOnly
-                  style={{ width: '100%', padding: 'clamp(1px, 0.3vh, 3px) 4px', fontSize: 9, border: '1px solid #EEEEEE', borderRadius: 3, background: '#FAFAFA' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => showToast('Phần mềm đang ở phiên bản mới nhất (v5.9.18.5)')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              background: 'white',
-              color: '#424242',
-              border: '1px solid #DEDEDE',
-              borderRadius: 3,
-              padding: 'clamp(3px, 0.5vh, 6px) 8px',
-              fontSize: 9.5,
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <RefreshCw size={10} color="#E65100" />
-            Kiểm tra cập nhật
-          </button>
-        </div>
-
-        {/* Cột 3: Khác (4 Grid Action Tiles) */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 6,
-          padding: 'clamp(6px, 1vh, 10px) 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          border: '1px solid #EEEEEE',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-            <div style={{
-              width: 15,
-              height: 15,
-              borderRadius: 3,
-              background: '#E65100',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white'
-            }}>
-              <Sliders size={10} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#212121' }}>Khác</span>
-          </div>
-
-          {/* 4 Tiles (2x2) */}
-          <div className="responsive-grid-2" style={{
-            gap: 4,
-            flex: 1
-          }}>
-            {/* Tile 1: Khôi phục mặc định */}
-            <div
-              onClick={() => {
-                setModalTitle('Khôi phục thiết lập mặc định');
-                setShowModal(true);
-              }}
-              style={{
-                background: '#FAFAFA',
-                border: '1px solid #EEEEEE',
-                borderRadius: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: '3px'
-              }}
-            >
-              <RefreshCw size={12} color="#D32F2F" />
-              <span style={{ fontSize: 8.5, color: '#333', textAlign: 'center', marginTop: 1, fontWeight: 500 }}>
-                Khôi phục mặc định
-              </span>
-            </div>
-
-            {/* Tile 2: Nhập / Xuất dữ liệu */}
-            <div
-              onClick={() => {
-                setModalTitle('Nhập / Xuất cấu hình dữ liệu');
-                setShowModal(true);
-              }}
-              style={{
-                background: '#FAFAFA',
-                border: '1px solid #EEEEEE',
-                borderRadius: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: '3px'
-              }}
-            >
-              <Folder size={12} color="#D32F2F" />
-              <span style={{ fontSize: 8.5, color: '#333', textAlign: 'center', marginTop: 1, fontWeight: 500 }}>
-                Nhập / Xuất dữ liệu
-              </span>
-            </div>
-
-            {/* Tile 3: Xóa dữ liệu mẫu */}
-            <div
-              onClick={() => {
-                setModalTitle('Xóa dữ liệu mẫu');
-                setShowModal(true);
-              }}
-              style={{
-                background: '#FAFAFA',
-                border: '1px solid #EEEEEE',
-                borderRadius: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: '3px'
-              }}
-            >
-              <Trash2 size={12} color="#D32F2F" />
-              <span style={{ fontSize: 8.5, color: '#333', textAlign: 'center', marginTop: 1, fontWeight: 500 }}>
-                Xóa dữ liệu mẫu
-              </span>
-            </div>
-
-            {/* Tile 4: Cài đặt nâng cao */}
-            <div
-              onClick={() => {
-                setModalTitle('Cài đặt hệ thống nâng cao');
-                setShowModal(true);
-              }}
-              style={{
-                background: '#FAFAFA',
-                border: '1px solid #EEEEEE',
-                borderRadius: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: '3px'
-              }}
-            >
-              <Sliders size={12} color="#D32F2F" />
-              <span style={{ fontSize: 8.5, color: '#333', textAlign: 'center', marginTop: 1, fontWeight: 500 }}>
-                Cài đặt nâng cao
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal Cấu hình tiện ích */}
-      {showModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: 20
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: 8,
-            width: '100%',
-            maxWidth: 480,
-            overflow: 'hidden',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{
-              background: '#E65100',
-              color: 'white',
-              padding: '10px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}>
-                <Settings size={16} />
-                <span>{modalTitle}</span>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ padding: '16px 20px', fontSize: 12, color: '#333' }}>
-              <p style={{ margin: 0, lineHeight: 1.5 }}>
-                Đang mở tác vụ: <strong>{modalTitle}</strong>. Thao tác này sẽ áp dụng thiết lập hệ thống cho toàn bộ chi nhánh của Kazuko Auto.
-              </p>
-              <div style={{ marginTop: 12, background: '#FAFAFA', padding: 10, borderRadius: 6, border: '1px solid #EEE' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2E7D32', fontWeight: 600 }}>
-                  <CheckCircle size={14} />
-                  <span>Hệ thống đã sẵn sàng thực thi tác vụ.</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: '#FAFAFA',
-              padding: '8px 16px',
-              borderTop: '1px solid #EEEEEE',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 8
-            }}>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  showToast(`Đã áp dụng: ${modalTitle}`);
-                }}
-                style={{
-                  background: '#E65100',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  padding: '5px 14px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Xác nhận
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{
-                  background: '#E0E0E0',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: 4,
-                  padding: '5px 12px',
-                  fontSize: 11,
-                  cursor: 'pointer'
-                }}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+  const load = async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const { data } = await api.get('/system-config/grouped');
+      const map = Object.fromEntries(data.data.flatMap(group => group.items.map(item => [item.ID, item[fields[Number(item.DATATYPE || 1)]] ?? ''])));
+      setGroups(data.data);
+      setConvention(data.controlConvention);
+      setValues(map);
+      setOriginal(map);
+      setActiveId(previous => data.data.some(group => group.groupId === previous) || previous === 'print-templates' ? previous : data.data[0]?.groupId ?? null);
+      return true;
+    } catch (error) { setLoadError(messageOf(error)); return false; }
+    finally { setLoading(false); }
+  };
+  useEffect(() => {
+    load();
+    const focusSearch = event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener('keydown', focusSearch);
+    return () => { clearTimeout(noticeTimer.current); window.removeEventListener('keydown', focusSearch); };
+  }, []);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put('/system-config/bulk', changed.map(id => ({ id, value: values[id] })));
+      setOriginal({ ...values });
+      const reloaded = await load();
+      showToast(reloaded ? `Đã lưu ${changed.length} mục cấu hình.` : 'Đã lưu cấu hình, nhưng chưa tải lại được dữ liệu. Vui lòng thử tải lại.', reloaded ? 'ok' : 'err');
+    } catch (error) { showToast(messageOf(error), 'err'); }
+    finally { setSaving(false); }
+  };
+  const reload = () => {
+    if (changed.length && !window.confirm('Tải lại sẽ bỏ các thay đổi chưa lưu. Bạn muốn tiếp tục?')) return;
+    load();
+  };
+  const change = (id, value) => setValues(previous => ({ ...previous, [id]: value }));
+  const syncPrintConfig = ({ configName, templateId, label, mode } = {}) => {
+    const item = groups.flatMap(group => group.items).find(row => row.NAME === configName);
+    if (!item) return;
+    if (mode === 'default') {
+      setValues(previous => ({ ...previous, [item.ID]: previous[item.ID] === original[item.ID] ? templateId : previous[item.ID] }));
+      setOriginal(previous => ({ ...previous, [item.ID]: templateId }));
+    }
+    setGroups(previous => previous.map(group => ({ ...group, items: group.items.map(row => {
+      if (row.ID !== item.ID) return row;
+      if (mode === 'default') return { ...row, TEXTVALUE: templateId };
+      const options = row.OPTIONS || [];
+      const nextOptions = options.some(option => option.value === templateId) ? options : [...options, { value: templateId, label }];
+      return { ...row, OPTIONS: nextOptions, OTHERCONFIG: JSON.stringify(nextOptions.map(option => option.value)), MOREDETAIL: `Mẫu dùng cho ${row.CAPTION || row.NAME}.` };
+    }) })));
+  };
+  const upload = async (item, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (item.NAME === 'CompanyLogo') {
+      setCompressingLogo(true);
+      try {
+        const result = await compressCompanyLogo(file);
+        change(item.ID, result.base64);
+        const kb = size => `${(size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} KB`;
+        showToast(`Logo: ${kb(result.originalBytes)} → ${kb(result.compressedBytes)}. Nhấn Ghi dữ liệu để lưu.`);
+      } catch (error) { showToast(messageOf(error), 'err'); }
+      finally { setCompressingLogo(false); }
+      return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { showToast('Chọn ảnh PNG, JPG, WEBP hoặc GIF tối đa 5 MB.', 'err'); return; }
+    const reader = new FileReader();
+    reader.onload = () => change(item.ID, String(reader.result).split(',')[1]);
+    reader.onerror = () => showToast('Không thể đọc ảnh đã chọn.', 'err');
+    reader.readAsDataURL(file);
+  };
+  const isCheckbox = item => Number(item.CONTROLTYPE) === (convention === 'garage' ? 7 : 9);
+  const renderControl = item => {
+    const type = Number(item.DATATYPE || 1);
+    const control = Number(item.CONTROLTYPE);
+    const value = values[item.ID] ?? '';
+    const props = { id: `config-${item.ID}`, disabled: busy, value, onChange: event => change(item.ID, event.target.value) };
+    if (item.NAME.startsWith('SoPhieu')) return <DocumentNumberControl {...props}/>;
+    const options = String(item.OTHERCONFIG || '').split(/\r?\n/).map(option => option.trim()).filter(Boolean);
+    if (isCheckbox(item)) return <label className="config-checkbox"><input type="checkbox" disabled={busy} checked={[1, 30].includes(Number(value))} onChange={event => change(item.ID, event.target.checked ? 30 : 0)} /><span>{item.CAPTION || item.NAME}</span></label>;
+    if (type === 5) return <div className="config-image-control">{item.NAME==='CompanyLogo' && <small>{compressingLogo?'Đang nén logo…':'PNG/JPG tối đa 20 MB; tự nén còn tối đa 256 KB, cạnh dài tối đa 800 px. PNG giữ nền trong suốt.'}</small>}{value && <img src={`data:image/${String(value).startsWith('/9j/')?'jpeg':'png'};base64,${value}`} alt={item.CAPTION || item.NAME} />}<input id={props.id} type="file" accept={item.NAME==='CompanyLogo'?'image/png,image/jpeg':'image/png,image/jpeg,image/webp,image/gif'} disabled={busy} onChange={event => upload(item, event)} /><button type="button" disabled={busy || !value} onClick={() => change(item.ID, '')}>Xóa ảnh</button></div>;
+    if (Array.isArray(item.OPTIONS)) return <div><select {...props}>
+      <option value="">{item.OPTIONS.length ? 'Chưa chọn mẫu in' : 'Chưa có mẫu in phù hợp'}</option>
+      {value && !item.OPTIONS.some(option => option.value === value) && <option value={value} disabled>Mẫu đã lưu không còn trong danh sách</option>}
+      {item.OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select></div>;
+    if ((control === 10 || control === 8) && options.length) {
+      const indexed = control === 10 && type === 3;
+      return <select {...props} onChange={event => change(item.ID, indexed && event.target.value !== '' ? Number(event.target.value) : event.target.value)}>{!options.some((option, index) => String(indexed ? index : option) === String(value)) && <option value={value}>{value || 'Chưa chọn'}</option>}{options.map((option, index) => <option key={index} value={indexed ? index : option}>{option}</option>)}</select>;
+    }
+    if (control === 8) return <select {...props} disabled><option value={value}>{value ? 'Mẫu đã lưu chưa có danh sách lựa chọn' : 'Chưa có mẫu in phù hợp'}</option></select>;
+    if (type === 2) return <input {...props} type="datetime-local" value={dateInput(value)} />;
+    if (type === 3 || type === 4) return <input {...props} type="number" step={type === 3 ? 1 : 'any'} onChange={event => change(item.ID, event.target.value === '' ? '' : Number(event.target.value))} />;
+    if (control === 6) return <textarea {...props} rows={3} />;
+    return <input {...props} type="text" />;
+  };
+  const term = search.trim().toLocaleLowerCase('vi');
+  const matches = item => [item.CAPTION, item.NAME, item.MOREDETAIL, values[item.ID]].some(value => String(value ?? '').toLocaleLowerCase('vi').includes(term));
+  const current = groups.find(group => group.groupId === activeId);
+  const visibleGroups = term ? groups.filter(group => group.items.some(matches)) : groups;
+  const sections = term ? visibleGroups : current ? [current] : [];
+  return <div className="system-config-page">
+    <header className="config-header"><div><Settings size={22} /><div><h1>Cấu hình hệ thống</h1><p>Thiết lập thông tin và tham số hoạt động của gara</p></div></div><span className={changed.length ? 'config-unsaved' : 'config-saved'}>{changed.length ? `${changed.length} mục chưa lưu` : 'Không có thay đổi chưa lưu'}</span></header>
+    {notice && <div role="status" className={`config-notice ${notice.type === 'err' ? 'error' : ''}`}>{notice.message}</div>}
+    <div className="config-workspace">
+      <nav className="config-sidebar" aria-label="Nhóm cấu hình">{visibleGroups.map(group => <button key={group.groupId} className={activeId === group.groupId && !term ? 'active' : ''} disabled={busy} onClick={() => { setActiveId(group.groupId); setSearch(''); }}><Folder size={16} /><span>{group.groupName}</span><small>{group.items.length}</small></button>)}<button className={activeId === 'print-templates' ? 'active' : ''} disabled={busy} onClick={() => { setActiveId('print-templates'); setSearch(''); }}><Printer size={16} /><span>Quản lý mẫu in</span></button></nav>
+      <main className="config-content">
+        {loading ? <div className="config-empty"><Loader2 className="config-spinner" size={22} />Đang tải cấu hình...</div> : loadError ? <div className="config-empty" role="alert"><p>Không thể tải cấu hình: {loadError}</p><button onClick={reload}>Thử lại</button></div> : activeId === 'print-templates' && !term ? <PrintTemplatesPanel onToast={showToast} onConfigChanged={syncPrintConfig} /> : <>
+          {sections.map(group => <section key={group.groupId}><h2>{group.groupName}</h2>{group.groupName==='Nội dung hóa đơn bán hàng'&&<div className="config-detail"><p>Tích chọn các dòng muốn hiện trên hóa đơn. Bỏ chọn để ẩn và thu gọn khoảng trống. Tổng cộng luôn được giữ; áp dụng cho các mẫu bán hàng đã kết nối tùy chọn hiển thị.</p><button type="button" disabled={busy} onClick={()=>setValues(previous=>({...previous,...Object.fromEntries(group.items.map(item=>[item.ID,['SalesPrintShow_discount','SalesPrintShow_thanks'].includes(item.NAME)?30:0]))}))}>Chỉ tổng cộng và giảm giá</button>{' '}<button type="button" disabled={busy} onClick={()=>setValues(previous=>({...previous,...Object.fromEntries(group.items.map(item=>[item.ID,30]))}))}>Hiện tất cả</button><p>Nhấn Ghi dữ liệu để lưu, sau đó tạo lại bản xem trước.</p></div>}{group.groupName==='Số phiếu'&&<div className="config-detail"><p>Dùng (yy) cho năm 2 số, (yyyy) cho năm 4 số, (MM) cho tháng, (dd) cho ngày. Nhóm (*) đến (*********) là số tự tăng, từ 1 đến 9 chữ số.</p><p>Có ngày: đếm lại mỗi ngày; có tháng: mỗi tháng; chỉ có năm: mỗi năm; không có ngày tháng năm: đếm liên tục. Ngày dùng để sinh mã là ngày lập phiếu hiện tại.</p><p>Bàn giao xe và xuất phụ tùng theo lệnh sử dụng số lệnh sửa chữa. Thay đổi chỉ áp dụng phiếu mới; phiếu cũ giữ nguyên số.</p></div>}<div className="config-fields">{group.items.filter(matches).map(item => <div key={item.ID} className={`config-field ${Number(item.SOCOT) === 2 ? 'half' : ''}`}>
+            {!isCheckbox(item) && <label htmlFor={`config-${item.ID}`}>{item.CAPTION || item.NAME}</label>}{renderControl(item)}{item.MOREDETAIL && <p className="config-detail">{item.MOREDETAIL}</p>}
+          </div>)}</div>{!group.items.length && <p className="config-empty">Nhóm này chưa có tham số cấu hình.</p>}</section>)}
+          {!sections.length && <p className="config-empty">{term ? 'Không có cấu hình phù hợp với từ khóa.' : 'Chưa có nhóm cấu hình trong cơ sở dữ liệu.'}</p>}
+        </>}
+      </main>
     </div>
-  );
+    <footer className="config-footer"><div className="config-search"><Search size={17} /><input ref={searchRef} aria-label="Tìm cấu hình" placeholder="Tìm cấu hình (Ctrl + F)" value={search} onChange={event => setSearch(event.target.value)} />{search && <button onClick={() => setSearch('')} aria-label="Xóa tìm kiếm">×</button>}</div><div className="config-actions"><button disabled={busy} onClick={reload}><RefreshCw size={16} />Tải lại</button><button className="primary" disabled={busy || !!loadError || !changed.length} onClick={save}>{saving ? <Loader2 size={16} className="config-spinner" /> : <Save size={16} />}{saving ? 'Đang lưu...' : 'Ghi dữ liệu'}</button></div></footer>
+  </div>;
 }

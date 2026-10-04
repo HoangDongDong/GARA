@@ -1,0 +1,52 @@
+const db = require('../db');
+const printing = require('./documentPrint');
+const { decodeConfigImage } = require('./configImageStorage');
+const { toVndWords } = require('./legacyPrintExpressions');
+const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+function paperFor(xml, templateName = '') {
+ const page=xml.match(/<ReportPage\b[^>]*>/)?.[0]||'';
+ const attr=name=>page.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1];
+ // Legacy bill templates omit PaperWidth (FastReport's default is A4).
+ // Use their saved name only when the page does not declare a width.
+ const namedWidth=templateName.match(/\b(54|58|77|80)\s*(?:mm\b|$)/i)?.[1];
+ const namedA5=/\bA5\b/i.test(templateName);
+ const dimension=(value,fallback)=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):fallback;
+ let width=dimension(attr('PaperWidth'),namedWidth?Number(namedWidth):namedA5?148:210);
+ let height=dimension(attr('PaperHeight'),namedA5?210:297);
+ if(width<=100)return {name:`${width} mm`,width,height:null,landscape:false,thermal:true};
+ if(attr('Landscape')==='true'&&width<height)[width,height]=[height,width];
+ const landscape=width>height;
+ const near=(value,expected)=>Math.abs(value-expected)<=0.5;
+ const short=Math.min(width,height),long=Math.max(width,height);
+ const standard=near(short,148)&&near(long,210)?'A5':near(short,210)&&near(long,297)?'A4':null;
+ if(standard){const small=standard==='A5'?148:210,big=standard==='A5'?210:297;width=landscape?big:small;height=landscape?small:big;}
+ return {name:standard?standard+(landscape?' ngang':' đứng'):`${width} × ${height} mm`,width,height,landscape,thermal:false};
+}
+// Code 128 subset B encodes printable ASCII with the mandatory checksum.
+const widths='212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 211412 211214 211232 2331112'.split(' ');
+function barcodeSvg(value){const input=String(value||'');if(!/^[\x20-\x7e]+$/.test(input))return '<p>Mã vạch cần ký tự ASCII để in Code128.</p>';const codes=[104,...Array.from(input,char=>char.charCodeAt(0)-32)];codes.push(codes.reduce((sum,code,index)=>sum+code*(index||1),0)%103,106);let x=10;const bars=[];for(const code of codes){for(const [index,span]of Array.from(widths[code]).entries()){const w=Number(span);if(index%2===0)bars.push(`<rect x="${x}" y="0" width="${w}" height="50"/>`);x+=w;}}return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mã vạch ${escape(input)}" viewBox="0 0 ${x+10} 70" width="100%" height="90">${bars.join('')}<text x="${(x+10)/2}" y="66" text-anchor="middle" font-family="Arial" font-size="11">${escape(input)}</text></svg>`;}
+function htmlDocument(type,data,template,logo){
+ const p=data.parameters,rows=data.tables.Table0||[],paper=paperFor(template.content.toString('utf8'),template.NAME);
+ const original=template.content.toString('utf8').match(/<PictureObject\b[^>]*\bImage="([A-Za-z0-9+/=]+)"/)?.[1];
+ const image=logo?.length?`data:image/${logo[0]===255?'jpeg':'png'};base64,${logo.toString('base64')}`:original?`data:image/png;base64,${original}`:'';
+ const text=type.layout==='text',barcode=type.layout==='barcode';
+ const receipt=paper.thermal&&!text&&!barcode;
+ const headers=text?['Nội dung','Thông tin']:barcode?['Mã phụ tùng','Tên phụ tùng','Giá bán']:receipt?['SL','Đơn giá','Thành tiền']:['STT','Hạng mục / phụ tùng','ĐVT','SL','Đơn giá','Thành tiền'];
+ const body=rows.map(row=>{
+  if(receipt)return `<tbody class="receipt-item"><tr><td colspan="3">${escape(row.Index)}. ${escape(row.ItemName)}${row.Unit?` (${escape(row.Unit)})`:''}</td></tr><tr>${[row.QuantityText,row.UnitPriceText,row.AmountText].map(value=>`<td class="number">${escape(value)}</td>`).join('')}</tr>${row.Note?`<tr class="note"><td colspan="3">${escape(row.Note)}</td></tr>`:''}</tbody>`;
+  const cells=text?[row.ItemName,row.ValueText]:barcode?[row.ItemCode,row.ItemName,row.AmountText]:[row.Index,row.ItemName,row.Unit,row.QuantityText,row.UnitPriceText,row.AmountText];return `<tr>${cells.map((value,i)=>`<td class="${!text&&i>=3?'number':''}">${escape(value)}</td>`).join('')}</tr>${row.Note?`<tr class="note"><td colspan="${headers.length}">${escape(row.Note)}</td></tr>`:''}${barcode?`<tr><td colspan="${headers.length}">${barcodeSvg(row.BARCODE)}</td></tr>`:''}`;}).join('');
+ const tableBody=receipt&&body?body:`<tbody>${body||`<tr><td colspan="${headers.length}">Không có dòng chi tiết trong chứng từ.</td></tr>`}</tbody>`;
+ const details=type.key==='MauPhieuTiepNhan'?`<div class="details"><div>Loại xe: ${escape(p.VehicleDescription)}</div><div>VIN / số khung: ${escape(p.VehicleVin)}</div><div>Số máy: ${escape(p.VehicleEngine)}</div><div>ODO: ${escape(p.VehicleOdo)} | Nhiên liệu: ${escape(p.VehicleFuel)}</div><div>Cố vấn: ${escape(p.AdvisorName)}</div><div>Kỹ thuật viên: ${escape(p.TechnicianName)}</div></div>`:'';
+ const sign=p.FooterNote?`<div class="signatures"><div><b>Khách hàng / người giao nhận</b><br><i>(Ký, họ tên)</i></div><div><b>Nhân viên GARA</b><br><i>(Ký, họ tên)</i></div></div>`:'';
+ const words=type.layout==='money'&&Number.isSafeInteger(Number(p.TONGCONG))?`<p class="money-words">Bằng chữ: ${escape(toVndWords(p.TONGCONG))} đồng.</p>`:'';
+ return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none';"><title>${escape(p.DocTitle)} - ${escape(p.DocNumber)}</title><style>
+ @page{size:${paper.thermal?`${paper.width}mm 297mm`:`${paper.width}mm ${paper.height}mm`};margin:${paper.thermal?'3mm':'10mm'}}
+ *{box-sizing:border-box}body{margin:0;background:#7894af;color:#111;font:12px Arial,sans-serif}.sheet{width:${paper.width}mm;min-height:${paper.height||0}mm;margin:18px auto;background:#fff;padding:${paper.thermal?'3mm':'10mm'};box-shadow:0 2px 12px #0003}.company{display:flex;align-items:center;gap:12px;min-height:65px;text-align:center;border-bottom:2px solid #f60;padding-bottom:10px}.company img{width:${paper.thermal?'45':'90'}px;height:65px;object-fit:contain}.company-info{flex:1;overflow-wrap:anywhere}.company b{font-size:${paper.thermal?'11':'15'}px}.company p{margin:4px 0}h1{font-size:${paper.thermal?'14':'19'}px;text-align:right;margin:18px 0 12px}.metadata p{margin:7px 0}.details{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.description{white-space:pre-wrap;margin:12px 0}table{width:100%;border-collapse:collapse;font-size:inherit;table-layout:fixed}th,td{border:1px solid #333;padding:6px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}th{background:#eee;text-align:left}thead{display:table-header-group}tr{break-inside:avoid}tr.note td{border-top:0;font-size:10px;color:#444}.number{text-align:right}.summary{text-align:right;font-weight:bold;white-space:pre-wrap;margin:14px 0}.money-words{font-style:italic;text-align:right}.extra{white-space:pre-wrap}.signatures{display:flex;justify-content:space-between;gap:15px;text-align:center;margin-top:35px;padding-bottom:60px;break-inside:avoid}.signatures div{flex:1}.signatures i{display:block;margin-top:4px;font-size:11px}
+ ${!text&&!barcode&&!receipt?'th:nth-child(1){width:6%}th:nth-child(2){width:36%}th:nth-child(3){width:9%}th:nth-child(4){width:8%}th:nth-child(5){width:19%}th:nth-child(6){width:22%}':''}
+ ${paper.thermal?'.company{flex-direction:column;gap:4px}.company img{height:40px;width:65px}.details{grid-template-columns:1fr}body{font-size:10px}th,td{padding:3px}.signatures{gap:5px}.signatures i{font-size:9px}h1{text-align:center}':''}
+ ${receipt?'table{font-size:9px}th:nth-child(1){width:15%}th:nth-child(2){width:40%}th:nth-child(3){width:45%}th{text-align:right}.number{white-space:nowrap}.receipt-item{break-inside:avoid}.receipt-item td{border:0;border-bottom:1px dotted #aaa}.receipt-item tr:first-child td{border-bottom:0;font-size:10px}.signatures{margin-top:20px;padding-bottom:12px}':''}
+ @media print{body{background:#fff}.sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}thead{display:table-header-group}th{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+ </style></head><body><main class="sheet"><header class="company">${image?`<img alt="Logo công ty" src="${image}">`:''}<div class="company-info"><b>${escape(p.CompanyName)}</b><p>Địa chỉ: ${escape(p.CompanyAddress)}</p><p>Điện thoại: ${escape(p.CompanyPhone)}${p.CompanyEmail?` | Email: ${escape(p.CompanyEmail)}`:''}</p></div></header><h1>${escape(p.DocTitle)}</h1><section class="metadata"><p>Số: <b>${escape(p.DocNumber)}</b> | Ngày: ${escape(p.DocDate)}</p><p>Khách hàng / đối tác: ${escape(p.CustomerName)}</p><p>Điện thoại: ${escape(p.Contact)}${p.VehiclePlate?` | Biển số: <b>${escape(p.VehiclePlate)}</b>`:''}</p>${p.DKHOHANG_NAME?`<p>Kho: ${escape(p.DKHOHANG_NAME)}</p>`:''}${p.DNHANVIEN_NAME?`<p>Nhân viên: ${escape(p.DNHANVIEN_NAME)}</p>`:''}</section>${details}${p.Description?`<p class="description">${escape(p.Description)}</p>`:''}<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>${tableBody}</table>${p.SummaryText?`<p class="summary">${escape(p.SummaryText)}</p>`:''}${words}${p.Extra?`<p class="extra">${escape(p.Extra)}</p>`:''}${sign}</main></body></html>`;
+}
+async function renderHtml(type,id,filters,user){const template=await printing.resolve(type,filters.templateId);const data=await printing.payload(type,id,filters,user);const raw=await db.queryBlob("SELECT BLOBVALUE FROM SCONFIG WHERE NAME='CompanyLogo' AND STATUS=30",[],'BLOBVALUE');return {html:htmlDocument(type,data,template,decodeConfigImage(raw)),name:data.parameters.DocNumber||type.label,template,paper:paperFor(template.content.toString('utf8'),template.NAME)};}
+module.exports={renderHtml,htmlDocument,paperFor,barcodeSvg,escape};

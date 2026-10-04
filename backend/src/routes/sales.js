@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { renderSalesInvoice } = require('../services/salesPrint');
 
 const productSql = `
   SELECT M.ID, M.NAME, M.CODE, M.GIABAN, M.GIANHAP, M.BAOHANH,
@@ -26,6 +27,34 @@ router.get('/', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Render the sale with the default "Hóa đơn bán hàng" template (or ?templateId=) as PDF.
+router.get('/:id/print', async (req, res) => {
+  try {
+    const printing = require('../services/documentPrint');
+    if(!printing.permitted(req.accessUser,printing.typeByKey('MauHoaDonBanHang'))) return res.status(403).json({error:'Bạn cần quyền Xem và In bán hàng.'});
+    const result = await renderSalesInvoice(req.params.id, {
+      templateId: req.query.templateId || null,
+      user: req.accessUser?.USERNAME || req.get('X-User') || null,
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${encodeURIComponent(result.orderName || 'hoa-don')}.pdf"`,
+      'Cache-Control': 'no-store',
+      'X-Template-Name': encodeURIComponent(result.template.name),
+    });
+    res.send(result.pdf);
+  } catch (e) {
+    res.status(500).json({ error: `Không tạo được bản in: ${e.message}` });
+  }
+});
+
+router.get('/next-number', async (req,res) => {
+  try {
+    const code=await require('../services/documentNumbers').previewNumber('BanPhuTung');
+    res.set('Cache-Control','no-store').json({code,provisional:true});
+  } catch(e){res.status(e.status||500).json({error:e.message});}
 });
 
 router.get('/:id', async (req, res) => {
@@ -62,9 +91,7 @@ router.post('/', async (req, res) => {
       const discount = subtotal * discountRate / 100;
       const total = subtotal - discount;
       const id = uuidv4();
-      const now = new Date();
-      const pad = (n) => String(n).padStart(2, '0');
-      const code = `BH${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const code = await require('../services/documentNumbers').nextInTransaction('BanPhuTung',query,execute);
       const method = Number(LOAITHANHTOAN || 0);
 
       await execute(`

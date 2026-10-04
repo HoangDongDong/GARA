@@ -11,6 +11,11 @@ frontend/dist/
 .env
 .env.local
 *.log
+backend/system-config-templates-backup-*.json
+backend/sales-print-visibility-backup-*.json
+backend/*backup*.json
+backend/*-backup-*.json
+backend/scratch_*.js
 
 # Python
 __pycache__/
@@ -23,3 +28,17 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local print verification contains business data
+backend/print-verification/
+tools/.dotnet-home/
+tools/.nuget-packages/
+tools/fastreport-renderer/bin/
+tools/fastreport-renderer/obj/
+tools/fastreport-designer/bin/
+tools/fastreport-designer/obj/
+tools/fastreport-designer/.vs/
+tools/part-background-check.jpg
+bin/
+obj/
+*.user

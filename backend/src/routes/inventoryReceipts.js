@@ -67,8 +67,7 @@ router.post('/', async (req, res) => {
       DNHACUNGCAPID, DKHOHANGID, DNHANVIENID,
       TIENHANG, TIENGIAMGIA, TONGCONG, DATHANHTOAN, items,
     } = req.body;
-    const code = String(NAME || '').trim();
-    if (!code) return res.status(400).json({ error: 'So phieu khong duoc trong' });
+    const requestedCode = String(NAME || '').trim();
     if (!DNHACUNGCAPID) return res.status(400).json({ error: 'Vui long chon nha cung cap' });
     if (!DKHOHANGID) return res.status(400).json({ error: 'Vui long chon kho nhap' });
     if (!DNHANVIENID) return res.status(400).json({ error: 'Vui long chon nhan vien nhap' });
@@ -77,7 +76,9 @@ router.post('/', async (req, res) => {
     const paid = Number(DATHANHTOAN) === 1;
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const result = await db.transaction(async (query, execute, uuidv4) => {
-      const duplicates = await query(`SELECT FIRST 1 ID FROM TNHAPKHO WHERE NAME = ? AND STATUS = 1`, [code]);
+      if (requestedCode) await execute("UPDATE SNUMBERCOUNTER SET SEQ=SEQ WHERE CODE='NhapKho'");
+      const code = requestedCode || await require('../services/documentNumbers').nextInTransaction('NhapKho',query,execute);
+      const duplicates = await query(`SELECT FIRST 1 ID FROM TNHAPKHO WHERE NAME = ?`, [code]);
       if (duplicates.length) {
         const error = new Error('So phieu nhap da ton tai');
         error.statusCode = 409;
@@ -117,7 +118,7 @@ router.post('/', async (req, res) => {
             quantity, price, amount, price, DKHOHANGID]
         );
       }
-      return { id: receiptId, debt: paid ? 0 : total, paid };
+      return { id: receiptId, code, debt: paid ? 0 : total, paid };
     });
     res.json({ ok: true, ...result });
   } catch (e) {

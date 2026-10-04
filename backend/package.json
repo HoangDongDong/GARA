@@ -6,7 +6,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "migrate:access": "node migrate_access_control.js"
+    "migrate:access": "node migrate_access_control.js",
+    "migrate:document-numbers": "node migrate_document_numbers.js",
+    "migrate:print-templates": "node migrate_print_templates.js D:/Garage/DATA.fdb",
+    "migrate:config-templates": "node migrate_system_config_templates.js",
+    "migrate:print-documents": "node migrate_print_documents.js",
+    "test:printing": "node --test tests/*.test.js",
+    "migrate:reception-templates": "node migrate_reception_templates.js",
+    "migrate:business-templates": "node migrate_business_templates.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DocumentNumberField from '../components/DocumentNumberField';
 import { 
   CircleDollarSign, TrendingUp, TrendingDown, Wallet, BookOpen, 
   Search, Plus, FileSpreadsheet, MoreVertical, Calendar, 
@@ -657,6 +658,7 @@ export default function ThuChiPage() {
             </div>
 
             <form onSubmit={handleCreateSubmit} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <DocumentNumberField type={modalType==='THU'?'Thu':'Chi'}/>
               <div>
                 <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Loại phiếu <span style={{color:'red'}}>*</span></label>
                 <div style={{ display: 'flex', gap: 10 }}>

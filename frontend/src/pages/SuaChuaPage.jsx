@@ -1,3 +1,6 @@
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
+import useDocumentNumber from '../hooks/useDocumentNumber';
+import DocumentNumberField from '../components/DocumentNumberField';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Wrench, Calendar, Search, CheckSquare, Square, Check, XCircle, RotateCcw, 
@@ -57,7 +60,7 @@ export default function SuaChuaPage() {
     staff: 'admin',
     currentKm: '68.500',
     carModel: 'Toyota Vios',
-    receiptCode: 'NK20250930-001',
+    receiptCode: '',
     note: ''
   });
 
@@ -241,6 +244,7 @@ export default function SuaChuaPage() {
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [savingProcess, setSavingProcess] = useState(false);
   const [repairFlow, setRepairFlow] = useState({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
+  const draftNumber=useDocumentNumber('LenhSuaChua',!repairFlow.repairId,vehicleInfo.plate);
   const [vehicleFlowOptions, setVehicleFlowOptions] = useState([]);
   const vehicleSelectionRequest = useRef(0);
   const [showRepairConfirmation, setShowRepairConfirmation] = useState(false);
@@ -332,7 +336,7 @@ export default function SuaChuaPage() {
             currentKm: Number(first.ODO || 0).toLocaleString('vi-VN'),
             carModel: [first.HANG_XE, first.DONG_XE, first.PHIENBAN].filter(Boolean).join(' '),
             date: new Date().toISOString().slice(0, 10),
-            receiptCode: `BG${Date.now().toString().slice(-8)}`,
+            receiptCode: '',
           }));
           const flowRows = await workflow.byVehicleAll(first.ID).catch(() => []);
           const flowOptions = Array.isArray(flowRows) ? flowRows : [];
@@ -544,7 +548,7 @@ export default function SuaChuaPage() {
       plate: selected.BIENSO || '', customer: selected.TEN_KH || '',
       currentKm: Number(selected.ODO || 0).toLocaleString('vi-VN'),
       carModel: [selected.HANG_XE, selected.DONG_XE, selected.PHIENBAN].filter(Boolean).join(' '),
-      receiptCode: `BG${Date.now().toString().slice(-8)}`,
+      receiptCode: '',
     }));
     const flowRows = await workflow.byVehicleAll(selected.ID).catch(() => []);
     if (requestId !== vehicleSelectionRequest.current) return;
@@ -959,7 +963,7 @@ export default function SuaChuaPage() {
       date: new Date().toISOString().slice(0, 10),
       status: 'Đang kiểm tra',
       staff: '',
-      receiptCode: `BG${Date.now().toString().slice(-8)}`,
+      receiptCode: '',
       note: '',
     }));
     setRepairNotes('Vui lòng kiểm tra kỹ trước khi thay thế.\nLiên hệ khách hàng nếu có phát sinh thêm.');
@@ -1309,7 +1313,9 @@ export default function SuaChuaPage() {
             ) : (
               <input
                 type="text"
-                value={vehicleInfo.receiptCode}
+                value={vehicleInfo.receiptCode || (!repairFlow.repairId ? draftNumber.code : '')}
+                placeholder={draftNumber.error?'Không tải được số phiếu':'Đang tải số phiếu…'}
+                title={repairFlow.repairId?'Số phiếu đã lưu':'Số lệnh dự kiến; cấp chính thức khi lưu.'}
                 readOnly
                 style={{
                   flex: 1, minWidth: 0,
@@ -1805,8 +1811,7 @@ export default function SuaChuaPage() {
               <button
                 type="button"
                 onClick={() => {
-                  showToast('Đang tạo bản in bảng kê dịch vụ...');
-                  setTimeout(() => window.print(), 300);
+                  openDocumentPrint({ type: 'MauPhieuSuaChua', id: repairFlow.repairId });
                 }}
                 style={{
                   flex: 1,
@@ -2292,6 +2297,7 @@ export default function SuaChuaPage() {
             </div>
 
             <div style={{ padding: 16 }}>
+              <div style={{ marginBottom: 12 }}><DocumentNumberField type="HoaDonSuaChua" label="Số hóa đơn sửa chữa"/></div>
               <div style={{ padding: 12, borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA', marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: '#64748B' }}>Xe / Phiếu sửa chữa</div>
                 <div style={{ marginTop: 3, fontWeight: 700, color: '#334155' }}>{vehicleInfo.plate} · {vehicleInfo.receiptCode}</div>

@@ -1,3 +1,5 @@
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
+import DocumentNumberField from '../components/DocumentNumberField';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -1013,7 +1015,7 @@ export default function BaoHanhPage() {
                 <Edit size={11} color="#333" /> Chỉnh sửa
               </button>
               <button 
-                onClick={() => setShowPrintModal(true)}
+                onClick={() => openDocumentPrint({ type: 'MauPhieuBaoHanh', id: selectedItem?._raw?.ID })}
                 style={{ flex: 1, background: 'white', color: '#333333', border: '1px solid #ccc', padding: '5px 10px', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 9.5, fontWeight: 600, cursor: 'pointer' }}
               >
                 <Printer size={11} color="#333" /> In phiếu
@@ -1133,6 +1135,7 @@ export default function BaoHanhPage() {
             </div>
 
             <form onSubmit={handleCreateTicket} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <DocumentNumberField type="BaoHanh" label="Số phiếu bảo hành"/>
 
               {/* COMBOBOX CHON XE - co the go de loc */}
               <div style={{ position: 'relative' }}>
@@ -1372,7 +1375,7 @@ export default function BaoHanhPage() {
             </div>
             <div style={{ padding: '8px 16px', background: '#F5F5F5', borderTop: '1px solid #E0E0E0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setShowPrintModal(false)} style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: 4, background: 'white', color: '#333', fontSize: 11, cursor: 'pointer' }}>Đóng</button>
-              <button onClick={() => window.print()} style={{ padding: '6px 16px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <button onClick={() => openDocumentPrint({ type: 'MauPhieuBaoHanh', id: selectedItem?._raw?.ID })} style={{ padding: '6px 16px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <Printer size={14} /> In phiếu ngay
               </button>
             </div>

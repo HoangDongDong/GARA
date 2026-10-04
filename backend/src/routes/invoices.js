@@ -71,7 +71,7 @@ router.post('/', async (req, res) => {
     const congNo        = Math.max(0, tongThanhToan - tongCong);
 
     const id = db.uuidv4();
-    const ma = 'HD' + Date.now().toString().slice(-8);
+    const ma = await require('../services/documentNumbers').nextNumber('HoaDonSuaChua');
 
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     await db.execute(

@@ -12,6 +12,7 @@ function permissionForMethod(method) {
 }
 
 function requiredCodes(path) {
+  if (path.startsWith('/api/print-templates') || path.startsWith('/api/system-config')) return ['SETTINGS'];
   if (path.startsWith('/api/admin-access')) return ['ADMIN'];
   if (path.startsWith('/api/employees')) return ['EMPLOYEES'];
   if (path.startsWith('/api/customers')) return ['CUSTOMERS', 'REPAIR'];

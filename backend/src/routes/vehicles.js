@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { loadFuelOptions } = require('../services/fuelOptions');
 
 const normalizePlate = (value) => String(value || '').replace(/[-.\s]/g, '').toUpperCase();
 const VEHICLE_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
@@ -49,7 +50,9 @@ router.get('/meta/brands', async (req, res) => {
   try {
     const brands = await db.query(`SELECT ID, NAME FROM DHANGXE WHERE STATUS=1 ORDER BY NAME`);
     const models = await db.query(`SELECT ID, NAME, DHANGXEID FROM DDONGXE WHERE STATUS=1 ORDER BY NAME`);
-    res.json({ data: { brands, models } });
+    const fuelOptions = await loadFuelOptions();
+    const fuels = fuelOptions.data.filter((row) => Number(row.STATUS) === 1).map((row) => row.NAME);
+    res.json({ data: { brands, models, fuels } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -128,13 +131,7 @@ router.post('/:id/warranties', async (req, res) => {
     const { NGAYBATDAU, NGAYKETTHUC, NOTE, LOAI, DMATHANGID, DDICHVUID, TLENHSUACHUAID } = req.body;
     if (!NGAYBATDAU || !NGAYKETTHUC) return res.status(400).json({ error: 'Thieu ngay bat dau / ket thuc' });
 
-    // Dem so phieu BH cua xe nay de tao ma
-    const countRows = await db.query(
-      `SELECT COUNT(*) AS CNT FROM TBAOHANH WHERE DXEID = ?`, [vehicleId]
-    );
-    const seq = (countRows[0]?.CNT || 0) + 1;
-    const bienSoSlug = String(vehicle.BIENSO || '').replace(/[-. ]/g, '');
-    const name = `BH-${bienSoSlug}-${seq}`;
+    const name = await require('../services/documentNumbers').nextNumber('BaoHanh');
 
     const id = db.uuidv4();
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
@@ -185,12 +182,7 @@ router.post('/warranties', async (req, res) => {
 
     if (!NGAYBATDAU || !NGAYKETTHUC) return res.status(400).json({ error: 'Thieu ngay bat dau / ket thuc' });
 
-    const countRows = vehicleId
-      ? await db.query(`SELECT COUNT(*) AS CNT FROM TBAOHANH WHERE DXEID = ?`, [vehicleId])
-      : [{ CNT: 0 }];
-    const seq = (countRows[0]?.CNT || 0) + 1;
-    const bienSoSlug = String(bienSo || 'XX').replace(/[-. ]/g, '');
-    const name = `BH-${bienSoSlug}-${seq}`;
+    const name = await require('../services/documentNumbers').nextNumber('BaoHanh');
 
     const id = db.uuidv4();
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';

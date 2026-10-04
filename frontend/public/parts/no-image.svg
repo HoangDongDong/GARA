@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="140" viewBox="0 0 240 140">
+  <rect width="240" height="140" fill="#f8fafc"/>
+  <g fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round">
+    <rect x="96" y="30" width="48" height="40" rx="4"/>
+    <circle cx="109" cy="42" r="4"/>
+    <path d="m98 66 15-15 10 9 9-10 10 16"/>
+  </g>
+  <text x="120" y="102" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#64748b">Chưa có ảnh</text>
+</svg>

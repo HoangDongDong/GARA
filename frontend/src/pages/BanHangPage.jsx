@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
+import api from '../api';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ShoppingCart,
   Search,
@@ -36,138 +38,11 @@ const money = (value) => Number(value || 0).toLocaleString('vi-VN');
 const dateTime = (value) => value ? new Date(value).toLocaleString('vi-VN') : '—';
 
 const pad = (n) => String(n).padStart(2, '0');
-const defaultTicketCode = () => {
-  const now = new Date();
-  return `BH${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-001`;
-};
+const defaultTicketCode = () => '';
 const defaultDateStr = () => {
   const now = new Date();
   return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
-
-// 12 sản phẩm chuẩn nghiệp vụ Gara theo đúng mockup giao diện
-const DEFAULT_CATALOG = [
-  {
-    ID: 'P01',
-    NAME: 'Lọc dầu Toyota',
-    CODE: '90915-YZZD3',
-    GIABAN: 250000,
-    TON_KHO: 12,
-    IMAGE: '/parts/loc_dau_toyota.jpg',
-    CATEGORY_KEY: 'dong-co',
-    DONVI: 'Cái',
-  },
-  {
-    ID: 'P02',
-    NAME: 'Bố thắng trước',
-    CODE: '04465-0K340',
-    GIABAN: 680000,
-    TON_KHO: 8,
-    IMAGE: '/parts/bo_thang_truoc.jpg',
-    CATEGORY_KEY: 'gam',
-    DONVI: 'Bộ',
-  },
-  {
-    ID: 'P03',
-    NAME: 'Dầu nhớt 5W-30',
-    CODE: '08880-83210',
-    GIABAN: 320000,
-    TON_KHO: 25,
-    IMAGE: '/parts/dau_nhot_5w30.jpg',
-    CATEGORY_KEY: 'dau-nhot',
-    DONVI: 'Bình 4L',
-  },
-  {
-    ID: 'P04',
-    NAME: 'Lốp Michelin 225/60R17',
-    CODE: '122647',
-    GIABAN: 3200000,
-    TON_KHO: 4,
-    IMAGE: '/parts/lop_michelin.jpg',
-    CATEGORY_KEY: 'lop-acquy',
-    DONVI: 'Lốp',
-  },
-  {
-    ID: 'P05',
-    NAME: 'Ắc quy GS',
-    CODE: '55D23L',
-    GIABAN: 2500000,
-    TON_KHO: 6,
-    IMAGE: '/parts/ac_quy_gs.jpg',
-    CATEGORY_KEY: 'dien',
-    DONVI: 'Bình',
-  },
-  {
-    ID: 'P06',
-    NAME: 'Cảm biến oxy',
-    CODE: '89465-12400',
-    GIABAN: 1200000,
-    TON_KHO: 10,
-    IMAGE: '/parts/cam_bien_oxy.jpg',
-    CATEGORY_KEY: 'dien',
-    DONVI: 'Cái',
-  },
-  {
-    ID: 'P07',
-    NAME: 'Bơm nước',
-    CODE: '16100-39435',
-    GIABAN: 1450000,
-    TON_KHO: 7,
-    IMAGE: '/parts/bom_nuoc.jpg',
-    CATEGORY_KEY: 'dong-co',
-    DONVI: 'Cái',
-  },
-  {
-    ID: 'P08',
-    NAME: 'Lọc gió động cơ',
-    CODE: '17801-0D060',
-    GIABAN: 280000,
-    TON_KHO: 15,
-    IMAGE: '/parts/loc_gio_dong_co.jpg',
-    CATEGORY_KEY: 'dong-co',
-    DONVI: 'Cái',
-  },
-  {
-    ID: 'P09',
-    NAME: 'Má phanh sau',
-    CODE: '04466-0K330',
-    GIABAN: 550000,
-    TON_KHO: 9,
-    IMAGE: '/parts/ma_phanh_sau.jpg',
-    CATEGORY_KEY: 'gam',
-    DONVI: 'Bộ',
-  },
-  {
-    ID: 'P10',
-    NAME: 'Bugi',
-    CODE: '90919-01210',
-    GIABAN: 120000,
-    TON_KHO: 20,
-    IMAGE: '/parts/bugi.jpg',
-    CATEGORY_KEY: 'dien',
-    DONVI: 'Cây',
-  },
-  {
-    ID: 'P11',
-    NAME: 'Dầu hộp số',
-    CODE: '08886-02305',
-    GIABAN: 450000,
-    TON_KHO: 12,
-    IMAGE: '/parts/dau_hop_so.jpg',
-    CATEGORY_KEY: 'dau-nhot',
-    DONVI: 'Bình',
-  },
-  {
-    ID: 'P12',
-    NAME: 'Gạt mưa',
-    CODE: '85212-0K020',
-    GIABAN: 180000,
-    TON_KHO: 14,
-    IMAGE: '/parts/gat_mua.jpg',
-    CATEGORY_KEY: 'phu-kien',
-    DONVI: 'Cặp',
-  },
-];
 
 // Danh sách phiếu bán gần đây mặc định theo mockup
 const DEFAULT_RECENT_SALES = [
@@ -191,7 +66,7 @@ const getCategoryIcon = (name = '', size = 20) => {
 };
 
 export default function BanHangPage() {
-  const [productList, setProductList] = useState(DEFAULT_CATALOG);
+  const [productList, setProductList] = useState([]);
   const [customerList, setCustomerList] = useState([]);
   const [customerGroups, setCustomerGroups] = useState([]);
   const [warehouseList, setWarehouseList] = useState([]);
@@ -224,6 +99,23 @@ export default function BanHangPage() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showSaleListModal, setShowSaleListModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  // Trang in HTML sinh từ chứng từ đã lưu và khổ giấy của mẫu mặc định.
+  const [savedSale, setSavedSale] = useState(null);
+  const [numberRefresh,setNumberRefresh]=useState(0);
+  const [numberError,setNumberError]=useState('');
+  useEffect(()=>{
+    if(savedSale?.id)return;
+    const controller=new AbortController();
+    setSaleCode('');setNumberError('');
+    api.get('/sales/next-number',{signal:controller.signal})
+      .then(response=>{if(!controller.signal.aborted)setSaleCode(response.data.code);})
+      .catch(error=>{if(!controller.signal.aborted)setNumberError(error.response?.data?.error||'Không tải được số phiếu.');});
+    return()=>controller.abort();
+  },[numberRefresh,savedSale?.id]);
+  const [invoicePrint, setInvoicePrint] = useState({ loading: false, url: '', error: '' });
+  const invoicePdfRef = useRef('');
+  const invoiceGeneration = useRef(0);
+  useEffect(() => () => { invoiceGeneration.current++; if (invoicePdfRef.current) URL.revokeObjectURL(invoicePdfRef.current); }, []);
   const [copiedCode, setCopiedCode] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', MASOTHUE: '', DIACHI: '', DNHOMKHACHHANGID: '',
@@ -253,25 +145,19 @@ export default function BanHangPage() {
         if (!warehouseId) setWarehouseId(warehouses[0].ID);
       }
 
-      // Gắn ảnh từ DEFAULT_CATALOG nếu tên/mã trùng khớp
-      // KHÔNG ghi đè DNHOMMATHANGID — dùng giá trị thực từ DB để lọc đúng
+      // Ảnh và thông tin mặt hàng được lấy từ database.
       if (Array.isArray(productRows) && productRows.length) {
         const enriched = productRows.map((item) => {
-          const nameLower = (item.NAME || '').toLowerCase();
-          const codeLower = (item.CODE || '').toLowerCase();
-          const match = DEFAULT_CATALOG.find(
-            (d) => d.CODE.toLowerCase() === codeLower || d.NAME.toLowerCase() === nameLower
-          );
           return {
             ...item,
-            IMAGE: match?.IMAGE || '/parts/loc_dau_toyota.jpg',
+            IMAGE: Number(item.CO_ANH) === 1 ? parts.imageUrl(item.ID) : '',
             TON_KHO: Number(item.TON_KHO ?? 0),
             GIABAN: Number(item.GIABAN || 0),
           };
         });
         setProductList(enriched);
       } else {
-        setProductList(DEFAULT_CATALOG);
+        setProductList([]);
       }
 
       // Phiếu bán hàng gần đây
@@ -408,6 +294,8 @@ export default function BanHangPage() {
     setDiscountPercent(0);
     setNote('');
     setSaleCode(defaultTicketCode());
+    setSavedSale(null);
+    setNumberRefresh(current=>current+1);
   };
 
   // Copy mã phiếu
@@ -498,26 +386,60 @@ export default function BanHangPage() {
     }
   };
 
-  // Thanh toán
+  const loadInvoicePrint = async (saleId) => {
+    const version = ++invoiceGeneration.current;
+    if (invoicePdfRef.current) URL.revokeObjectURL(invoicePdfRef.current);
+    invoicePdfRef.current = '';
+    setInvoicePrint({ loading: true, url: '', error: '' });
+    try {
+      const pdf = await sales.printPdf(saleId);
+      if (version !== invoiceGeneration.current) return;
+      invoicePdfRef.current = URL.createObjectURL(pdf);
+      setInvoicePrint({ loading: false, url: invoicePdfRef.current, error: '' });
+    } catch (error) {
+      let message = error?.message || 'Không tạo được bản in.';
+      const data = error?.response?.data;
+      if (data instanceof Blob) {
+        try { message = JSON.parse(await data.text())?.error || message; } catch { /* ignore */ }
+      }
+      if (typeof data === 'string') {
+        try { message = JSON.parse(data)?.error || message; } catch { /* ignore */ }
+      }
+      if (version === invoiceGeneration.current) setInvoicePrint({ loading: false, url: '', error: message });
+    }
+  };
+
+  const closeInvoiceModal = () => {
+    invoiceGeneration.current++;
+    if (invoicePdfRef.current) URL.revokeObjectURL(invoicePdfRef.current);
+    invoicePdfRef.current = '';
+    setShowInvoiceModal(false);
+    setInvoicePrint({ loading: false, url: '', error: '' });
+  };
+
+  // Thanh toán: lưu phiếu -> backend render mẫu in mặc định -> xem/in
   const handleCheckout = async () => {
     if (!cart.length || processing) return;
     setProcessing(true);
     try {
-      if (sales && typeof sales.create === 'function') {
-        await sales.create({
-          DKHACHHANGID: customerId || null,
-          DKHOXUATID: warehouseId || null,
-          NOTE: note,
-          TILEGIAMGIA: Number(discountPercent || 0),
-          LOAITHANHTOAN: paymentMethod,
-          items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity })),
-        }).catch(() => null);
-      }
+      const result = await sales.create({
+        DKHACHHANGID: customerId || null,
+        DKHOXUATID: warehouseId || null,
+        NOTE: note,
+        TILEGIAMGIA: Number(discountPercent || 0),
+        LOAITHANHTOAN: paymentMethod,
+        items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity })),
+      });
+      if (!result?.id) throw new Error('Máy chủ không trả về mã phiếu bán hàng.');
+      setSavedSale({ id: result.id, code: result.code, total: result.total });
+      setSaleCode(result.code);
       setShowInvoiceModal(true);
+      loadInvoicePrint(result.id);
       await loadData();
     } catch (err) {
       console.error(err);
-      setShowInvoiceModal(true);
+      setToastMsg(`Thanh toán thất bại: ${err?.response?.data?.error || err.message}`);
+      setTimeout(() => setToastMsg(''), 4000);
     } finally {
       setProcessing(false);
     }
@@ -679,12 +601,13 @@ export default function BanHangPage() {
                     >
                       <div className="pos-card-img-wrap">
                         <img
-                          src={p.IMAGE || '/parts/loc_dau_toyota.jpg'}
+                          src={p.IMAGE || '/parts/no-image.svg'}
                           alt={p.NAME}
                           className="pos-card-img"
+                          loading="lazy"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/parts/loc_dau_toyota.jpg';
+                            e.currentTarget.src = '/parts/no-image.svg';
                           }}
                         />
                       </div>
@@ -729,7 +652,8 @@ export default function BanHangPage() {
               <div className="pos-form-field">
                 <span className="pos-form-label">Số phiếu</span>
                 <div className="pos-form-input-wrap">
-                  <input type="text" className="pos-form-input" value={saleCode} readOnly />
+                  <input type="text" className="pos-form-input" value={saleCode} placeholder={numberError?'Không tải được số phiếu':'Đang tải số phiếu…'} title={savedSale?.id?'Số phiếu đã lưu':'Số dự kiến theo cấu hình; hệ thống cấp số chính thức khi lưu.'} readOnly />
+                  {numberError&&<button type="button" className="btn-pos-white" title={numberError} onClick={()=>setNumberRefresh(current=>current+1)}>Thử lại</button>}
                 </div>
               </div>
 
@@ -1259,27 +1183,50 @@ export default function BanHangPage() {
 
       {/* ===== POPUP: HÓA ĐƠN XUẤT SAU THANH TOÁN ===== */}
       {showInvoiceModal && (
-        <div className="pos-modal-overlay" onClick={() => setShowInvoiceModal(false)}>
+        <div className="pos-modal-overlay" onClick={closeInvoiceModal}>
           <div
             className="pos-modal-box"
-            style={{ maxWidth: 500 }}
+            style={{ maxWidth: 520 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="pos-modal-header" style={{ background: '#FFF7ED' }}>
               <h4 style={{ color: '#E65100', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Check size={18} color="#15803d" /> Thanh toán thành công!
               </h4>
-              <button className="pos-modal-close" onClick={() => setShowInvoiceModal(false)}>
+              <button className="pos-modal-close" onClick={closeInvoiceModal}>
                 &times;
               </button>
             </div>
             <div className="pos-modal-body">
               <div style={{ textAlign: 'center', padding: '10px 0' }}>
                 <div style={{ fontSize: 13, color: '#6b7280' }}>HÓA ĐƠN BÁN HÀNG</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{saleCode}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#111827' }}>{savedSale?.code || saleCode}</div>
                 <div style={{ fontSize: 12, color: '#9ca3af' }}>{saleDate}</div>
               </div>
 
+              {invoicePrint.loading && (
+                <div id="invoice-print-loading" style={{ textAlign: 'center', padding: 24, color: '#6b7280', fontSize: 13 }}>
+                  Đang tạo bản in từ mẫu mặc định...
+                </div>
+              )}
+              {invoicePrint.url && (
+                <iframe
+                  id="invoice-print-frame"
+                  title="Bản in hóa đơn"
+                  src={invoicePrint.url}
+                  style={{ width: '100%', height: 460, border: '1px solid #e5e7eb', borderRadius: 6, background: '#fff' }}
+                />
+              )}
+              {invoicePrint.error && (
+                <div id="invoice-print-error" style={{ margin: '8px 0', padding: '8px 10px', background: '#FEF2F2', color: '#B91C1C', borderRadius: 6, fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                  <span>{invoicePrint.error}</span>
+                  {savedSale?.id && (
+                    <button type="button" className="btn-pos-white" onClick={() => loadInvoicePrint(savedSale.id)}>Thử lại</button>
+                  )}
+                </div>
+              )}
+
+              {!invoicePrint.url && !invoicePrint.loading && (<>
               <div style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 10, fontSize: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span>Khách hàng:</span>
@@ -1332,13 +1279,14 @@ export default function BanHangPage() {
                 <span>TỔNG CỘNG:</span>
                 <span>{money(total)} đ</span>
               </div>
+              </>)}
             </div>
             <div className="pos-modal-footer">
               <button
+                id="invoice-print-button"
                 className="btn-pos-white"
-                onClick={() => {
-                  window.print();
-                }}
+                disabled={invoicePrint.loading}
+                onClick={() => openDocumentPrint({type:'MauHoaDonBanHang',id:savedSale?.id})}
               >
                 <Printer size={15} />
                 <span>In hóa đơn</span>
@@ -1346,7 +1294,7 @@ export default function BanHangPage() {
               <button
                 className="btn-pos-barcode"
                 onClick={() => {
-                  setShowInvoiceModal(false);
+                  closeInvoiceModal();
                   resetSale();
                 }}
               >

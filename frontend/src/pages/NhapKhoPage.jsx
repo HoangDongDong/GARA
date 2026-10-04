@@ -1,3 +1,6 @@
+import PartFormModal from '../components/PartFormModal';
+import { openDocumentPrint } from '../components/DocumentPrintDialog';
+import useDocumentNumber from '../hooks/useDocumentNumber';
 import { useEffect, useState, useMemo } from 'react';
 import { 
   Package, Calendar, Plus, Barcode, FileSpreadsheet, GitFork, 
@@ -57,6 +60,7 @@ export default function NhapKhoPage() {
   const [warehouseRecords, setWarehouseRecords] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [currentReceiptId, setCurrentReceiptId] = useState(null);
+  const draftNumber=useDocumentNumber('NhapKho',!currentReceiptId);
   const [savingReceipt, setSavingReceipt] = useState(false);
 
   // Modal thêm NCC nhanh (đồng bộ với NhaCungCapPage)
@@ -136,11 +140,10 @@ export default function NhapKhoPage() {
 
       const now = new Date();
       const dateValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const suffix = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
       setCurrentReceiptId(null);
       setReceiptInfo({
         date: dateValue,
-        code: `NK${dateValue.replace(/-/g, '')}-${suffix}`,
+        code: '',
         staff: employeeData[0]?.NAME || '',
         supplier: supplierData[0]?.NAME || '',
         description: '',
@@ -200,9 +203,9 @@ export default function NhapKhoPage() {
   };
 
   const prepareNewReceipt = (showNotification = true) => {
+    draftNumber.refresh();
     const now = new Date();
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     setCurrentReceiptId(null);
     setDetailItems([]);
     setDiscountAmount(0);
@@ -212,7 +215,7 @@ export default function NhapKhoPage() {
     setReceiptInfo((current) => ({
       ...current,
       date,
-      code: `NK${date.replace(/-/g, '')}-${suffix}`,
+      code: '',
       description: '',
       note: '',
     }));
@@ -244,8 +247,8 @@ export default function NhapKhoPage() {
     const supplier = supplierRecords.find((item) => item.NAME === receiptInfo.supplier);
     const employee = employeeRecords.find((item) => item.NAME === receiptInfo.staff);
     const warehouse = warehouseRecords.find((item) => item.NAME === receiptInfo.warehouse);
-    if (!receiptInfo.code.trim() || !receiptInfo.date || !supplier || !employee || !warehouse) {
-      showToast('Vui lòng nhập đủ ngày, số phiếu, nhân viên, nhà cung cấp và kho nhập.');
+    if (!receiptInfo.date || !supplier || !employee || !warehouse) {
+      showToast('Vui lòng nhập đủ ngày, nhân viên, nhà cung cấp và kho nhập.');
       return false;
     }
     if (!detailItems.length || detailItems.some((item) => !item.productId || Number(item.qty) <= 0)) {
@@ -276,6 +279,7 @@ export default function NhapKhoPage() {
         })),
       });
       setCurrentReceiptId(result.id);
+      setReceiptInfo(current=>({...current,code:result.code}));
       const nextReceipts = await inventoryReceipts.list();
       setReceipts(Array.isArray(nextReceipts) ? nextReceipts : []);
       showToast(paid
@@ -464,27 +468,6 @@ export default function NhapKhoPage() {
     } finally {
       setSavingPart(false);
     }
-  };
-
-  const handlePartImageChange = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setPartFormError('Ảnh mặt hàng chỉ hỗ trợ định dạng JPG, PNG hoặc WebP.');
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      setPartFormError('Ảnh mặt hàng không được vượt quá 3 MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPartForm((current) => ({ ...current, ANH: String(reader.result || '') }));
-      setPartFormError('');
-    };
-    reader.onerror = () => setPartFormError('Không thể đọc tệp ảnh đã chọn.');
-    reader.readAsDataURL(file);
   };
 
   const partOptionConfig = {
@@ -754,7 +737,9 @@ export default function NhapKhoPage() {
               </label>
               <input
                 type="text"
-                value={receiptInfo.code}
+                value={receiptInfo.code || (!currentReceiptId ? draftNumber.code : '')}
+                placeholder={draftNumber.error?'Không tải được số phiếu':'Đang tải số phiếu…'}
+                title="Số dự kiến theo cấu hình. Có thể nhập số thủ công; cấp chính thức khi lưu."
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, code: e.target.value })}
                 style={{
                   flex: 1,
@@ -996,7 +981,7 @@ export default function NhapKhoPage() {
                 <button
                   type="button"
                   className="nk-btn-secondary"
-                  onClick={() => setShowPreviewModal(true)}
+                  onClick={() => openDocumentPrint({ type: 'MauPhieuNhapKho', id: currentReceiptId })}
                 >
                   <Eye size={13} />
                   Xem in
@@ -1006,8 +991,7 @@ export default function NhapKhoPage() {
                   type="button"
                   className="nk-btn-secondary"
                   onClick={() => {
-                    showToast('Đang gửi lệnh in phiếu...');
-                    setTimeout(() => window.print(), 300);
+                    openDocumentPrint({ type: 'MauPhieuNhapKho', id: currentReceiptId });
                   }}
                 >
                   <Printer size={13} />
@@ -1598,7 +1582,7 @@ export default function NhapKhoPage() {
           <button
             type="button"
             className="nk-btn-secondary"
-            onClick={() => setShowPreviewModal(true)}
+            onClick={() => openDocumentPrint({ type: 'MauPhieuNhapKho', id: currentReceiptId })}
           >
             <Eye size={13} />
             Xem in
@@ -1608,8 +1592,7 @@ export default function NhapKhoPage() {
             type="button"
             className="nk-btn-secondary"
             onClick={() => {
-              showToast('Đang gửi lệnh in phiếu...');
-              setTimeout(() => window.print(), 300);
+              openDocumentPrint({ type: 'MauPhieuNhapKho', id: currentReceiptId });
             }}
           >
             <Printer size={13} />
@@ -1635,136 +1618,7 @@ export default function NhapKhoPage() {
           </button>
         </div>
       </div>
-      {showAddPartModal && (
-        <div
-          onMouseDown={(event) => { if (event.target === event.currentTarget && !savingPart) setShowAddPartModal(false); }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10020, padding: 16 }}
-        >
-          <div style={{ width: 720, maxWidth: '100%', maxHeight: '92vh', overflowY: 'auto', background: '#FFFFFF', borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.25)' }}>
-            <div style={{ position: 'sticky', top: 0, zIndex: 1, background: '#E65100', color: 'white', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 700 }}><Package size={17} /> THÊM MỚI MẶT HÀNG</div>
-              <button type="button" onClick={() => !savingPart && setShowAddPartModal(false)} disabled={savingPart} style={{ border: 0, background: 'transparent', color: 'white', cursor: 'pointer', display: 'flex' }}><X size={19} /></button>
-            </div>
-
-            <form onSubmit={handleCreatePart} style={{ padding: 15 }}>
-              <div className="responsive-grid-2" style={{ gap: 10 }}>
-                <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Tên mặt hàng <span style={{ color: '#D32F2F' }}>*</span>
-                  <input autoFocus value={partForm.NAME} onChange={(event) => setPartForm({ ...partForm, NAME: event.target.value })} placeholder="Nhập tên mặt hàng..." style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <div style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Ảnh mặt hàng
-                  <div style={{ marginTop: 4, minHeight: 104, padding: 9, border: '1px dashed #CBD5E1', borderRadius: 6, background: '#F8FAFC', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {partForm.ANH ? (
-                      <img src={partForm.ANH} alt="Ảnh mặt hàng xem trước" style={{ width: 122, height: 86, objectFit: 'contain', borderRadius: 5, border: '1px solid #E2E8F0', background: '#fff' }} />
-                    ) : (
-                      <div style={{ width: 122, height: 86, borderRadius: 5, border: '1px solid #E2E8F0', background: '#fff', color: '#94A3B8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                        <ImagePlus size={23} />
-                        <span style={{ fontSize: 10, fontWeight: 500 }}>Chưa có ảnh</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 7 }}>
-                      <label style={{ padding: '7px 12px', borderRadius: 4, background: '#E65100', color: '#fff', fontWeight: 700, cursor: savingPart ? 'not-allowed' : 'pointer', opacity: savingPart ? 0.7 : 1 }}>
-                        <ImagePlus size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                        {partForm.ANH ? 'Đổi ảnh' : 'Chọn ảnh'}
-                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={savingPart} onChange={handlePartImageChange} style={{ display: 'none' }} />
-                      </label>
-                      <span style={{ color: '#64748B', fontWeight: 400 }}>JPG, PNG hoặc WebP · tối đa 3 MB</span>
-                      {partForm.ANH && (
-                        <button type="button" disabled={savingPart} onClick={() => setPartForm((current) => ({ ...current, ANH: '' }))} style={{ padding: 0, border: 0, background: 'transparent', color: '#D32F2F', fontSize: 11, cursor: 'pointer' }}>
-                          Xóa ảnh đã chọn
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Mã mặt hàng <span style={{ color: '#D32F2F' }}>*</span>
-                  <input value={partForm.CODE} onChange={(event) => setPartForm({ ...partForm, CODE: event.target.value })} placeholder="Ví dụ: PT009" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Mã vạch
-                  <input value={partForm.BARCODE} onChange={(event) => setPartForm({ ...partForm, BARCODE: event.target.value })} placeholder="Nhập mã vạch..." style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Mã OEM
-                  <input value={partForm.MAOEM} onChange={(event) => setPartForm({ ...partForm, MAOEM: event.target.value })} placeholder="Nhập mã OEM..." style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Nhóm mặt hàng
-                  <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><select value={partForm.DNHOMMATHANGID} onChange={(event) => setPartForm({ ...partForm, DNHOMMATHANGID: event.target.value })} style={{ flex: 1, minWidth: 0, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12, background: 'white' }}>
-                    <option value="">-- Chọn nhóm mặt hàng --</option>
-                    {partMeta.nhom.map((item) => <option key={item.ID} value={item.ID}>{item.NAME}</option>)}
-                  </select><button type="button" onClick={() => openAddPartOption('group')} style={{ padding: '0 12px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button></div>
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Đơn vị tính
-                  <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><select value={partForm.DDONVITINHID} onChange={(event) => setPartForm({ ...partForm, DDONVITINHID: event.target.value })} style={{ flex: 1, minWidth: 0, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12, background: 'white' }}>
-                    <option value="">-- Chọn đơn vị tính --</option>
-                    {partMeta.dvt.map((item) => <option key={item.ID} value={item.ID}>{item.NAME}</option>)}
-                  </select><button type="button" onClick={() => openAddPartOption('unit')} style={{ padding: '0 12px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button></div>
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Hãng sản xuất
-                  <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><select value={partForm.DHANGSANXUATID} onChange={(event) => setPartForm({ ...partForm, DHANGSANXUATID: event.target.value })} style={{ flex: 1, minWidth: 0, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12, background: 'white' }}>
-                    <option value="">-- Chọn hãng sản xuất --</option>
-                    {partMeta.hangsx.map((item) => <option key={item.ID} value={item.ID}>{item.NAME}</option>)}
-                  </select><button type="button" onClick={() => openAddPartOption('manufacturer')} style={{ padding: '0 12px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button></div>
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Vị trí kho
-                  <div style={{ display: 'flex', gap: 6, marginTop: 3 }}><select value={partForm.DVITRIKHOID} onChange={(event) => setPartForm({ ...partForm, DVITRIKHOID: event.target.value })} style={{ flex: 1, minWidth: 0, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12, background: 'white' }}>
-                    <option value="">-- Chọn vị trí kho --</option>
-                    {partMeta.vitri.map((item) => <option key={item.ID} value={item.ID}>{item.NAME}</option>)}
-                  </select><button type="button" onClick={() => openAddPartOption('location')} style={{ padding: '0 12px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>＋ Thêm</button></div>
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Giá nhập
-                  <input type="number" min="0" value={partForm.GIANHAP} onChange={(event) => setPartForm({ ...partForm, GIANHAP: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Giá bán
-                  <input type="number" min="0" value={partForm.GIABAN} onChange={(event) => setPartForm({ ...partForm, GIABAN: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Bảo hành (tháng)
-                  <input type="number" min="0" value={partForm.BAOHANH} onChange={(event) => setPartForm({ ...partForm, BAOHANH: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Tồn tối thiểu
-                  <input type="number" min="0" value={partForm.TONTOITHIEU} onChange={(event) => setPartForm({ ...partForm, TONTOITHIEU: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Tồn tối đa
-                  <input type="number" min="0" value={partForm.TONTOIDA} onChange={(event) => setPartForm({ ...partForm, TONTOIDA: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
-              </div>
-
-              {partFormError && <div style={{ marginTop: 10, padding: '7px 9px', background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2', borderRadius: 4, fontSize: 11 }}>{partFormError}</div>}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
-                <button type="button" onClick={() => setShowAddPartModal(false)} disabled={savingPart} style={{ padding: '6px 14px', border: '1px solid #CBD5E1', borderRadius: 4, background: 'white', color: '#475569', fontSize: 11, cursor: 'pointer' }}>Hủy</button>
-                <button type="submit" disabled={savingPart} style={{ padding: '6px 18px', border: 0, borderRadius: 4, background: '#E65100', color: 'white', fontSize: 11, fontWeight: 700, cursor: savingPart ? 'wait' : 'pointer', opacity: savingPart ? 0.7 : 1 }}>
-                  {savingPart ? 'Đang lưu...' : 'Thêm mặt hàng'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showAddPartModal && <PartFormModal partForm={partForm} setPartForm={setPartForm} savingPart={savingPart} partFormError={partFormError} partMeta={partMeta} setShowAddPartModal={setShowAddPartModal} handleCreatePart={handleCreatePart} openAddPartOption={openAddPartOption} />}
 
       {partOptionType && (
         <div onMouseDown={(event) => { if (event.target === event.currentTarget && !savingPartOption) setPartOptionType(null); }} style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -2004,7 +1858,7 @@ export default function NhapKhoPage() {
                 type="button"
                 onClick={() => {
                   setShowBarcodeModal(false);
-                  showToast('Đang xuất lệnh in tới máy in mã vạch...');
+                  openDocumentPrint({ type: 'MauMaVachPhuTung' });
                 }}
                 style={{
                   display: 'flex',
@@ -2121,7 +1975,7 @@ export default function NhapKhoPage() {
               <button
                 type="button"
                 onClick={() => {
-                  window.print();
+                  openDocumentPrint({ type: 'MauPhieuNhapKho', id: currentReceiptId });
                   setShowPreviewModal(false);
                 }}
                 style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#E65100', color: '#fff', fontWeight: 600, cursor: 'pointer' }}

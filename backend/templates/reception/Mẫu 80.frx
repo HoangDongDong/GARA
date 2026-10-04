@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Report ReportInfo.Created="09/26/2010 13:06:26" ReportInfo.Modified="10/03/2026 19:17:57" ReportInfo.CreatorVersion="1.2.47.0" DoublePass="true" ReportInfo.Description="Phiếu tiếp nhận xe GARA - điều chỉnh từ mẫu do người dùng cung cấp">
+  <Dictionary>
+    <TableDataSource Name="Table0" ReferenceName="Data.Table0" DataType="System.Int32" Enabled="true">
+      <Column Name="ItemName" DataType="System.String" />
+      <Column Name="ValueText" DataType="System.String" />
+    </TableDataSource>
+    <Parameter Name="CompanyName" DataType="System.String" />
+    <Parameter Name="CompanyAddress" DataType="System.String" />
+    <Parameter Name="CompanyPhone" DataType="System.String" />
+    <Parameter Name="CompanyEmail" DataType="System.String" />
+    <Parameter Name="DocTitle" DataType="System.String" />
+    <Parameter Name="DocNumber" DataType="System.String" />
+    <Parameter Name="DocDate" DataType="System.String" />
+    <Parameter Name="CustomerName" DataType="System.String" />
+    <Parameter Name="Contact" DataType="System.String" />
+    <Parameter Name="CustomerAddress" DataType="System.String" />
+    <Parameter Name="VehiclePlate" DataType="System.String" />
+    <Parameter Name="VehicleDescription" DataType="System.String" />
+    <Parameter Name="VehicleVin" DataType="System.String" />
+    <Parameter Name="VehicleEngine" DataType="System.String" />
+    <Parameter Name="VehicleOdo" DataType="System.String" />
+    <Parameter Name="VehicleFuel" DataType="System.String" />
+    <Parameter Name="AdvisorName" DataType="System.String" />
+    <Parameter Name="TechnicianName" DataType="System.String" />
+    <Parameter Name="ReceptionTime" DataType="System.String" />
+    <Parameter Name="Description" DataType="System.String" />
+  </Dictionary>
+  <ReportPage Name="Page1" PaperWidth="80" LeftMargin="0" TopMargin="0" RightMargin="6" BottomMargin="0" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="279.72" Height="155.0" CanGrow="true">
+      <TextObject Name="Text3" Left="5.29" Top="57.0" Width="264.6" Height="13.45" CanGrow="true" Text="[CompanyName]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 7pt, style=Bold" />
+      <TextObject Name="Text6" Left="5.29" Top="70.9" Width="264.6" Height="10.45" CanGrow="true" Text="Địa chỉ: [CompanyAddress]" HorzAlign="Center" Font="Tahoma, 7pt" />
+      <TextObject Name="Text4" Left="5.29" Top="100.8" Width="264.6" Height="18.9" CanGrow="true" Text="[DocTitle]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 9pt, style=Bold" />
+      <TextObject Name="Text39" Left="5.29" Top="82.35" Width="264.6" Height="12.45" Border.Lines="Bottom" Border.Style="Dot" CanGrow="true" Text="Điện thoại: [CompanyPhone], Email: [CompanyEmail]" HorzAlign="Center" Font="Tahoma, 7pt" />
+      <TextObject Name="Text41" Left="5.29" Top="121.15" Width="264.6" Height="18.9" CanGrow="true" Text="Số: [DocNumber]  |  [DocDate]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 8pt" />
+      <PictureObject Name="CompanyLogo" Left="90" Top="2" Width="100" Height="50" SizeMode="Zoom" />
+    </ReportTitleBand>
+    <DataBand Name="ReceptionDetails" Width="279.72" Height="45" DataSource="Table0" CanGrow="true" CanBreak="true">
+      <TextObject Name="ReceptionText12" Left="5" Top="0" Width="265" Height="19" Text="[Table0.ItemName]" Font="Tahoma, 8pt, style=Bold" CanGrow="true" />
+      <TextObject Name="ReceptionText13" Left="5" Top="20" Width="265" Height="24" Text="[Table0.ValueText]" Font="Tahoma, 8pt" CanGrow="true" />
+      <DataHeaderBand Name="ReceptionInfo" Width="279.72" Height="232" CanGrow="true">
+        <TextObject Name="ReceptionText1" Left="5" Top="0" Width="265" Height="20" Text="Khách: [CustomerName]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText2" Left="5" Top="20" Width="265" Height="20" Text="Điện thoại: [Contact]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText3" Left="5" Top="40" Width="265" Height="20" Text="Địa chỉ: [CustomerAddress]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText4" Left="5" Top="60" Width="265" Height="20" Text="Biển số: [VehiclePlate]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText5" Left="5" Top="80" Width="265" Height="20" Text="Loại xe: [VehicleDescription]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText6" Left="5" Top="100" Width="265" Height="20" Text="VIN: [VehicleVin]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText7" Left="5" Top="120" Width="265" Height="20" Text="Số máy: [VehicleEngine]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText8" Left="5" Top="140" Width="265" Height="20" Text="ODO: [VehicleOdo]  |  Nhiên liệu: [VehicleFuel]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText9" Left="5" Top="160" Width="265" Height="20" Text="Cố vấn: [AdvisorName]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText10" Left="5" Top="180" Width="265" Height="20" Text="KTV: [TechnicianName]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="ReceptionText11" Left="5" Top="200" Width="265" Height="20" Text="Tiếp nhận: [ReceptionTime]" Font="Tahoma, 8pt" CanGrow="true" />
+      </DataHeaderBand>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="89.22" Width="279.72" Height="113.4">
+      <TextObject Name="Text33" Left="144" Top="9.45" Width="126" Height="18.9" Text="Nhân viên tiếp nhận" HorzAlign="Center" Font="Tahoma, 8pt, style=Bold" />
+      <TextObject Name="Text34" Left="144" Top="28.35" Width="126" Height="85.05" Border.Lines="Bottom" Text="(Ký, họ tên)" HorzAlign="Center" Font="Tahoma, 8pt" />
+      <TextObject Name="Text35" Left="4" Top="9.45" Width="122.85" Height="18.9" Text="Khách hàng" HorzAlign="Center" Font="Tahoma, 8pt, style=Bold" />
+      <TextObject Name="Text36" Left="4" Top="28.35" Width="122.85" Height="85.05" Border.Lines="Bottom" Text="(Ký, họ tên)" HorzAlign="Center" Font="Tahoma, 8pt" />
+    </ReportSummaryBand>
+  </ReportPage>
+</Report>

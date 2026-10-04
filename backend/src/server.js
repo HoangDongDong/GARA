@@ -30,12 +30,17 @@ app.use('/api/employees',      require('./routes/employees'));
 app.use('/api/parts',          require('./routes/parts'));
 app.use('/api/invoices',       require('./routes/invoices'));
 app.use('/api/reports',        require('./routes/reports'));
+app.use('/api/print-templates', require('./routes/printTemplates'));
 app.use('/api/workflow',       require('./routes/workflow'));
 app.use('/api/master-data',    require('./routes/masterData'));
+app.use('/api/catalog',        require('./routes/catalog'));
 app.use('/api/suppliers',      require('./routes/suppliers'));
 app.use('/api/sales',          require('./routes/sales'));
 app.use('/api/inventory-receipts', require('./routes/inventoryReceipts'));
 app.use('/api/ocr',            require('./routes/ocr'));
+app.use('/api/system-config',  require('./routes/systemConfig'));
+app.use('/api/printing',       require('./routes/printing'));
+app.use('/api/document-numbers', require('./routes/documentNumbers'));
 
 app.use((err, req, res, next) => {
   console.error(err);
@@ -45,5 +50,4 @@ app.use((err, req, res, next) => {
 app.listen(config.port, () => {
   console.log(`>>> Garage API running at http://localhost:${config.port}`);
   console.log(`>>> Firebird DB: ${config.firebird.database}`);
-  try { require('./routes/ocr').ensureOcrService(); } catch (e) {}
 });

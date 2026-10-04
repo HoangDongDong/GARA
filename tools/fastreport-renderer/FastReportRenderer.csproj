@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Garage.FastReportRenderer</AssemblyName>
+    <DefineConstants>$(DefineConstants);OPEN_SOURCE_RENDERER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="LICENSE.FastReport.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Compile Include="../fastreport-designer/ReportRenderer.cs" Link="ReportRenderer.cs" />
+    <PackageReference Include="FastReport.OpenSource" Version="2026.2.8" />
+    <PackageReference Include="FastReport.OpenSource.Export.PdfSimple" Version="2026.2.8" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.0.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.0.1" />
+  </ItemGroup>
+</Project>

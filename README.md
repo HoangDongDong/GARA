@@ -40,6 +40,7 @@ garage-app/
 - Node.js >= 18
 - Firebird Server 2.5 đang chạy (port 3050)
 - Database `D:\Garage\GARAGE.FDB` đã có sẵn schema KAZUKO AUTO
+- .NET Desktop Runtime 8 để mở FastReport Designer
 
 ## Cài đặt
 
@@ -69,6 +70,13 @@ npm run dev
 ```
 
 Mở trình duyệt: **http://localhost:5173**
+
+## In ấn & mẫu FastReport
+
+- Tab `Cấu hình > In ấn & mẫu` đọc mẫu từ `STEMPLATE` trong database chính `GARAGE.FDB`.
+- Nội dung `.frx` được đọc/ghi trực tiếp ở `STEMPLATE.TEMPLATE`; nhóm và mẫu mặc định được nối qua `SFORM`, `STABLEDESC`, `SIMAGE` và `SFORM.LASTTEMPLATEID`.
+- `start-backend.bat` tự build cầu nối FastReport Designer. Khi bấm `Sửa mẫu bằng FastReport`, mẫu được mở bằng Designer desktop và tự đồng bộ về BLOB sau khi lưu/đóng.
+- Dữ liệu tham khảo từ `D:\Garage\DATA.fdb` được nhập một lần bằng `npm run migrate:print-templates`; lệnh có thể chạy lại để đồng bộ theo ID.
 
 ## Phân quyền và đăng nhập
 
