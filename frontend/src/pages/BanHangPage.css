@@ -514,6 +514,23 @@
 }
 
 /* ===== FORM THÔNG TIN PHIẾU BÁN HÀNG (2 CỘT COMPACT TRÊN PC, 1 CỘT RÕ RÀNG TRÊN MOBILE) ===== */
+.pos-price-display, .pos-price-input {
+  width: 100%;
+  min-width: 70px;
+  box-sizing: border-box;
+  padding: 5px 3px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+}
+.pos-price-display { cursor: text; }
+.pos-price-display:hover, .pos-price-display:focus-visible { border-color: #e65100; background: #fff7ed; }
+.pos-price-input { border-color: #e65100; background: white; outline: none; }
+.pos-price-input[aria-invalid="true"] { border-color: #dc2626; }
+
 .pos-form-compact-grid {
   padding: 8px 10px;
   display: grid;
@@ -745,50 +762,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Bộ nút tăng giảm số lượng (+ -) tiện lợi */
-.pos-qty-group {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-.btn-qty-step {
-  width: 20px;
-  height: 24px;
-  border: none;
-  background: #f3f4f6;
-  color: #374151;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.1s;
-}
-
-.btn-qty-step:hover {
-  background: #e5e7eb;
-  color: #E65100;
-}
-
-.pos-qty-group .pos-qty-input {
-  width: 32px;
-  height: 24px;
-  border: none;
-  border-left: 1px solid #e5e7eb;
-  border-right: 1px solid #e5e7eb;
-  border-radius: 0;
-  font-size: 11.5px;
-  font-weight: 700;
-  text-align: center;
-  padding: 0;
-  outline: none;
 }
 
 /* Nút badge xem nhanh giỏ hàng */
@@ -1149,6 +1122,8 @@
 }
 
 .pos-qty-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
   width: 48px;
   height: 26px;
   padding: 0 3px;
@@ -1164,6 +1139,7 @@
 
 .pos-qty-input::-webkit-inner-spin-button,
 .pos-qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
   margin: 0;
 }
 
@@ -1663,3 +1639,6 @@
     padding-bottom: calc(85px + env(safe-area-inset-bottom, 12px)) !important;
   }
 }
+
+.pos-line-tax select { max-width: 100px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; }
+.pos-line-tax input { margin-top: 3px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; }

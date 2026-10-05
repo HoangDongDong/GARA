@@ -65,6 +65,7 @@ export default function CauHinhPage() {
     try {
       await api.put('/system-config/bulk', changed.map(id => ({ id, value: values[id] })));
       setOriginal({ ...values });
+      window.dispatchEvent(new Event('garage-charge-rates-changed'));
       const reloaded = await load();
       showToast(reloaded ? `Đã lưu ${changed.length} mục cấu hình.` : 'Đã lưu cấu hình, nhưng chưa tải lại được dữ liệu. Vui lòng thử tải lại.', reloaded ? 'ok' : 'err');
     } catch (error) { showToast(messageOf(error), 'err'); }
@@ -132,12 +133,23 @@ export default function CauHinhPage() {
     }
     if (control === 8) return <select {...props} disabled><option value={value}>{value ? 'Mẫu đã lưu chưa có danh sách lựa chọn' : 'Chưa có mẫu in phù hợp'}</option></select>;
     if (type === 2) return <input {...props} type="datetime-local" value={dateInput(value)} />;
+    if (['MacDinhThueSuat', 'MacDinhPhiDichVu'].includes(item.NAME)) {
+      const toggleName = item.NAME === 'MacDinhThueSuat' ? 'BanHangTinhThue' : 'BanHangTinhPhiDichVu';
+      const toggle = groups.flatMap(group => group.items).find(row => row.NAME === toggleName);
+      const enabled = !toggle || Number(values[toggle.ID]) === 30;
+      return <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+        <input {...props} type="number" min="0" max="100" step="0.01" inputMode="decimal" aria-label={item.CAPTION} />
+        {toggle && <label className="config-checkbox"><input type="checkbox" disabled={busy} checked={enabled}
+          onChange={event => change(toggle.ID, event.target.checked ? 30 : 0)} />
+          <span>Áp dụng trong bán hàng & sửa chữa</span></label>}
+      </div>;
+    }
     if (type === 3 || type === 4) return <input {...props} type="number" step={type === 3 ? 1 : 'any'} onChange={event => change(item.ID, event.target.value === '' ? '' : Number(event.target.value))} />;
     if (control === 6) return <textarea {...props} rows={3} />;
     return <input {...props} type="text" />;
   };
   const term = search.trim().toLocaleLowerCase('vi');
-  const matches = item => [item.CAPTION, item.NAME, item.MOREDETAIL, values[item.ID]].some(value => String(value ?? '').toLocaleLowerCase('vi').includes(term));
+  const matches = item => !['BanHangTinhThue', 'BanHangTinhPhiDichVu'].includes(item.NAME) && [item.CAPTION, item.NAME, item.MOREDETAIL, values[item.ID]].some(value => String(value ?? '').toLocaleLowerCase('vi').includes(term));
   const current = groups.find(group => group.groupId === activeId);
   const visibleGroups = term ? groups.filter(group => group.items.some(matches)) : groups;
   const sections = term ? visibleGroups : current ? [current] : [];

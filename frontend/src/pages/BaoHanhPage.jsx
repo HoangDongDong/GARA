@@ -94,7 +94,7 @@ export default function BaoHanhPage() {
         { time: '30/09/2025 15:30', title: 'Đang xử lý', desc: 'Thay dầu, lọc dầu, kiểm tra tổng thể.', ktv: 'Trần Văn B', color: '#1976D2', icon: 'gear' },
         { time: '30/09/2025 17:45', title: 'Hoàn thành', desc: 'Bàn giao xe cho khách hàng.', ktv: 'Trần Văn B', color: '#2E7D32', icon: 'check' }
       ],
-      note: 'Xe đã được kiểm tra và bảo dưỡng định kỳ theo đúng lịch hẹn. Khách hàng hài lòng.',
+      note: '',
       creator: 'admin',
       createdDate: '30/09/2025 14:20'
     },
@@ -125,7 +125,7 @@ export default function BaoHanhPage() {
         { time: '25/09/2025 09:15', title: 'Tiếp nhận bảo hành', desc: 'Kiểm tra báo lỗi cảm biến ABS.', ktv: 'Lê Văn C', color: '#E65100' },
         { time: '25/09/2025 11:30', title: 'Hoàn thành', desc: 'Đã thay cảm biến ABS chính hãng và cân chỉnh.', ktv: 'Trần Văn B', color: '#2E7D32' }
       ],
-      note: 'Khách hàng yêu cầu kiểm tra kỹ hệ thống dây điện.',
+      note: '',
       creator: 'admin',
       createdDate: '25/09/2025 09:15'
     },
@@ -155,7 +155,7 @@ export default function BaoHanhPage() {
       history: [
         { time: '20/09/2025 10:00', title: 'Tiếp nhận', desc: 'Bảo hành hệ thống điều hòa rung nhẹ.', ktv: 'Vũ Đức Dũng', color: '#E65100' }
       ],
-      note: 'Bảo dưỡng định kỳ 15.000 km đạt chuẩn.',
+      note: '',
       creator: 'admin',
       createdDate: '20/09/2025 10:00'
     },
@@ -183,7 +183,7 @@ export default function BaoHanhPage() {
       statusBg: '#E8F5E9',
       image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Thay ắc quy mới chính hãng GS.',
+      note: '',
       creator: 'admin',
       createdDate: '15/09/2025'
     },
@@ -211,7 +211,7 @@ export default function BaoHanhPage() {
       statusBg: '#E8F5E9',
       image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Khách hàng thân thiết.',
+      note: '',
       creator: 'admin',
       createdDate: '10/09/2025'
     },
@@ -239,7 +239,7 @@ export default function BaoHanhPage() {
       statusBg: '#E8F5E9',
       image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Xe chạy công trình, bảo dưỡng định kỳ đúng hạn.',
+      note: '',
       creator: 'admin',
       createdDate: '05/09/2025'
     },
@@ -267,7 +267,7 @@ export default function BaoHanhPage() {
       statusBg: '#E8F5E9',
       image: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Bảo dưỡng cấp lớn.',
+      note: '',
       creator: 'admin',
       createdDate: '01/09/2025'
     },
@@ -295,7 +295,7 @@ export default function BaoHanhPage() {
       statusBg: '#E1F5FE',
       image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Cần nhắc khách bảo dưỡng gia hạn gói bảo hành.',
+      note: '',
       creator: 'admin',
       createdDate: '28/08/2025'
     },
@@ -323,7 +323,7 @@ export default function BaoHanhPage() {
       statusBg: '#E8F5E9',
       image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Khách hàng hài lòng.',
+      note: '',
       creator: 'admin',
       createdDate: '20/08/2025'
     },
@@ -351,7 +351,7 @@ export default function BaoHanhPage() {
       statusBg: '#FFF3E0',
       image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&q=80&w=400',
       history: [],
-      note: 'Đã hết thời hạn và quá số km bảo hành cam kết.',
+      note: '',
       creator: 'admin',
       createdDate: '12/08/2025'
     }

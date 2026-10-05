@@ -240,6 +240,9 @@ export const suppliers = {
 
 /* ===== REPAIR ORDERS ===== */
 export const repairOrders = {
+  supplements: (id) => list(`repair-orders/${id}/supplements`),
+  createSupplement: (id, payload) => create(`repair-orders/${id}/supplements`, payload),
+  decideSupplement: (id, supplementId, payload) => api.patch(`/repair-orders/${id}/supplements/${supplementId}`, payload).then(r => r.data),
   /* TTIEPNHANXE */
   listReceptions:   () => list('repair-orders/tiep-nhan'),
   createReception:  (payload) => create('repair-orders/tiep-nhan', payload),
@@ -276,6 +279,7 @@ export const reports = {
 
 /* ===== WORKFLOW ===== */
 export const workflow = {
+  supplements:    () => list('workflow/supplements'),
   list:           (params) => list('workflow', params),
   board:          () => list('workflow/board'),
   states:         () => list('workflow/states'),

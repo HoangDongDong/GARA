@@ -40,7 +40,7 @@ const TABLES = {
   services: {
     table: 'DDICHVU',
     fk: { category: 'DLOAIDICHVUID' },
-    join: { category: { table: 'DLOAIDICHVU', as: 'LC', on: 'LC.ID = DDICHVU.DLOAIDICHVUID', select: ['LC.NAME AS CATEGORY_NAME'] } },
+    join: { category: { table: 'DLOAIDICHVU', as: 'LC', on: 'LC.ID = DDICHVU.DLOAIDICHVUID AND LC.STATUS=1', select: ['LC.NAME AS CATEGORY_NAME', 'LC.NAME AS NHOM', 'LC.THUESUATRIENG AS THUENHOM'] } },
     searchCols: ['NAME', 'CODE'],
     order: 'SORTORDER, NAME',
   },
@@ -194,6 +194,7 @@ router.post('/:resource', async (req, res) => {
     if (!def) return res.status(404).json({ error: 'Resource khong ton tai' });
 
     const id = uuidv4();
+    require('../services/pricingPolicy').validateMaster(req.body);
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, ID: id, STATUS: req.body.STATUS ?? 1, USERCREATEDID: actor };
     delete data.TIMECREATED;
@@ -218,6 +219,7 @@ router.put('/:resource/:id', async (req, res) => {
 
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, USERMODIFIEDID: actor };
+    require('../services/pricingPolicy').validateMaster(data);
     delete data.ID;
     delete data.TIMEMODIFIED;
 

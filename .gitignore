@@ -31,14 +31,14 @@ Thumbs.db
 
 # Local print verification contains business data
 backend/print-verification/
-tools/.dotnet-home/
-tools/.nuget-packages/
-tools/fastreport-renderer/bin/
-tools/fastreport-renderer/obj/
-tools/fastreport-designer/bin/
-tools/fastreport-designer/obj/
-tools/fastreport-designer/.vs/
-tools/part-background-check.jpg
+backend/tools/.dotnet-home/
+backend/tools/.nuget-packages/
+backend/tools/fastreport-renderer/bin/
+backend/tools/fastreport-renderer/obj/
+backend/tools/fastreport-designer/bin/
+backend/tools/fastreport-designer/obj/
+backend/tools/fastreport-designer/.vs/
+backend/tools/part-background-check.jpg
 bin/
 obj/
 *.user

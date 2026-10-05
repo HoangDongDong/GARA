@@ -1,3 +1,4 @@
+import RatePolicyField from './RatePolicyField';
 import { Package, ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { preparePartImage } from '../utils/partImage';
@@ -156,6 +157,10 @@ export default function PartFormModal({ partForm, setPartForm, savingPart: savin
                   Tồn tối đa
                   <input type="number" min="0" value={partForm.TONTOIDA} onChange={(event) => setPartForm({ ...partForm, TONTOIDA: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
                 </label>
+                <RatePolicyField label="Thuế" value={partForm.THUESUATRIENG} disabled={savingPart}
+                  onChange={value => setPartForm({ ...partForm, THUESUATRIENG: value })} inheritLabel="Theo nhóm mặt hàng"
+                  inheritedRate={partMeta.nhom.find(group => group.ID === partForm.DNHOMMATHANGID)?.THUESUATRIENG}
+                  inheritedSource={partMeta.nhom.find(group => group.ID === partForm.DNHOMMATHANGID)?.THUESUATRIENG != null ? partMeta.nhom.find(group => group.ID === partForm.DNHOMMATHANGID)?.NAME : 'Theo cấu hình (nhóm chưa đặt riêng)'} />
               </div>
 
               {partFormError && <div style={{ marginTop: 10, padding: '7px 9px', background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2', borderRadius: 4, fontSize: 11 }}>{partFormError}</div>}

@@ -31,7 +31,7 @@ const VEHICLES_DATABASE = [
       phone: '0903 123 456',
       email: 'nguyenvana@gmail.com',
       address: '123 Lê Lợi, Q.1, TP.HCM',
-      note: 'Khách hàng thân thiết'
+      note: ''
     },
     company: {
       name: 'Công ty TNHH Phụ Tùng A',
@@ -125,8 +125,8 @@ const VEHICLES_DATABASE = [
       { id: 'PT-04', date: '05/06/2025', code: '17801-0L040', name: 'Lọc gió động cơ Toyota Fortuner', qty: 1, unit: 'Cái', price: 270000, total: 270000, odo: '44.200 km', repairId: 'SC-20250605-01', warranty: '6 tháng', warrantyStatus: 'expired' }
     ],
     warranties: [
-      { id: 'BH-2025-001', item: 'Ắc quy GS 12V 65Ah', type: 'Phụ tùng thay thế', startDate: '12/03/2025', endDate: '12/03/2026', duration: '12 tháng', odoStart: '40.000 km', odoLimit: 'Không giới hạn km', status: 'Còn hiệu lực', daysLeft: 'Còn 163 ngày', supplier: 'Cty TNHH Ắc Quy GS Việt Nam', note: 'Bảo hành sụt áp, chết cọc do lỗi nhà sản xuất.' },
-      { id: 'BH-2025-002', item: 'Bố thắng trước Fortuner', type: 'Hệ thống phanh', startDate: '20/08/2025', endDate: '20/02/2026', duration: '6 tháng', odoStart: '52.300 km', odoLimit: '62.300 km (10.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 142 ngày', supplier: 'Kazuko Auto Parts', note: 'Bảo hành nứt vỡ má phanh, kêu bất thường.' }
+      { id: 'BH-2025-001', item: 'Ắc quy GS 12V 65Ah', type: 'Phụ tùng thay thế', startDate: '12/03/2025', endDate: '12/03/2026', duration: '12 tháng', odoStart: '40.000 km', odoLimit: 'Không giới hạn km', status: 'Còn hiệu lực', daysLeft: 'Còn 163 ngày', supplier: 'Cty TNHH Ắc Quy GS Việt Nam', note: '' },
+      { id: 'BH-2025-002', item: 'Bố thắng trước Fortuner', type: 'Hệ thống phanh', startDate: '20/08/2025', endDate: '20/02/2026', duration: '6 tháng', odoStart: '52.300 km', odoLimit: '62.300 km (10.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 142 ngày', supplier: 'Kazuko Auto Parts', note: '' }
     ],
     media: [
       { id: 1, title: 'Toàn cảnh xe góc trước bên lái', category: 'truoc', date: '15/09/2025 08:30', odo: '56.780 km', url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&auto=format&fit=crop&q=80' },
@@ -160,7 +160,7 @@ const VEHICLES_DATABASE = [
       phone: '0912 888 999',
       email: 'binh.tran@xaydungbinhan.vn',
       address: '45 Nguyễn Chí Thanh, Ba Đình, Hà Nội',
-      note: 'Khách VIP - Doanh nghiệp'
+      note: ''
     },
     company: {
       name: 'Cty CP Xây Dựng Bình An',
@@ -219,7 +219,7 @@ const VEHICLES_DATABASE = [
       { id: 'PT-CRV-03', date: '12/04/2025', code: '43022-TLA-A01', name: 'Bộ má phanh sau Honda CR-V Turbo', qty: 1, unit: 'Bộ', price: 1200000, total: 1200000, odo: '25.000 km', repairId: 'SC-20250412-01', warranty: '12 tháng / 20.000 km', warrantyStatus: 'active' }
     ],
     warranties: [
-      { id: 'BH-CRV-001', item: 'Bộ má phanh sau Honda CR-V', type: 'Hệ thống phanh', startDate: '12/04/2025', endDate: '12/04/2026', duration: '12 tháng', odoStart: '25.000 km', odoLimit: '45.000 km (20.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 194 ngày', supplier: 'Honda Việt Nam', note: 'Bảo hành mòn không đều, kêu rít má phanh.' }
+      { id: 'BH-CRV-001', item: 'Bộ má phanh sau Honda CR-V', type: 'Hệ thống phanh', startDate: '12/04/2025', endDate: '12/04/2026', duration: '12 tháng', odoStart: '25.000 km', odoLimit: '45.000 km (20.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 194 ngày', supplier: 'Honda Việt Nam', note: '' }
     ],
     media: [
       { id: 101, title: 'Đầu xe Honda CR-V tại cầu nâng', category: 'trong', date: '28/09/2025 09:15', odo: '34.200 km', url: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=600&auto=format&fit=crop&q=80' },
@@ -250,7 +250,7 @@ const VEHICLES_DATABASE = [
       phone: '0988 777 666',
       email: 'nam.le@namphatlogistics.com',
       address: '78 Xa Lộ Hà Nội, Biên Hòa, Đồng Nai',
-      note: 'Xe chạy công trình & chở hàng liên tỉnh'
+      note: ''
     },
     company: {
       name: 'Cty TNHH Vận Tải Nam Phát',
@@ -292,7 +292,7 @@ const VEHICLES_DATABASE = [
       { id: 'PT-FR-02', date: '20/09/2025', code: 'UC2R-34-470', name: 'Bộ cao su càng A trên dưới Ranger 2.0 Bi-Turbo', qty: 1, unit: 'Bộ', price: 2700000, total: 2700000, odo: '82.500 km', repairId: 'SC-20250920-04', warranty: '12 tháng', warrantyStatus: 'active' }
     ],
     warranties: [
-      { id: 'BH-FR-001', item: 'Cụm rotuyn & cao su càng A Ranger', type: 'Hệ thống treo & gầm', startDate: '22/09/2025', endDate: '22/09/2026', duration: '12 tháng', odoStart: '82.500 km', odoLimit: '102.500 km (20.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 357 ngày', supplier: 'Ford AutoCare', note: 'Bảo hành cao su nứt gãy, rô tuyn rơ lắc.' }
+      { id: 'BH-FR-001', item: 'Cụm rotuyn & cao su càng A Ranger', type: 'Hệ thống treo & gầm', startDate: '22/09/2025', endDate: '22/09/2026', duration: '12 tháng', odoStart: '82.500 km', odoLimit: '102.500 km (20.000 km)', status: 'Còn hiệu lực', daysLeft: 'Còn 357 ngày', supplier: 'Ford AutoCare', note: '' }
     ],
     media: [
       { id: 201, title: 'Toàn cảnh gầm xe Ford Ranger Wildtrak', category: 'trong', date: '20/09/2025 14:00', odo: '82.500 km', url: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600&auto=format&fit=crop&q=80' }
@@ -321,7 +321,7 @@ const VEHICLES_DATABASE = [
       phone: '0935 222 333',
       email: 'ha.phamthu@gmail.com',
       address: '22 Bạch Đằng, Hải Châu, Đà Nẵng',
-      note: 'Khách hàng nữ, yêu cầu kiểm tra kỹ hệ thống điều hòa'
+      note: ''
     },
     company: {
       name: 'Cá nhân',
@@ -362,7 +362,7 @@ const VEHICLES_DATABASE = [
       { id: 'PT-CX5-01', date: '10/09/2025', code: 'KD45-67-330', name: 'Cần gạt mưa ba khúc cao cấp Mazda CX-5', qty: 1, unit: 'Bộ', price: 450000, total: 450000, odo: '28.900 km', repairId: 'SC-20250910-01', warranty: '6 tháng', warrantyStatus: 'active' }
     ],
     warranties: [
-      { id: 'BH-CX5-001', item: 'Bề mặt sơn dặm cản sau Soul Red', type: 'Sơn - Đồng', startDate: '11/09/2025', endDate: '11/09/2026', duration: '12 tháng', odoStart: '28.900 km', odoLimit: 'Không giới hạn', status: 'Còn hiệu lực', daysLeft: 'Còn 346 ngày', supplier: 'Xưởng Sơn Kazuko', note: 'Bảo hành bong tróc sơn, rộp nứt bề mặt.' }
+      { id: 'BH-CX5-001', item: 'Bề mặt sơn dặm cản sau Soul Red', type: 'Sơn - Đồng', startDate: '11/09/2025', endDate: '11/09/2026', duration: '12 tháng', odoStart: '28.900 km', odoLimit: 'Không giới hạn', status: 'Còn hiệu lực', daysLeft: 'Còn 346 ngày', supplier: 'Xưởng Sơn Kazuko', note: '' }
     ],
     media: [
       { id: 301, title: 'Góc xước cản sau trước khi xử lý', category: 'truoc', date: '10/09/2025 09:00', odo: '28.900 km', url: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80' },
@@ -392,7 +392,7 @@ const VEHICLES_DATABASE = [
       phone: '0904 555 123',
       email: 'tuan.dang@tuanphatcorp.vn',
       address: '15 Trần Duy Hưng, Cầu Giấy, Hà Nội',
-      note: 'Ưu tiên sử dụng dầu nhớt Mobil 1 5W-30'
+      note: ''
     },
     company: {
       name: 'Cty CP Dịch Vụ Tuấn Phát',
@@ -433,7 +433,7 @@ const VEHICLES_DATABASE = [
       { id: 'PT-SF-01', date: '15/08/2025', code: '31922-2W000', name: 'Lọc nhiên liệu dầu diesel SantaFe', qty: 1, unit: 'Cái', price: 650000, total: 650000, odo: '45.600 km', repairId: 'SC-20250815-03', warranty: '12 tháng / 20.000 km', warrantyStatus: 'active' }
     ],
     warranties: [
-      { id: 'BH-SF-001', item: 'Lọc nhiên liệu diesel Hyundai OEM', type: 'Hệ thống nhiên liệu', startDate: '15/08/2025', endDate: '15/08/2026', duration: '12 tháng', odoStart: '45.600 km', odoLimit: '65.600 km', status: 'Còn hiệu lực', daysLeft: 'Còn 319 ngày', supplier: 'Hyundai Mobis', note: 'Bảo hành nghẹt lọc, rò rỉ ron đáy lọc.' }
+      { id: 'BH-SF-001', item: 'Lọc nhiên liệu diesel Hyundai OEM', type: 'Hệ thống nhiên liệu', startDate: '15/08/2025', endDate: '15/08/2026', duration: '12 tháng', odoStart: '45.600 km', odoLimit: '65.600 km', status: 'Còn hiệu lực', daysLeft: 'Còn 319 ngày', supplier: 'Hyundai Mobis', note: '' }
     ],
     media: [
       { id: 401, title: 'Khoang máy Hyundai SantaFe 2.2L Diesel HTRAC', category: 'truoc', date: '15/08/2025 08:30', odo: '45.600 km', url: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=600&auto=format&fit=crop&q=80' }
@@ -609,7 +609,7 @@ const mapVehicleProfile = (data) => {
     ...EMPTY_VEHICLE_PROFILE, ...summary,
     rawVehicle: row,
     status: repairs[0] && repairs[0].status !== 'Hoàn thành' ? repairs[0].status : 'Đang hoạt động',
-    owner: { name: row.TEN_KH || '—', phone: row.DIENTHOAI || '—', email: row.EMAIL || '—', address: row.DIACHI || '—', note: row.GHICHU_KH || row.NHOM_KH || '' },
+    owner: { name: row.TEN_KH || '—', phone: row.DIENTHOAI || '—', email: row.EMAIL || '—', address: row.DIACHI || '—', note: row.GHICHU_KH || '' },
     company: { name: row.NHOM_KH || row.TEN_KH || '—', taxCode: row.MASOTHUE || '—', address: row.DIACHI || '—', phone: row.DIENTHOAI || '—', contact: row.TEN_KH || '—' },
     ownerHistory: row.TEN_KH ? [{ period: `${row.NAMSANXUAT || '—'} - Hiện tại`, name: `${row.TEN_KH} (Chủ hiện tại)`, active: true }] : [],
     repairs, replacedParts, warranties, appointments, media, notes: noteList,
@@ -2260,7 +2260,6 @@ export default function HoSoXePage() {
                 <form onSubmit={handleAddNote} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <textarea
                     rows={3}
-                    placeholder="Nhập ghi chú tình trạng xe, khuyến nghị phụ tùng hoặc lưu ý thói quen lái xe của khách..."
                     value={newNoteText}
                     onChange={(e) => setNewNoteText(e.target.value)}
                     style={{

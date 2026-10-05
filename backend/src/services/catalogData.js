@@ -5,10 +5,10 @@ const fields = (text) => text.split(' ');
 const master = (table, extra = '') => ({ table, fields: fields(`NAME NOTE ${extra}`.trim()), required: ['NAME'], uniqueName: true });
 // Explicit resources: request input never supplies table/column names.
 const resources = {
-  customers: { table: 'DKHACHHANG', fields: fields('NAME MAKHACH DIENTHOAI EMAIL DIACHI MASOTHUE DNHOMKHACHHANGID'), required: ['NAME'], code: 'MAKHACH', links: { DNHOMKHACHHANGID: 'DNHOMKHACHHANG' } },
+  customers: { table: 'DKHACHHANG', fields: fields('NAME MAKHACH DIENTHOAI EMAIL DIACHI MASOTHUE DNHOMKHACHHANGID GIAMGIARIENG'), required: ['NAME'], code: 'MAKHACH', links: { DNHOMKHACHHANGID: 'DNHOMKHACHHANG' } },
   suppliers: { table: 'DNHACUNGCAP', fields: fields('NAME MANHACUNGCAP DIENTHOAI EMAIL DIACHI WEBSITE NOTE DNHOMNHACUNGCAPID'), required: ['NAME', 'MANHACUNGCAP'], code: 'MANHACUNGCAP', links: { DNHOMNHACUNGCAPID: 'DNHOMNHACUNGCAP' } },
-  parts: { table: 'DMATHANG', fields: fields('NAME CODE BARCODE MAOEM GIANHAP GIABAN GIABAN2 GIABAN3 BAOHANH TONTOITHIEU TONTOIDA MASANCO DNHOMMATHANGID DHANGSANXUATID DDONVITINHID DVITRIKHOID'), required: ['NAME', 'CODE'], code: 'CODE' },
-  services: { ...master('DDICHVU', 'CODE GIA THOIGIAN DLOAIDICHVUID'), code: 'CODE', links: { DLOAIDICHVUID: 'DLOAIDICHVU' } },
+  parts: { table: 'DMATHANG', fields: fields('NAME CODE BARCODE MAOEM GIANHAP GIABAN GIABAN2 GIABAN3 BAOHANH TONTOITHIEU TONTOIDA MASANCO DNHOMMATHANGID DHANGSANXUATID DDONVITINHID DVITRIKHOID THUESUATRIENG'), required: ['NAME', 'CODE'], code: 'CODE' },
+  services: { ...master('DDICHVU', 'CODE GIA THOIGIAN DLOAIDICHVUID THUESUATRIENG'), code: 'CODE', links: { DLOAIDICHVUID: 'DLOAIDICHVU' } },
   models: { ...master('DDONGXE', 'CODE DHANGXEID'), code: 'CODE', scope: 'DHANGXEID', links: { DHANGXEID: 'DHANGXE' } },
   vehicles: { table: 'DXE', fields: fields('BIENSO NAME PHIENBAN NAMSANXUAT MAUXE SOKHUNG SOMAY ODO NHIENLIEU MUCNHIENLIEU GHICHU DHANGXEID DDONGXEID DKHACHHANGID'), readonly: true },
   warehouses: master('DKHOHANG', 'CHOPHEPAMKHO'),
@@ -22,10 +22,10 @@ const resources = {
   cashReasons: master('DLYDOTHUCHI', 'LOAI'),
   banks: { ...master('DTAIKHOANNGANHANG', 'SOTAIKHOAN TENNGANHANG CHINHANH'), required: ['NAME', 'SOTAIKHOAN', 'TENNGANHANG'], code: 'SOTAIKHOAN', uniqueName: false },
   funds: master('DQUYTIENMAT', 'CODE'),
-  customer_groups: master('DNHOMKHACHHANG'),
+  customer_groups: master('DNHOMKHACHHANG', 'GIAMGIARIENG'),
   supplier_groups: master('DNHOMNHACUNGCAP'),
-  categories: master('DNHOMMATHANG'),
-  service_categories: master('DLOAIDICHVU'),
+  categories: master('DNHOMMATHANG', 'THUESUATRIENG'),
+  service_categories: master('DLOAIDICHVU', 'THUESUATRIENG'),
   brands: { ...master('DHANGXE', 'CODE'), code: 'CODE' },
 };
 const layouts = {
@@ -104,6 +104,7 @@ async function save(resource, id, body, actor) {
   const allowed = new Set(def.fields);
   if (Object.keys(body).some((key) => !allowed.has(key))) throw failure('Dữ liệu có trường không thuộc danh mục.');
   const payload = {};
+  require('./pricingPolicy').validateMaster(body);
   for (const [key, value] of Object.entries(body)) {
     if (value != null && typeof value !== 'string' && typeof value !== 'number') throw failure('Giá trị không hợp lệ.');
     if (typeof value === 'number' && !Number.isFinite(value)) throw failure('Giá trị số không hợp lệ.');

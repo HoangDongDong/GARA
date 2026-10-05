@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { customers, masterData, vehicles } from '../services';
 import './KhachHangPage.css';
+import { discountPolicy } from '../utils/pricingPolicy';
 
 const fmtMoney = (n) => {
   if (n == null) return '0đ';
@@ -39,7 +40,7 @@ export default function KhachHangPage() {
     EMAIL: '',
     DIACHI: '',
     MASOTHUE: '',
-    DNHOMKHACHHANGID: '',
+    DNHOMKHACHHANGID: '', GIAMGIARIENG: '',
   });
 
   const load = async (preferredId) => {
@@ -70,7 +71,7 @@ export default function KhachHangPage() {
   useEffect(() => { load(); }, []);
 
   const openAddForm = () => {
-    setForm({ NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', DIACHI: '', MASOTHUE: '', DNHOMKHACHHANGID: '' });
+    setForm({ NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', DIACHI: '', MASOTHUE: '', DNHOMKHACHHANGID: '', GIAMGIARIENG: '' });
     setFormError('');
     setFormMode('add');
   };
@@ -84,7 +85,7 @@ export default function KhachHangPage() {
       EMAIL: customer.EMAIL || customer.MAIL || '',
       DIACHI: customer.DIACHI || customer.ADDRESS || '',
       MASOTHUE: customer.MASOTHUE || customer.CCCD || '',
-      DNHOMKHACHHANGID: customer.DNHOMKHACHHANGID || '',
+      DNHOMKHACHHANGID: customer.DNHOMKHACHHANGID || '', GIAMGIARIENG: customer.GIAMGIARIENG == null ? '' : String(customer.GIAMGIARIENG),
     });
     setFormError('');
     setFormMode('edit');
@@ -566,6 +567,7 @@ export default function KhachHangPage() {
               </div>
             )}
 
+            {selected && <div style={{padding: "8px 12px", color: "#c2410c", fontSize: 12}}>Giảm giá {discountPolicy(selected).discountRate}% · {discountPolicy(selected).discountSource}</div>}
             {selected && customerNote(selected) && (
               <div style={{ marginTop: 8, padding: '7px 10px', background: '#FFF8E1', borderRadius: 6, border: '1px solid #FFE0B2', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#E65100', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>

@@ -7,6 +7,7 @@ import {
   User, Wrench, CarFront, X,
 } from 'lucide-react';
 import { workflow } from '../services';
+import RepairSupplementQueue from '../components/RepairSupplementQueue';
 import './HoSoChoDuyetPage.css';
 
 export const WORKFLOW_STAGES = [
@@ -59,6 +60,7 @@ export default function HoSoChoDuyetPage() {
   const canAdd = (permission & 2) === 2;
   const canEdit = (permission & 4) === 4;
   const [orders, setOrders] = useState([]);
+  const [supplements, setSupplements] = useState([]);
   const [viewMode, setViewMode] = useState('kanban');
   const [search, setSearch] = useState('');
   const [filterStage, setFilterStage] = useState('all');
@@ -76,7 +78,8 @@ export default function HoSoChoDuyetPage() {
   const loadBoard = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await workflow.board();
+      const [rows, supplementRows] = await Promise.all([workflow.board(), workflow.supplements()]);
+      setSupplements(Array.isArray(supplementRows) ? supplementRows : []);
       const mapped = (Array.isArray(rows) ? rows : []).map(mapOrder);
       setOrders(mapped);
       setSelectedOrder((current) => current ? mapped.find((item) => item.id === current.id) || null : null);
@@ -98,7 +101,7 @@ export default function HoSoChoDuyetPage() {
     finally { setChangingId(''); }
   };
 
-  const advisors = useMemo(() => [...new Set(orders.map((item) => item.coVan).filter((name) => name && name !== 'Chưa phân công'))].sort(), [orders]);
+  const advisors = useMemo(() => [...new Set([...orders.map((item) => item.coVan), ...supplements.map((item) => item.TEN_CV)].filter((name) => name && name !== 'Chưa phân công'))].sort(), [orders, supplements]);
   const counts = useMemo(() => orders.reduce((result, item) => { result[item.trangThai] += 1; result.total += 1; return result; }, { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, total: 0 }), [orders]);
   const filteredOrders = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase('vi');
@@ -122,6 +125,8 @@ export default function HoSoChoDuyetPage() {
       <div className="hscd-title-group"><div className="hscd-title-icon"><ClipboardCheck size={24}/></div><div><h1 className="hscd-title">Hồ sơ chờ duyệt & Điều phối sửa chữa <span className="hscd-live-badge">Dữ liệu GARAGE.FDB</span></h1><div className="hscd-subtitle">Quản lý quy trình thật 5 bước: Chờ duyệt → Xác nhận sửa → Đang sửa → Giao xe → Hoàn thành</div></div></div>
       <div className="hscd-header-actions"><div className="hscd-view-toggle"><button className={`hscd-view-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}><Kanban size={15}/> <span>Quy trình</span></button><button className={`hscd-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}><TableIcon size={15}/> <span>Danh sách</span></button></div><button className="hscd-btn-reset" onClick={loadBoard} disabled={loading} title="Tải lại dữ liệu"><RefreshCw size={14}/> <span>Làm mới</span></button>{canAdd && <button className="hscd-btn-add" onClick={() => navigate('/sua-chua')} title="Lập phiếu tiếp nhận sửa chữa mới"><Plus size={14}/> <span>Tạo hồ sơ</span></button>}</div>
     </div>
+
+    <RepairSupplementQueue rows={supplements} loading={loading} search={search} advisor={filterAdvisor} canEdit={canEdit} onChanged={loadBoard} />
 
     <div className="hscd-stats-grid">{WORKFLOW_STAGES.map((stage) => <div key={stage.id} className={`hscd-stat-card stage-${stage.id} ${filterStage === stage.id ? 'selected' : ''}`} onClick={() => setFilterStage(filterStage === stage.id ? 'all' : stage.id)}><div className="hscd-stat-info"><span className="hscd-stat-name">{stage.label}</span><div className="hscd-stat-value">{counts[stage.id]} <span>xe</span></div></div><div className="hscd-stat-icon-wrap">{stage.icon}</div></div>)}</div>
 

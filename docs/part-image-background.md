@@ -31,7 +31,7 @@ Tách nền được import động khi chọn ảnh; không tải mô hình khi
 
 ## Kiểm tra
 
-`tools/check-part-background.cjs` dùng Playwright và Edge headless với Vite
+`backend/tools/check-part-background.cjs` dùng Playwright và Edge headless với Vite
 ở `http://127.0.0.1:5188`. Nếu Playwright không nằm trong node_modules, đặt
 `PLAYWRIGHT_MODULE` trỏ đến module có sẵn. Kiểm tra ảnh thực, nền trắng,
 giới hạn dung lượng, tài nguyên nội bộ, lỗi file, chặn lưu khi đang xử lý và

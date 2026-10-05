@@ -69,10 +69,18 @@ export default function MainLayout() {
 
   const [bottomNavHidden, setBottomNavHidden] = useState(false);
   const [workflowBadge, setWorkflowBadge] = useState(0);
+  const [supplementBadge, setSupplementBadge] = useState(0);
 
   useEffect(() => {
     if (!canView('REPAIR')) return;
-    workflow.list().then((rows) => setWorkflowBadge((Array.isArray(rows) ? rows : []).filter((row) => Number(row.TRANGTHAI) < 4).length)).catch(() => setWorkflowBadge(0));
+    let active = true;
+    const refresh = () => {
+      workflow.list().then((rows) => { if (active) setWorkflowBadge((Array.isArray(rows) ? rows : []).filter((row) => Number(row.TRANGTHAI) < 4).length); }).catch(() => { if (active) setWorkflowBadge(0); });
+      workflow.supplements().then((rows) => { if (active) setSupplementBadge(rows.filter(row => row.TRANGTHAI === 'pending').length); }).catch(() => { if (active) setSupplementBadge(0); });
+    };
+    refresh();
+    window.addEventListener('garage:supplements-changed', refresh);
+    return () => { active = false; window.removeEventListener('garage:supplements-changed', refresh); };
   }, [loc.pathname]);
 
   // Áp dụng cho TẤT CẢ các giao diện: Cuộn trang xem bên dưới thì ẩn thanh điều khiển, cuộn ngược lên thì hiện lại
@@ -277,6 +285,7 @@ export default function MainLayout() {
                 <span className="sidebar-icon">{n.icon}</span>
                 <span className="sidebar-label">{n.label}</span>
                 {n.liveBadge && workflowBadge > 0 && <span className="sidebar-badge">{workflowBadge}</span>}
+                {n.liveBadge && supplementBadge > 0 && <span className="sidebar-badge" title="Đề xuất phát sinh chờ khách xác nhận">+{supplementBadge} PS</span>}
               </NavLink>
             ))}
           </nav>

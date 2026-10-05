@@ -11,6 +11,7 @@ garage-app/
 ├── backend/                # Express + node-firebird
 │   ├── package.json
 │   ├── .env.example / .env (FB_DATABASE = D:/Garage/GARAGE.FDB)
+│   ├── tools/              # FastReport Designer, PDF renderer và script kiểm tra
 │   └── src/
 │       ├── server.js
 │       ├── db.js           # pool + helper query / execute / transaction
@@ -75,7 +76,7 @@ Mở trình duyệt: **http://localhost:5173**
 
 - Tab `Cấu hình > In ấn & mẫu` đọc mẫu từ `STEMPLATE` trong database chính `GARAGE.FDB`.
 - Nội dung `.frx` được đọc/ghi trực tiếp ở `STEMPLATE.TEMPLATE`; nhóm và mẫu mặc định được nối qua `SFORM`, `STABLEDESC`, `SIMAGE` và `SFORM.LASTTEMPLATEID`.
-- `start-backend.bat` tự build cầu nối FastReport Designer. Khi bấm `Sửa mẫu bằng FastReport`, mẫu được mở bằng Designer desktop và tự đồng bộ về BLOB sau khi lưu/đóng.
+- Build FastReport Designer khi cần bằng `dotnet build backend/tools/fastreport-designer/FastReportDesignerBridge.csproj -c Release` từ thư mục gốc dự án. Khi bấm `Sửa mẫu bằng FastReport`, mẫu được mở bằng Designer desktop và tự đồng bộ về BLOB sau khi lưu/đóng.
 - Dữ liệu tham khảo từ `D:\Garage\DATA.fdb` được nhập một lần bằng `npm run migrate:print-templates`; lệnh có thể chạy lại để đồng bộ theo ID.
 
 ## Phân quyền và đăng nhập

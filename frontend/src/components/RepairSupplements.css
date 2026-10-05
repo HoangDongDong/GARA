@@ -1,0 +1,32 @@
+.repair-supplement-overlay { position:fixed; inset:0; z-index:10000; background:#0f172a99; display:flex; align-items:center; justify-content:center; padding:16px; }
+.repair-supplement-dialog { width:min(960px,96vw); max-height:92vh; display:flex; flex-direction:column; background:white; border-radius:8px; box-shadow:0 18px 45px #0f172a55; font-size:12px; color:#334155; }
+.repair-supplement-dialog header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#e65100; color:white; border-radius:8px 8px 0 0; }
+.repair-supplement-body { padding:16px; overflow:auto; }
+.repair-supplement-dialog fieldset, .repair-supplement-dialog article { border:1px solid #cbd5e1; border-radius:6px; padding:12px; margin:12px 0; }
+.repair-supplement-dialog label { display:flex; flex-direction:column; gap:5px; margin:8px 0; }
+.repair-supplement-dialog input, .repair-supplement-dialog select, .repair-supplement-dialog textarea { padding:7px; border:1px solid #cbd5e1; border-radius:4px; font:inherit; min-width:0; }
+.repair-supplement-dialog textarea { min-height:65px; resize:vertical; }
+.repair-supplement-dialog button { padding:7px 10px; border:1px solid #fdba74; border-radius:4px; color:#9a3412; background:#fff7ed; cursor:pointer; font:inherit; }
+.repair-supplement-dialog button:disabled { opacity:.5; cursor:default; }
+.repair-supplement-select, .repair-supplement-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0; }
+.repair-supplement-select select { flex:1; }
+.repair-supplement-dialog table { width:100%; border-collapse:collapse; font-size:11px; }
+.repair-supplement-dialog th, .repair-supplement-dialog td { padding:7px 4px; text-align:left; border-bottom:1px solid #e2e8f0; }
+.repair-supplement-dialog th { background:#fff7ed; }
+.repair-supplement-dialog td input { width:110px; max-width:100%; }
+.repair-supplement-actions b { margin-right:auto; }
+.repair-supplement-dialog .repair-supplement-check { flex-direction:row; align-items:center; }
+.repair-supplement-error { color:#b91c1c; background:#fef2f2; padding:10px; }
+.repair-supplement-contact { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px 24px; border-top:1px solid #e2e8f0; flex-shrink:0; }
+.repair-supplement-contact-name { min-width:0; display:flex; flex-direction:column; gap:4px; overflow-wrap:anywhere; }
+.repair-supplement-contact-name b { font-size:13px; }
+.repair-supplement-contact-name span { color:#64748b; }
+.repair-supplement-dialog .repair-supplement-call { position:relative; display:flex; justify-content:center; align-items:center; width:48px; height:48px; flex-shrink:0; padding:0; border:0; border-radius:50%; background:#079ce6; color:white; text-decoration:none; box-shadow:0 4px 12px #079ce640; isolation:isolate; }
+.repair-supplement-call:not(:disabled)::before, .repair-supplement-call:not(:disabled)::after { content:''; position:absolute; inset:0; border:2px solid #079ce6; border-radius:50%; z-index:-1; pointer-events:none; animation:supplement-call-wave 2.4s ease-out infinite; }
+.repair-supplement-call:not(:disabled)::after { animation-delay:1.2s; }
+.repair-supplement-call:not(:disabled) svg { animation:supplement-call-ring 2.4s ease-in-out infinite; }
+.repair-supplement-call:focus-visible { outline:3px solid #075985; outline-offset:8px; }
+.repair-supplement-call:hover { background:#0284c7; }
+@keyframes supplement-call-wave { 0% { transform:scale(1); opacity:.55; } 100% { transform:scale(1.55); opacity:0; } }
+@keyframes supplement-call-ring { 0%, 25%, 100% { transform:rotate(0); } 5%, 15% { transform:rotate(-16deg); } 10%, 20% { transform:rotate(16deg); } }
+@media (prefers-reduced-motion:reduce) { .repair-supplement-call:not(:disabled)::before, .repair-supplement-call:not(:disabled)::after, .repair-supplement-call:not(:disabled) svg { animation:none; } }

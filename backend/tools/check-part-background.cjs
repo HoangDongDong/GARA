@@ -15,7 +15,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.goto('http://127.0.0.1:5188/');
     await page.waitForLoadState('networkidle');
     remoteRequests.length = 0;
-    const image = fs.readFileSync(path.resolve(__dirname, '../backend/assets/part-default.png')).toString('base64');
+    const image = fs.readFileSync(path.resolve(__dirname, '../assets/part-default.png')).toString('base64');
     const result = await page.evaluate(async base64 => {
       const { preparePartImage } = await import('/src/utils/partImage.js');
       let validation = false;
@@ -46,7 +46,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await input.setInputFiles({ name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from('bad') });
     await page.getByRole('alert').waitFor();
     assert.equal(await submit.isDisabled(), true);
-    await input.setInputFiles(path.resolve(__dirname, '../backend/assets/part-default.png'));
+    await input.setInputFiles(path.resolve(__dirname, '../assets/part-default.png'));
     await page.getByRole('button', { name: 'Đang tách nền...' }).waitFor();
     assert.equal(await submit.isDisabled(), true);
     await page.locator('form').dispatchEvent('submit');

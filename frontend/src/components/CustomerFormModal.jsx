@@ -1,3 +1,4 @@
+import RatePolicyField from './RatePolicyField';
 import { User, X } from 'lucide-react';
 
 // Form dùng chung, được tách từ KhachHangPage.jsx.
@@ -109,6 +110,10 @@ export default function CustomerFormModal({ formMode, form, setForm, saving, for
                     style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical' }}
                   />
                 </label>
+                <RatePolicyField label="Giảm giá" value={form.GIAMGIARIENG} disabled={saving}
+                  onChange={value => setForm({ ...form, GIAMGIARIENG: value })} inheritLabel="Theo nhóm khách hàng"
+                  inheritedRate={customerGroups.find(group => group.ID === form.DNHOMKHACHHANGID && Number(group.STATUS ?? 1) === 1)?.GIAMGIARIENG ?? 0}
+                  inheritedSource={customerGroups.find(group => group.ID === form.DNHOMKHACHHANGID)?.NAME || 'Mặc định 0%'} />
               </div>
 
               {formError && (

@@ -13,7 +13,7 @@ const router = express.Router();
 const MAX_TEMPLATE_BYTES = 20 * 1024 * 1024;
 const designerSessions = new Map();
 const designerExecutable = process.env.FASTREPORT_DESIGNER_EXE || path.resolve(
-  __dirname, '..', '..', '..', 'tools', 'fastreport-designer', 'bin', 'Release',
+  __dirname, '..', '..', 'tools', 'fastreport-designer', 'bin', 'Release',
   'net8.0-windows', 'Garage.FastReportDesigner.exe'
 );
 

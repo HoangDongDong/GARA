@@ -17,7 +17,22 @@ function flags(rows) {
 async function load() {
   return flags(await db.query('SELECT NAME,INTVALUE FROM SCONFIG WHERE NAME STARTING WITH ? AND STATUS=30', [prefix]));
 }
+function hideZeroValues(parameters) {
+  const amounts = {
+    subtotal: parameters.TIENHANG, discount: parameters.TIENGIAMGIA, tax: parameters.TIENTHUE,
+    serviceFee: parameters.PHIDICHVU, shipping: parameters.PHIVANCHUYEN, returns: parameters.DOITRA,
+    oldDebt: parameters.NOCU, deposit: parameters['Đặt trước'], voucher: parameters.VOUCHER,
+    prepaid: parameters.THETRATRUOC, pointsDeduction: parameters.TRUTICHLUY, transfer: parameters.CHUYENKHOAN,
+    card: parameters.THE, cashGiven: parameters.KHACHDUA, change: parameters.TRALAI,
+    newDebt: parameters['Nợ mới'], points: parameters.DIEM, loyalty: parameters['Điểm tích lũy'],
+  };
+  for (const [key, value] of Object.entries(amounts)) {
+    const amount = Number(value || 0);
+    parameters[`PrintShow_${key}`] = parameters[`PrintShow_${key}`] !== false && Number.isFinite(amount) && amount !== 0;
+  }
+  return parameters;
+}
 function validate(name, value) {
   if (definitions.some(item => item.name === name) && ![0, 30].includes(Number(value))) throw Object.assign(new Error('Tùy chọn in hóa đơn chỉ nhận Hiện (30) hoặc Ẩn (0).'), { status: 400 });
 }
-module.exports = { prefix, groupName, definitions, flags, load, validate };
+module.exports = { prefix, groupName, definitions, flags, load, validate, hideZeroValues };

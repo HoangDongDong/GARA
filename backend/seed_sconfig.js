@@ -34,6 +34,7 @@ const GROUPS = [
   { name: 'Khách hàng',        sort: 'ZZZ007' },
   { name: 'Bảo mật & Phân quyền', sort: 'ZZZ008' },
   { name: 'Hệ thống',          sort: 'ZZZ009' },
+  { name: 'Thuế & phí dịch vụ', sort: 'ZZZ004A' },
 ];
 
 /* ========================= HẰNG KIỂU DỮ LIỆU ========================= */
@@ -43,6 +44,10 @@ const GROUPS = [
 /* ========================= CẤU HÌNH ========================= */
 // [name, caption, textValue, datatype, controltype, groupIndex (0-based), sortorder]
 const CONFIGS = [
+  ['MacDinhThueSuat', 'Mặc định thuế suất (%)', '20', 4, 9, 9, 1],
+  ['MacDinhPhiDichVu', 'Mặc định phí dịch vụ (%)', '10', 4, 9, 9, 2],
+  ['BanHangTinhThue', 'Áp dụng thuế khi bán hàng', '30', 3, 7, 9, 3],
+  ['BanHangTinhPhiDichVu', 'Áp dụng phí dịch vụ khi bán hàng', '30', 3, 7, 9, 4],
   /* ---- Thông tin công ty (0) ---- */
   ['CompanyName',    'Tên công ty',          'CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM', 1, 5, 0, 1],
   ['CompanyAddress', 'Địa chỉ',              '925/15 Âu Cơ - P. Tân Sơn Nhì - TP.HCM',  1, 6, 0, 2],

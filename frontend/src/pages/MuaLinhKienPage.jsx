@@ -115,7 +115,7 @@ export default function MuaLinhKienPage() {
                   </div>
                   <div>
                      <label>Ghi chú</label>
-                     <textarea rows="3" placeholder="Nhập ghi chú..." style={{ resize: 'none' }}></textarea>
+                     <textarea rows="3" style={{ resize: 'none' }}></textarea>
                   </div>
                </div>
                
@@ -175,7 +175,7 @@ export default function MuaLinhKienPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                      <div className="detail-row"><div className="detail-label" style={{ width: 80 }}>Tổng tiền</div><div className="detail-value" style={{ fontWeight: 700 }}>125.600.000đ</div></div>
                      <div className="detail-row"><div className="detail-label" style={{ width: 80 }}>Thanh toán</div><div className="detail-value" style={{ color: 'red', fontWeight: 600 }}>Chưa thanh toán</div></div>
-                     <div className="detail-row"><div className="detail-label" style={{ width: 80 }}>Ghi chú</div><div className="detail-value" style={{ fontSize: 11 }}>Nhập phụ tùng theo báo giá số BG-0012</div></div>
+                     <div className="detail-row"><div className="detail-label" style={{ width: 80 }}>Ghi chú</div><div className="detail-value" style={{ fontSize: 11 }}></div></div>
                   </div>
                </div>
 

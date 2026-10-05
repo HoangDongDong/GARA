@@ -32,6 +32,12 @@ import {
   Printer
 } from 'lucide-react';
 import { customers, masterData, parts, sales } from '../services';
+import CustomerSelect from '../components/CustomerSelect';
+import LineTaxField from '../components/LineTaxField';
+import EditableSalePrice from '../components/EditableSalePrice';
+import useChargeRates from '../hooks/useChargeRates';
+import canEditPricing from '../utils/canEditPricing';
+import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy';
 import './BanHangPage.css';
 
 const money = (value) => Number(value || 0).toLocaleString('vi-VN');
@@ -66,6 +72,8 @@ const getCategoryIcon = (name = '', size = 20) => {
 };
 
 export default function BanHangPage() {
+  const canEditPolicy = canEditPricing('SALES');
+  const chargeConfig = useChargeRates('sales');
   const [productList, setProductList] = useState([]);
   const [customerList, setCustomerList] = useState([]);
   const [customerGroups, setCustomerGroups] = useState([]);
@@ -89,7 +97,7 @@ export default function BanHangPage() {
   const [cart, setCart] = useState([]);
 
   // Thanh toán
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountPercent, setDiscountPercent] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(0); // 0: Tiền mặt
   const [processing, setProcessing] = useState(false);
 
@@ -97,6 +105,7 @@ export default function BanHangPage() {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const customerSelectRef = useRef(null);
   const [showSaleListModal, setShowSaleListModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   // Trang in HTML sinh từ chứng từ đã lưu và khổ giấy của mẫu mặc định.
@@ -223,13 +232,17 @@ export default function BanHangPage() {
     return cart.reduce((sum, item) => sum + Number(item.GIABAN || 0) * (item.quantity || 1), 0);
   }, [cart]);
 
-  const discountAmount = useMemo(() => {
-    const pct = Math.max(0, Math.min(100, Number(discountPercent || 0)));
-    return (subtotal * pct) / 100;
-  }, [subtotal, discountPercent]);
-
-  const otherFees = 0;
-  const total = Math.max(0, subtotal - discountAmount + otherFees);
+  const selectedCustPolicy = customerList.find(customer => customer.ID === customerId);
+  const appliedDiscount = discountPolicy(selectedCustPolicy, discountPercent);
+  const chargeRates = savedSale ? { taxRate: savedSale.taxRate, serviceRate: savedSale.serviceRate, taxEnabled: savedSale.taxEnabled, serviceEnabled: savedSale.serviceEnabled } : chargeConfig.rates;
+  const pricedCart = cart.map(item => ({...item, amount: Number(item.GIABAN || 0) * (item.quantity || 1),
+    ...taxPolicy(item, chargeRates, item.TILETHUE)}));
+  const chargeTotals = savedSale || calculate(pricedCart, chargeRates, appliedDiscount.discountRate);
+  const discountAmount = chargeTotals.discount;
+  const otherFees = chargeTotals.serviceFee;
+  const taxAmount = chargeTotals.tax;
+  const total = chargeTotals.total;
+  useEffect(() => { setDiscountPercent(null); }, [customerId]);
 
   // Thêm vào giỏ
   const addProductToCart = (p) => {
@@ -247,6 +260,7 @@ export default function BanHangPage() {
       return [
         ...prev,
         {
+          ...p,
           ID: p.ID,
           NAME: p.NAME,
           CODE: p.CODE || p.MAOEM || '—',
@@ -278,6 +292,11 @@ export default function BanHangPage() {
     }));
   };
 
+  const updatePrice = (id, price) => {
+    if (!Number.isSafeInteger(price) || price < 0 || processing) return;
+    setCart((prev) => prev.map((item) => item.ID === id ? { ...item, GIABAN: price } : item));
+  };
+
   const removeFromCart = (id) => {
     setCart((prev) => prev.filter((item) => item.ID !== id));
   };
@@ -290,8 +309,9 @@ export default function BanHangPage() {
 
   // Tạo phiếu mới
   const resetSale = () => {
+    chargeConfig.reload();
     setCart([]);
-    setDiscountPercent(0);
+    setDiscountPercent(null);
     setNote('');
     setSaleCode(defaultTicketCode());
     setSavedSale(null);
@@ -420,18 +440,24 @@ export default function BanHangPage() {
   // Thanh toán: lưu phiếu -> backend render mẫu in mặc định -> xem/in
   const handleCheckout = async () => {
     if (!cart.length || processing) return;
+    if (chargeConfig.loading || chargeConfig.error) {
+      setToastMsg(chargeConfig.error || 'Đang tải cấu hình thuế và phí dịch vụ.');
+      return;
+    }
     setProcessing(true);
     try {
       const result = await sales.create({
         DKHACHHANGID: customerId || null,
         DKHOXUATID: warehouseId || null,
         NOTE: note,
-        TILEGIAMGIA: Number(discountPercent || 0),
+        TILEGIAMGIA: discountPercent == null ? null : Number(discountPercent || 0),
         LOAITHANHTOAN: paymentMethod,
-        items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity })),
+        TILETHUE: chargeRates.taxRate,
+        TILEPHIDICHVU: chargeRates.serviceRate,
+        items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity, DONGIA: item.GIABAN, TILETHUE: item.TILETHUE })),
       });
       if (!result?.id) throw new Error('Máy chủ không trả về mã phiếu bán hàng.');
-      setSavedSale({ id: result.id, code: result.code, total: result.total });
+      setSavedSale({ ...result });
       setSaleCode(result.code);
       setShowInvoiceModal(true);
       loadInvoicePrint(result.id);
@@ -457,7 +483,7 @@ export default function BanHangPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, processing, customerId, warehouseId, note, discountPercent, paymentMethod]);
+  }, [cart, processing, customerId, warehouseId, note, discountPercent, paymentMethod, chargeRates.taxRate, chargeRates.serviceRate, chargeConfig.loading, chargeConfig.error]);
 
   const selectedCustObj = customerList.find((c) => c.ID === customerId);
   const currentSeller = (() => {
@@ -667,23 +693,11 @@ export default function BanHangPage() {
               <div className="pos-form-field">
                 <span className="pos-form-label">Khách hàng</span>
                 <div className="pos-form-input-wrap">
-                  <select
-                    className="pos-form-input"
-                    style={{ paddingRight: 6 }}
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
-                  >
-                    <option value="">Khách lẻ</option>
-                    {customerList.map((c) => (
-                      <option key={c.ID} value={c.ID}>
-                        {c.NAME} {c.DIENTHOAI ? `- ${c.DIENTHOAI}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <CustomerSelect ref={customerSelectRef} customers={customerList} value={customerId} onChange={setCustomerId} />
                   <button
                     type="button"
                     className="pos-btn-compact-add"
-                    onClick={() => setShowCustomerModal(true)}
+                    onClick={openCustomerModal}
                     title="Thêm khách hàng mới"
                   >
                     <Plus size={14} strokeWidth={2.8} /> Thêm
@@ -704,7 +718,6 @@ export default function BanHangPage() {
                   <input
                     type="text"
                     className="pos-form-input"
-                    placeholder="Nhập ghi chú đơn hàng..."
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
@@ -736,6 +749,7 @@ export default function BanHangPage() {
                     <th style={{ width: 75, textAlign: 'left' }}>Mã hàng</th>
                     <th style={{ width: 72, textAlign: 'center' }}>Số lượng</th>
                     <th style={{ width: 80, textAlign: 'right' }}>Đơn giá</th>
+                    {chargeRates.taxEnabled !== false && <th style={{width: 85, textAlign: "right"}}>Thuế</th>}
                     <th style={{ width: 88, textAlign: 'right' }}>Thành tiền</th>
                     <th style={{ width: 32, textAlign: 'center' }}></th>
                   </tr>
@@ -749,34 +763,26 @@ export default function BanHangPage() {
                       </td>
                       <td style={{ fontWeight: 600, color: '#374151', fontSize: '11px' }}>{item.CODE}</td>
                       <td style={{ textAlign: 'center' }}>
-                        <div className="pos-qty-group">
-                          <button
-                            type="button"
-                            className="btn-qty-step"
-                            onClick={() => updateQuantity(item.ID, Math.max(1, (Number(item.quantity) || 1) - 1))}
-                            title="Giảm 1"
-                          >
-                            -
-                          </button>
                           <input
                             type="number"
                             min="1"
+                            step="1"
+                            inputMode="numeric"
+                            aria-label={`Số lượng ${item.NAME}`}
                             className="pos-qty-input"
                             value={item.quantity ?? 1}
                             onChange={(e) => updateQuantity(item.ID, e.target.value)}
                             onBlur={() => normalizeQuantity(item.ID)}
                           />
-                          <button
-                            type="button"
-                            className="btn-qty-step"
-                            onClick={() => updateQuantity(item.ID, (Number(item.quantity) || 1) + 1)}
-                            title="Tăng 1"
-                          >
-                            +
-                          </button>
-                        </div>
                       </td>
-                      <td style={{ textAlign: 'right', fontSize: '11.5px' }}>{money(item.GIABAN)}</td>
+                      <td style={{ textAlign: 'right', fontSize: '11.5px' }}>
+                        <EditableSalePrice value={item.GIABAN} name={item.NAME} disabled={processing}
+                          onChange={(price) => updatePrice(item.ID, price)} />
+                      </td>
+                      {chargeRates.taxEnabled !== false && <td className="pos-line-tax">
+                        <LineTaxField name={item.NAME} value={item.TILETHUE} policy={pricedCart[idx]} disabled={processing || !!savedSale || !canEditPolicy}
+                          onChange={value => setCart(current => current.map(row => row.ID === item.ID ? {...row,TILETHUE:value} : row))} />
+                      </td>}
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#E65100', fontSize: '11.5px' }}>
                         {money(Number(item.GIABAN || 0) * (item.quantity || 1))}
                       </td>
@@ -794,7 +800,7 @@ export default function BanHangPage() {
                   {cart.length === 0 && (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={chargeRates.taxEnabled === false ? 7 : 8}
                         style={{ textAlign: 'center', color: '#9ca3af', padding: '36px 12px' }}
                       >
                         <div style={{ fontSize: '28px', marginBottom: '6px' }}>🛒</div>
@@ -882,7 +888,7 @@ export default function BanHangPage() {
                 <span style={{ fontSize: 13 }}>📞</span>
                 <span>{selectedCustObj?.DIENTHOAI || '-'}</span>
               </div>
-              <button className="btn-cust-action" onClick={openCustomerModal}>
+              <button type="button" className="btn-cust-action" onClick={() => customerSelectRef.current?.open()}>
                 <User size={14} />
                 <span>Tạo / Chọn khách hàng</span>
               </button>
@@ -904,7 +910,8 @@ export default function BanHangPage() {
                     min="0"
                     max="100"
                     className="pos-discount-input"
-                    value={discountPercent}
+                    disabled={!!savedSale || !canEditPolicy}
+                    value={discountPercent ?? appliedDiscount.discountRate}
                     onChange={(e) => setDiscountPercent(e.target.value)}
                   />
                   <select className="pos-discount-select">
@@ -916,10 +923,15 @@ export default function BanHangPage() {
                 <span style={{ color: '#6b7280' }}>Tiền giảm</span>
                 <span style={{ color: '#6b7280' }}>{money(discountAmount)} đ</span>
               </div>
-              <div className="pos-sum-row">
-                <span style={{ color: '#6b7280' }}>Phí khác</span>
-                <span style={{ color: '#6b7280' }}>0 đ</span>
-              </div>
+              {chargeRates.serviceEnabled !== false && <div className="pos-sum-row">
+                <span style={{ color: '#6b7280' }}>Phí dịch vụ ({chargeRates.serviceRate}%)</span>
+                <span style={{ color: '#6b7280' }}>{money(otherFees)} đ</span>
+              </div>}
+              {chargeRates.taxEnabled !== false && (chargeTotals.taxGroups || []).map(group => <div className="pos-sum-row" key={group.rate}>
+                <span style={{color:'#6b7280'}}>VAT {group.rate}%</span><span>{money(group.amount)} đ</span>
+              </div>)}
+              {chargeConfig.loading && <div role="status">Đang tải thuế và phí dịch vụ…</div>}
+              {chargeConfig.error && <div role="alert" style={{ color: '#b91c1c', fontSize: 12 }}>{chargeConfig.error} <button type="button" onClick={chargeConfig.reload}>Thử lại</button></div>}
 
               <hr className="pos-sum-divider" />
 
@@ -1020,7 +1032,7 @@ export default function BanHangPage() {
           <button
             className="btn-pos-checkout"
             onClick={handleCheckout}
-            disabled={!cart.length || processing}
+            disabled={!cart.length || processing || chargeConfig.loading || !!chargeConfig.error}
           >
             <BadgeDollarSign size={20} />
             <span>{processing ? 'Đang thanh toán...' : 'Thanh toán (F5)'}</span>

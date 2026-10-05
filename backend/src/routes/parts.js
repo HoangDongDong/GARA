@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+router.get('/charge-rates', async (req, res) => {
+  try { res.json({ data: await require('../services/defaultChargeRates').load() }); }
+  catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
 
 const PART_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
 
@@ -45,7 +49,7 @@ router.get('/', async (req, res) => {
   try {
     const rows = await db.query(
       `SELECT M.ID, M.NAME, M.CODE, M.BARCODE, M.MAOEM, M.GIANHAP, M.GIABAN,
-              M.GIABAN2, M.GIABAN3, M.TONTOITHIEU, M.TONTOIDA,
+              M.THUESUATRIENG, NH.THUESUATRIENG AS THUENHOM, M.GIABAN2, M.GIABAN3, M.TONTOITHIEU, M.TONTOIDA,
               M.DHANGSANXUATID, HSX.NAME  AS HANG,
               M.DVITRIKHOID,    VT.NAME  AS VITRI,
               M.DNHOMMATHANGID, NH.NAME  AS NHOM,
@@ -55,7 +59,7 @@ router.get('/', async (req, res) => {
          FROM DMATHANG M
          LEFT JOIN DHANGSANXUAT  HSX ON HSX.ID = M.DHANGSANXUATID
          LEFT JOIN DVITRIKHO      VT  ON VT.ID  = M.DVITRIKHOID
-         LEFT JOIN DNHOMMATHANG   NH  ON NH.ID  = M.DNHOMMATHANGID
+         LEFT JOIN DNHOMMATHANG   NH  ON NH.ID  = M.DNHOMMATHANGID AND NH.STATUS=1
          LEFT JOIN DDONVITINH     DVT ON DVT.ID = M.DDONVITINHID
         WHERE M.STATUS = 1
      ORDER BY M.TIMECREATED DESC`
@@ -72,7 +76,7 @@ router.get('/', async (req, res) => {
         TON_KHO: tonMap[r.ID] || 0,
       })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 // GET /api/parts/meta - dropdown
@@ -80,10 +84,10 @@ router.get('/meta/options', async (req, res) => {
   try {
     const hangsx = await db.query(`SELECT ID, NAME FROM DHANGSANXUAT WHERE STATUS=1`);
     const vitri  = await db.query(`SELECT ID, NAME FROM DVITRIKHO WHERE STATUS=1`);
-    const nhom   = await db.query(`SELECT ID, NAME FROM DNHOMMATHANG WHERE STATUS=1`);
+    const nhom   = await db.query(`SELECT ID, NAME, THUESUATRIENG FROM DNHOMMATHANG WHERE STATUS=1`);
     const dvt    = await db.query(`SELECT ID, NAME FROM DDONVITINH WHERE STATUS=1`);
     res.json({ data: { hangsx, vitri, nhom, dvt } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 // GET /api/parts/:id/image - ảnh mặt hàng lưu trực tiếp trong DMATHANG.ANH
@@ -100,11 +104,12 @@ router.get('/:id/image', async (req, res) => {
     res.set('Content-Type', image.mime);
     res.set('Cache-Control', 'private, max-age=3600');
     res.send(Buffer.from(image.dataUrl.split(',')[1], 'base64'));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 router.post('/', async (req, res) => {
   try {
+    require("../services/pricingPolicy").validateMaster(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
@@ -129,25 +134,26 @@ router.post('/', async (req, res) => {
       `INSERT INTO DMATHANG
          (ID, NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
           DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
-          BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH,
+          BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH, THUESUATRIENG,
           STATUS, TAMKHOA, USERCREATEDID, TIMECREATED)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)`,
       [
         id, name, code, BARCODE, MAOEM,
         GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
         DHANGSANXUATID || null, DVITRIKHOID || null,
         DNHOMMATHANGID || null, DDONVITINHID || null,
         BAOHANH, TONTOITHIEU || 0, TONTOIDA || 0, MASANCO,
-        partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null,
+        partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null, req.body.THUESUATRIENG ?? null,
         actor,
       ]
     );
     res.json({ ok: true, id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 router.put('/:id', async (req, res) => {
   try {
+    require("../services/pricingPolicy").validateMaster(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
@@ -158,12 +164,13 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Anh mat hang khong hop le hoac vuot qua 3 MB' });
     }
     const imageUpdateSql = ANH === undefined ? '' : ', ANH=?';
+    const taxUpdateSql = 'THUESUATRIENG' in req.body ? ', THUESUATRIENG=?' : '';
     await db.execute(
       `UPDATE DMATHANG
           SET NAME=?, CODE=?, BARCODE=?, MAOEM=?, GIANHAP=?, GIABAN=?,
               GIABAN2=?, GIABAN3=?, DHANGSANXUATID=?, DVITRIKHOID=?,
               DNHOMMATHANGID=?, DDONVITINHID=?, BAOHANH=?,
-              TONTOITHIEU=?, TONTOIDA=?, MASANCO=?${imageUpdateSql},
+              TONTOITHIEU=?, TONTOIDA=?, MASANCO=?${imageUpdateSql}${taxUpdateSql},
               USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
         WHERE ID=?`,
       [
@@ -173,11 +180,12 @@ router.put('/:id', async (req, res) => {
         DNHOMMATHANGID || null, DDONVITINHID || null,
         BAOHANH, TONTOITHIEU || 0, TONTOIDA || 0, MASANCO,
         ...(ANH === undefined ? [] : [partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null]),
+        ...('THUESUATRIENG' in req.body ? [req.body.THUESUATRIENG] : []),
         'SYSTEM', req.params.id,
       ]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 router.delete('/:id', async (req, res) => {
@@ -188,7 +196,7 @@ router.delete('/:id', async (req, res) => {
       [req.params.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 module.exports = router;

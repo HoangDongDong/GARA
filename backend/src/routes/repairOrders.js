@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const charges = require('../services/defaultChargeRates');
+const policy = require('../services/pricingPolicy');
+router.use('/:id/supplements', require('./repairSupplements'));
+router.get('/charge-rates', async (req, res) => {
+  try { res.json({ data: await charges.loadForRepairs() }); }
+  catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
 
 /**
  * GARAGE.FDB:
@@ -116,22 +123,28 @@ router.get('/:id', async (req, res) => {
     if (!head.length) return res.status(404).json({ error: 'Not found' });
 
     const details = await db.query(
-      `SELECT CT.ID, CT.LOAI, CT.SOLUONG, CT.DONGIA, CT.THANHTIEN,
+      `SELECT CT.ID, CT.LOAI, CT.SOLUONG, CT.DONGIA, CT.THANHTIEN, CT.PHATSINHCTID, CT.NOTE,
+              CT.TILETHUE, CT.TIENTHUE, CT.TILEGIAMGIA, CT.TIENGIAMGIA, CT.NGUONTHUE,
               CT.DMATHANGID, MH.NAME  AS TEN_PT, MH.CODE AS MA_PT,
               CT.DDICHVUID,   DV.NAME  AS TEN_DV, DV.CODE AS MA_DV
          FROM TLENHSUACHUACHITIET CT
          LEFT JOIN DMATHANG MH ON MH.ID = CT.DMATHANGID
          LEFT JOIN DDICHVU  DV ON DV.ID = CT.DDICHVUID
-       WHERE CT.TLENHSUACHUAID = ?
+       WHERE CT.TLENHSUACHUAID = ? AND COALESCE(CT.STATUS,1)=1
     ORDER BY CT.ID`,
       [req.params.id]
     );
-    res.json({ data: { ...head[0], details } });
+    const invoiceRows = await db.query(`SELECT FIRST 1 ID, TONGCONG, TIENPHUTUNG, TIENCONG,
+      TILETHUE, TIENTHUE, TILEPHIDICHVU, PHIDICHVU, TILEGIAMGIA, TIENGIAMGIA, NGUONGIAMGIA, TAXSUMMARY, DATHANHTOAN, CONLAI
+      FROM THOADONSUACHUA WHERE TLENHSUACHUAID=? AND STATUS=1 ORDER BY NGAY DESC, TIMECREATED DESC`, [req.params.id]);
+    res.json({ data: { ...head[0], details, taxGroups: policy.summary(head[0].TAXSUMMARY),
+      invoice: invoiceRows[0] ? { ...invoiceRows[0], taxGroups: policy.summary(invoiceRows[0].TAXSUMMARY) } : null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/', async (req, res) => {
   try {
+    policy.assertOverride(req, 'REPAIR');
     const {
       DXEID, DKHACHHANGID, TTIEPNHANXEID, NGAY,
       NOTE, items = [],
@@ -166,37 +179,48 @@ router.post('/', async (req, res) => {
       const ma = await require('../services/documentNumbers').nextInTransaction('LenhSuaChua',query,execute);
       let tongCong = 0;
       let tongPT = 0;
+      const rates = charges.resolveForRepairs(req.body, await charges.loadForRepairs(query));
+      const discountPolicy = policy.discountPolicy(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA);
+      const normalized = [];
       for (const it of items) {
-        const quantity = Math.max(1, Number(it.SOLUONG) || 1);
-        const price = Math.max(0, Number(it.DONGIA) || 0);
+        if (![0, 1].includes(Number(it.LOAI))) throw Object.assign(new Error('Loại hạng mục không hợp lệ.'), { status: 400 });
+        const quantity = Number(it.SOLUONG), price = Number(it.DONGIA);
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) throw Object.assign(new Error('Số lượng hoặc đơn giá không hợp lệ.'), { status: 400 });
         const amount = quantity * price;
         if (Number(it.LOAI || 0) === 0) tongPT += amount;
         else tongCong += amount;
+        const product = await policy.item(query, it.LOAI, Number(it.LOAI || 0) === 0 ? it.DMATHANGID : it.DDICHVUID);
+        normalized.push({ ...it, quantity, price, amount, ...policy.taxPolicy(product, rates, it.TILETHUE) });
       }
-      const tongCongAll = tongCong + tongPT;
+      const totals = policy.calculate(normalized, rates, discountPolicy.discountRate);
+      const tongCongAll = totals.total;
 
       await execute(
         `INSERT INTO TLENHSUACHUA
            (ID, NAME, NOTE, NGAY, DXEID, DKHACHHANGID, TTIEPNHANXEID,
             TONGTIENCONG, TONGTIENPHUTUNG, TONGCONG,
-            TRANGTHAI, STATUS, USERCREATEDID, TIMECREATED)
-         VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP)`,
-        [id, ma, NOTE || null, NGAY, DXEID, DKHACHHANGID, TTIEPNHANXEID || null, tongCong, tongPT, tongCongAll, actor]
+            TRANGTHAI, STATUS, USERCREATEDID, TIMECREATED, TILETHUE, TIENTHUE, TILEPHIDICHVU, PHIDICHVU)
+         VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)`,
+        [id, ma, NOTE || null, NGAY, DXEID, DKHACHHANGID, TTIEPNHANXEID || null, tongCong, tongPT, tongCongAll, actor,
+         rates.taxRate, totals.tax, rates.serviceRate, totals.serviceFee]
       );
+      await execute('UPDATE TLENHSUACHUA SET CHARGEVERSION=1, TILEGIAMGIA=?, TIENGIAMGIA=?, NGUONGIAMGIA=?, TAXSUMMARY=? WHERE ID=?',
+        [discountPolicy.discountRate, totals.discount, discountPolicy.discountSource, JSON.stringify(totals.taxGroups), id]);
 
-      for (const it of items) {
+      for (const it of totals.details) {
         const type = Number(it.LOAI || 0);
-        const quantity = Math.max(1, Number(it.SOLUONG) || 1);
-        const price = Math.max(0, Number(it.DONGIA) || 0);
+        const quantity = it.quantity;
+        const price = it.price;
         await execute(
           `INSERT INTO TLENHSUACHUACHITIET
              (ID, TLENHSUACHUAID, DMATHANGID, DDICHVUID, DDONVITINHID,
               SOLUONG, DONGIA, THANHTIEN, LOAI, TRANGTHAI, NOTE,
-              STATUS, USERCREATEDID, TIMECREATED)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, CURRENT_TIMESTAMP)`,
+              STATUS, USERCREATEDID, TIMECREATED, TILETHUE, TIENTHUE, TILEGIAMGIA, TIENGIAMGIA, NGUONTHUE)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)`,
           [uuidv4(), id, type === 0 ? it.DMATHANGID || null : null,
             type === 1 ? it.DDICHVUID || null : null, it.DDONVITINHID || null,
-            quantity, price, quantity * price, type, it.NOTE || null, actor]
+            quantity, price, quantity * price, type, it.NOTE || null, actor,
+            it.taxRate, it.tax, discountPolicy.discountRate, it.discount, it.taxSource]
         );
       }
 
@@ -258,7 +282,7 @@ router.post('/', async (req, res) => {
     });
 
     res.json({ ok: true, ...result });
-  } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status || e.statusCode || 500).json({ error: e.message }); }
 });
 
 router.patch('/:id/status', async (req, res) => {

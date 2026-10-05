@@ -53,7 +53,7 @@ function monetaryRows(rows) {
  QuantityText:row.Quantity==null?'':String(row.Quantity),UnitPriceText:row.UnitPrice==null?'':money(row.UnitPrice),AmountText:row.Amount==null?'':money(row.Amount),
  ValueText:row.ValueText||'',Note:row.Note||row.NOTE||'',
  DMATHANG_NAME:row.ItemName||row.NAME||'',DMATHANG_CODE:row.ItemCode||'',DDICHVU_NAME:row.SERVICE_NAME||'',DDONVITINH_NAME:row.Unit||'',
- SOLUONG:row.Quantity??row.SOLUONG??0,SLNHAPCHUAQUYDOI:row.Quantity??0,SLXUATCHUAQUYDOI:row.Quantity??0,DONGIA:row.UnitPrice??0,THANHTIEN:row.Amount??0}));
+ SOLUONG:row.Quantity??row.SOLUONG??0,SLNHAPCHUAQUYDOI:row.SLNHAPCHUAQUYDOI??row.Quantity??0,SLXUATCHUAQUYDOI:row.SLXUATCHUAQUYDOI??row.Quantity??0,DONGIA:row.UnitPrice??0,THANHTIEN:row.Amount??0}));
 }
 async function payload(type,id,filters,user) {
  const [from,to]=range(filters.from,filters.to);
@@ -86,6 +86,17 @@ async function payload(type,id,filters,user) {
    }
    case 'MauPhieuSuaChua':case 'MauPhieuBanGiao':
     rows=await details('TLENHSUACHUACHITIET','TLENHSUACHUAID',id);
+    if(type.key==='MauPhieuSuaChua'){
+     const [invoice]=await db.query('SELECT FIRST 1 TILETHUE,TIENTHUE,TILEPHIDICHVU,PHIDICHVU,TILEGIAMGIA,TIENGIAMGIA,TONGCONG,TAXSUMMARY,CHARGEVERSION FROM THOADONSUACHUA WHERE TLENHSUACHUAID=? AND STATUS=1 ORDER BY NGAY DESC,TIMECREATED DESC',[id]);
+     if(invoice)header={...header,...invoice};
+     else if(Number(header.CHARGEVERSION)!==1 && (header.TILETHUE!=null||header.TILEPHIDICHVU!=null||Number(header.TRANGTHAI)!==3)){
+      const charges=require('./defaultChargeRates');
+      const defaults=header.TILETHUE==null||header.TILEPHIDICHVU==null?await charges.load():{taxRate:0,serviceRate:0};
+      const rates=charges.resolve(header,defaults);
+      const totals=charges.calculate(rows.reduce((sum,row)=>sum+Number(row.Amount||0),0),rates);
+      header={...header,TILETHUE:rates.taxRate,TILEPHIDICHVU:rates.serviceRate,TIENTHUE:totals.tax,PHIDICHVU:totals.serviceFee,TONGCONG:totals.total};
+     }
+    }
     if(type.key==='MauPhieuBanGiao'){
      if(![3,4,5].includes(Number(header.TRANGTHAI)))throw fail('Lệnh sửa chữa chưa hoàn thành để in biên bản bàn giao.',409);
      rows=rows.map(row=>({...row,ValueText:`${row.Quantity} ${row.Unit}`,Note:row.Note}));extra=`Ngày hoàn thành: ${date(header.KETTHUC)}; QC: ${header.NGUOIQC||''}`;
@@ -133,27 +144,39 @@ async function payload(type,id,filters,user) {
  }
  const [companyEmail]=await db.query("SELECT TEXTVALUE FROM SCONFIG WHERE NAME='CompanyEmail' AND STATUS=30");
  const subtotal=rows.reduce((sum,row)=>sum+Number(row.Amount||0),0);
- const total=header.TONGCONG??(subtotal-Number(header.TIENGIAMGIA||0)+Number(header.TIENTHUE||0)+Number(header.PHIVANCHUYEN||0));
+ const total=header.TONGCONG??(subtotal-Number(header.TIENGIAMGIA||0)+Number(header.TIENTHUE||0)+Number(header.PHIVANCHUYEN||0)+Number(header.PHIDICHVU||0));
  const parameters={...(await company()),CompanyEmail:companyEmail?.TEXTVALUE||'',...prefixed('DXE',vehicle),...prefixed('DKHACHHANG',customer),...prefixed('DNHACUNGCAP',supplier),...prefixed('DNHANVIEN',employee),...prefixed('DNHANVIEN2',employee),...prefixed('DKHOHANG',warehouse),...prefixed('DKHOHANG2',warehouse),...header,...reception,
  'In bởi':user||'',DocTitle:type.label.toLocaleUpperCase('vi'),DocNumber:type.key==='MauMaVachPhuTung'?(header.CODE||header.NAME||''):header.NAME||header.BIENSO||'',DocDate:date(header.NGAY||header.NGAYBATDAU||header.TIMECREATED),
  CustomerName:customer?.NAME||supplier?.NAME||header.DKHACHHANG_NAME||'',Contact:customer?.DIENTHOAI||supplier?.DIENTHOAI||'',VehiclePlate:vehicle?.BIENSO||'',
  Description:header.NOTE||'',Extra:extra,TotalText:money(total),TONGCONG:total,
  FooterNote:['MauHoSoXe','MauLichSuSuaChua','MauBaoCao','MauMaVachPhuTung'].includes(type.key)?'': 'Khách hàng / người giao nhận                         Nhân viên GARA',
  TIENTHUE:Number(header.TIENTHUE||0),TIENGIAMGIA:Number(header.TIENGIAMGIA||0),TIENHANG:header.TIENHANG??rows.reduce((sum,row)=>sum+Number(row.Amount||0),0),
- SummaryText:type.layout!=='money'?'':`Tổng cộng: ${money(total)}${header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${header.TIENTHUE?`; thuế: ${money(header.TIENTHUE)}`:''}`,
+ PHIDICHVU:Number(header.PHIDICHVU||0),TILEPHIDICHVU:Number(header.TILEPHIDICHVU||0),TILETHUE:Number(header.TILETHUE||0),
+ SummaryText:type.layout!=='money'?'':`Tổng cộng: ${money(total)}${header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${header.PHIDICHVU?`; phí dịch vụ (${Number(header.TILEPHIDICHVU||0)}%): ${money(header.PHIDICHVU)}`:''}${header.TIENTHUE?`; thuế (${Number(header.TILETHUE||0)}%): ${money(header.TIENTHUE)}`:''}`,
  };
  const table0=monetaryRows(rows);
  Object.assign(parameters,{
   DocDateTime:header.NGAY&&!Number.isNaN(new Date(header.NGAY).getTime())?new Date(header.NGAY).toLocaleString('vi-VN',{timeZone:'Asia/Bangkok'}):date(header.NGAY),
   SubtotalText:Number(parameters.TIENHANG||0).toLocaleString('vi-VN'),DiscountText:Number(parameters.TIENGIAMGIA||0).toLocaleString('vi-VN'),
   TotalNumberText:Number(total||0).toLocaleString('vi-VN'),
-  AdditionalChargesText:[Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n'),
+  ServiceFeeText:money(header.PHIDICHVU),PrintShow_serviceFee:Number(header.PHIDICHVU||0)>0,
+  AdditionalChargesText:[Number(header.PHIDICHVU)?'Phí dịch vụ: '+money(header.PHIDICHVU):'',Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n'),
  });
  if(type.key==='MauHoaDonBanHang'){
   Object.assign(parameters,await require('./salesPrintVisibility').load());
-  parameters.PrintShow_additionalCharges=parameters.PrintShow_tax||parameters.PrintShow_shipping;
-  parameters.SummaryText=`Tổng cộng: ${money(total)}${parameters.PrintShow_discount&&header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${parameters.PrintShow_tax&&header.TIENTHUE?`; thuế: ${money(header.TIENTHUE)}`:''}`;
-  parameters.AdditionalChargesText=[parameters.PrintShow_tax&&Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',parameters.PrintShow_shipping&&Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n');
+  require('./salesPrintVisibility').hideZeroValues(parameters);
+  parameters.TotalCommaText=Number(total||0).toLocaleString('en-US');
+  parameters.TotalNumberText=parameters.TotalCommaText;
+  parameters.PrintShow_additionalCharges=parameters.PrintShow_tax||parameters.PrintShow_shipping||parameters.PrintShow_serviceFee;
+  parameters.SummaryText=`Tổng cộng: ${money(total)}${parameters.PrintShow_discount&&header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${header.PHIDICHVU?`; phí dịch vụ (${Number(header.TILEPHIDICHVU||0)}%): ${money(header.PHIDICHVU)}`:''}${parameters.PrintShow_tax&&header.TIENTHUE?`; thuế (${Number(header.TILETHUE||0)}%): ${money(header.TIENTHUE)}`:''}`;
+  parameters.AdditionalChargesText=[Number(header.PHIDICHVU)?'Phí dịch vụ: '+money(header.PHIDICHVU):'',parameters.PrintShow_tax&&Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',parameters.PrintShow_shipping&&Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n');
+ }
+ const taxGroups=require('./pricingPolicy').summary(header.TAXSUMMARY);
+ parameters.TaxBreakdownText=taxGroups.filter(group=>group.amount!==0).map(group=>`VAT ${group.rate}%: ${money(group.amount)}`).join('\n');
+ parameters.DiscountSource=header.NGUONGIAMGIA||'';
+ if(taxGroups.length){
+  parameters.SummaryText=parameters.SummaryText.replace(/; thuế \([^)]*\): [^;]*/,parameters.PrintShow_tax===false?'':`; ${parameters.TaxBreakdownText.replace(/\n/g,'; ')}`);
+  parameters.AdditionalChargesText=parameters.AdditionalChargesText.replace(/Thuế: [^\n]*/,parameters.PrintShow_tax===false?'':parameters.TaxBreakdownText);
  }
  return {parameters,tables:{Table0:table0}};
 }
@@ -182,7 +205,10 @@ function validateBindings(xml,data) {
 async function render(type,id,filters,user) {
  const template=await resolve(type,filters.templateId);const data=await payload(type,id,filters,user);
  const logo=decodeConfigImage(await db.queryBlob("SELECT BLOBVALUE FROM SCONFIG WHERE NAME='CompanyLogo' AND STATUS=30",[],'BLOBVALUE'));
- const xml=mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data);validateBindings(xml,data);fillMissingVariables(xml,data);
+ let xml=require('./chargePrint').applyServiceFeeRow(mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data),data.parameters);
+ if(type.key==='MauHoaDonBanHang')xml=require('./chargePrint').formatSalesTotal(xml);
+ xml=require('./chargePrint').applyTaxBreakdown(xml,data.parameters);
+ validateBindings(xml,data);fillMissingVariables(xml,data);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'garage-document-print-'));
  try{const templatePath=path.join(dir,'template.frx'),dataPath=path.join(dir,'data.json'),pdfPath=path.join(dir,'output.pdf');fs.writeFileSync(templatePath,xml);fs.writeFileSync(dataPath,JSON.stringify(data));const pdf=await runRenderer(templatePath,dataPath,pdfPath);return {pdf,name:data.parameters.DocNumber||type.label,template};}
  finally{const safeRoot=path.resolve(os.tmpdir())+path.sep;if(path.resolve(dir).startsWith(safeRoot))fs.rmSync(dir,{recursive:true,force:true});}

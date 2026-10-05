@@ -5,7 +5,7 @@ Renderer này dùng các gói chính thức FastReport.OpenSource và FastReport
 Build trên Windows với .NET SDK:
 
 ```powershell
-dotnet publish tools/fastreport-renderer/FastReportRenderer.csproj -c Release -o tools/fastreport-renderer/bin/Renderer
+dotnet publish backend/tools/fastreport-renderer/FastReportRenderer.csproj -c Release -o backend/tools/fastreport-renderer/bin/Renderer
 ```
 
 Backend mặc định gọi `bin/Renderer/Garage.FastReportRenderer.exe --render template.frx data.json output.pdf`. Có thể đặt `FASTREPORT_RENDERER_EXE` để dùng renderer khác. Cửa sổ Designer là một chương trình riêng, dùng các thư viện Designer hiện có.

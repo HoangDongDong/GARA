@@ -19,7 +19,7 @@ const { templateFilter } = require('./systemConfigOptions');
 
 const SALES_FORM_NAME = 'Hóa đơn bán hàng';
 const rendererExecutable = process.env.FASTREPORT_RENDERER_EXE || path.resolve(
-  __dirname, '..', '..', '..', 'tools', 'fastreport-renderer', 'bin', 'Renderer', 'Garage.FastReportRenderer.exe'
+  __dirname, '..', '..', 'tools', 'fastreport-renderer', 'bin', 'Renderer', 'Garage.FastReportRenderer.exe'
 );
 const SYSTEM_VARIABLES = new Set(['Date', 'Page', 'PageN', 'TotalPages', 'PageNofM', 'Row#', 'AbsRow#', 'CopyName#', 'HierarchyLevel', 'HierarchyRow#','Page#','TotalPages#']);
 
@@ -159,7 +159,7 @@ function fillMissingVariables(xml, payload) {
 function runRenderer(templatePath, dataPath, outputPath) {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(rendererExecutable)) {
-      reject(new Error('Chưa build FastReport Open Source renderer (tools/fastreport-renderer/bin/Renderer).'));
+      reject(new Error('Chưa build FastReport Open Source renderer (backend/tools/fastreport-renderer/bin/Renderer).'));
       return;
     }
     const child = spawn(rendererExecutable, ['--render', templatePath, dataPath, outputPath], { windowsHide: true, stdio: 'ignore' });

@@ -78,7 +78,7 @@ export default function SupplierFormModal({ formMode, form, setForm, saving, for
 
                 <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: '#424242' }}>
                   Ghi chú
-                  <textarea value={form.NOTE} onChange={(event) => setForm({ ...form, NOTE: event.target.value })} placeholder="Nhập ghi chú..." rows={3} style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical' }} />
+                  <textarea value={form.NOTE} onChange={(event) => setForm({ ...form, NOTE: event.target.value })} rows={3} style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical' }} />
                 </label>
               </div>
 

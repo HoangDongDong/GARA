@@ -32,8 +32,10 @@ FRX mới khai báo Parameter boolean `PrintShow_<key>` và đặt `VisibleExpre
 
 ## Kiểm tra và giới hạn
 
+Thuế nhiều mức và giảm giá theo khách/nhóm: xem [PRICING-POLICIES.md](PRICING-POLICIES.md). Mẫu mới có thể dùng `TaxBreakdownText` và `DiscountSource`; chi tiết có `TILETHUE`, `TIENTHUE`, `TILEGIAMGIA`, `TIENGIAMGIA`, `NGUONTHUE`. Không tính lại thuế từ cấu hình hiện tại trong mẫu FRX của chứng từ đã lưu.
+
 `npm run test:printing` trong backend; `npm run build` trong frontend. `node print-verification/check-fastreport-flow.cjs` kiểm tra nhập FRX qua API, sửa nội dung database, PDF và giao diện. Mẫu kiểm tra tạm được dọn sau khi chạy.
 
 Renderer mặc định hiện dùng FastReport Open Source và bộ xuất PDFSimple chính thức, nên không phát sinh dấu DEMO VERSION của bản Demo. Các trang PDF được xuất dưới dạng ảnh 300 DPI: in được đúng khổ giấy nhưng không chọn/tìm kiếm chữ trong PDF. Không có bước xóa hoặc che watermark; nội dung và watermark do người thiết kế đặt trong FRX vẫn được giữ.
 
-Build và cấu hình: xem `tools/fastreport-renderer/README.md`. `FASTREPORT_RENDERER_EXE` vẫn cho phép chọn renderer có bản quyền khác nếu cần PDF dạng vector. FastReport Designer và renderer là hai chương trình riêng.
+Build và cấu hình: xem `backend/tools/fastreport-renderer/README.md`. `FASTREPORT_RENDERER_EXE` vẫn cho phép chọn renderer có bản quyền khác nếu cần PDF dạng vector. FastReport Designer và renderer là hai chương trình riêng.

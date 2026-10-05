@@ -4,6 +4,8 @@
   "description": "Backend Express + Firebird 2.5 cho He thong quan ly gara oto",
   "main": "src/server.js",
   "scripts": {
+    "migrate:applied-charge-rates": "node migrate_applied_charge_rates.js",
+    "migrate:default-charge-rates": "node migrate_default_charge_rates.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate:access": "node migrate_access_control.js",
@@ -13,7 +15,10 @@
     "migrate:print-documents": "node migrate_print_documents.js",
     "test:printing": "node --test tests/*.test.js",
     "migrate:reception-templates": "node migrate_reception_templates.js",
-    "migrate:business-templates": "node migrate_business_templates.js"
+    "migrate:business-templates": "node migrate_business_templates.js",
+    "migrate:repair-supplements": "node migrate_repair_supplements.js",
+    "test:repair-supplements": "node --test tests/repairSupplements.test.js",
+    "migrate:pricing-policies": "node migrate_pricing_policies.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

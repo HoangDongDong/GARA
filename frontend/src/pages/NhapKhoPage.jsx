@@ -897,7 +897,6 @@ export default function NhapKhoPage() {
                 type="text"
                 value={receiptInfo.note}
                 onChange={(e) => setReceiptInfo({ ...receiptInfo, note: e.target.value })}
-                placeholder="Nhập ghi chú..."
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -1719,7 +1718,7 @@ export default function NhapKhoPage() {
 
                 <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: '#424242' }}>
                   Ghi chú
-                  <textarea value={supplierForm.NOTE} onChange={(event) => setSupplierForm({ ...supplierForm, NOTE: event.target.value })} placeholder="Nhập ghi chú..." rows={3} style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical' }} />
+                  <textarea value={supplierForm.NOTE} onChange={(event) => setSupplierForm({ ...supplierForm, NOTE: event.target.value })} rows={3} style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical' }} />
                 </label>
               </div>
 
@@ -2055,7 +2054,6 @@ export default function NhapKhoPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Đã chuyển khoản theo ủy nhiệm chi..."
                   style={{
                     width: '100%',
                     height: 34,
