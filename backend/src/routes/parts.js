@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
   try {
     const rows = await db.query(
       `SELECT M.ID, M.NAME, M.CODE, M.BARCODE, M.MAOEM, M.GIANHAP, M.GIABAN,
-              M.THUESUATRIENG, NH.THUESUATRIENG AS THUENHOM, M.GIABAN2, M.GIABAN3, M.TONTOITHIEU, M.TONTOIDA,
+              M.THUESUATRIENG, M.HHKIEU, M.HHGIATRI, NH.THUESUATRIENG AS THUENHOM, M.GIABAN2, M.GIABAN3, M.TONTOITHIEU, M.TONTOIDA,
               M.DHANGSANXUATID, HSX.NAME  AS HANG,
               M.DVITRIKHOID,    VT.NAME  AS VITRI,
               M.DNHOMMATHANGID, NH.NAME  AS NHOM,
@@ -110,6 +110,7 @@ router.get('/:id/image', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     require("../services/pricingPolicy").validateMaster(req.body);
+    require('../services/repairCommissions').validateConfig(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
@@ -134,9 +135,9 @@ router.post('/', async (req, res) => {
       `INSERT INTO DMATHANG
          (ID, NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
           DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
-          BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH, THUESUATRIENG,
+          BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH, THUESUATRIENG, HHKIEU, HHGIATRI,
           STATUS, TAMKHOA, USERCREATEDID, TIMECREATED)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)`,
       [
         id, name, code, BARCODE, MAOEM,
         GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
@@ -144,6 +145,7 @@ router.post('/', async (req, res) => {
         DNHOMMATHANGID || null, DDONVITINHID || null,
         BAOHANH, TONTOITHIEU || 0, TONTOIDA || 0, MASANCO,
         partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null, req.body.THUESUATRIENG ?? null,
+        req.body.HHKIEU || 0, req.body.HHGIATRI || 0,
         actor,
       ]
     );
@@ -154,6 +156,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     require("../services/pricingPolicy").validateMaster(req.body);
+    require('../services/repairCommissions').validateConfig(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
@@ -165,12 +168,13 @@ router.put('/:id', async (req, res) => {
     }
     const imageUpdateSql = ANH === undefined ? '' : ', ANH=?';
     const taxUpdateSql = 'THUESUATRIENG' in req.body ? ', THUESUATRIENG=?' : '';
+    const commissionUpdateSql = 'HHKIEU' in req.body ? ', HHKIEU=?, HHGIATRI=?' : '';
     await db.execute(
       `UPDATE DMATHANG
           SET NAME=?, CODE=?, BARCODE=?, MAOEM=?, GIANHAP=?, GIABAN=?,
               GIABAN2=?, GIABAN3=?, DHANGSANXUATID=?, DVITRIKHOID=?,
               DNHOMMATHANGID=?, DDONVITINHID=?, BAOHANH=?,
-              TONTOITHIEU=?, TONTOIDA=?, MASANCO=?${imageUpdateSql}${taxUpdateSql},
+              TONTOITHIEU=?, TONTOIDA=?, MASANCO=?${imageUpdateSql}${taxUpdateSql}${commissionUpdateSql},
               USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
         WHERE ID=?`,
       [
@@ -181,6 +185,7 @@ router.put('/:id', async (req, res) => {
         BAOHANH, TONTOITHIEU || 0, TONTOIDA || 0, MASANCO,
         ...(ANH === undefined ? [] : [partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null]),
         ...('THUESUATRIENG' in req.body ? [req.body.THUESUATRIENG] : []),
+        ...('HHKIEU' in req.body ? [req.body.HHKIEU, req.body.HHGIATRI] : []),
         'SYSTEM', req.params.id,
       ]
     );

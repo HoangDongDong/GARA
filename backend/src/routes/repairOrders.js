@@ -5,7 +5,7 @@ const charges = require('../services/defaultChargeRates');
 const policy = require('../services/pricingPolicy');
 router.use('/:id/supplements', require('./repairSupplements'));
 router.get('/charge-rates', async (req, res) => {
-  try { res.json({ data: await charges.loadForRepairs() }); }
+  try { res.json({ data: { ...await charges.loadForRepairs(), ...await require('../services/paymentSettings').load('repair') } }); }
   catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
@@ -91,6 +91,10 @@ router.patch('/tiep-nhan/:id/status', async (req, res) => {
 });
 
 // ===== TLENHSUACHUA =====
+router.get('/:id/assignments', async (req, res) => {
+  try { res.json({ data: await require('../services/repairCommissions').preview(db.query, req.params.id) }); }
+  catch (error) { res.status(error.statusCode || 500).json({ error: error.message }); }
+});
 router.get('/', async (req, res) => {
   try {
     const rows = await db.query(
@@ -239,8 +243,7 @@ router.post('/', async (req, res) => {
         );
       }
 
-      // Khi bang ke dich vu va bao gia da duoc luu thanh cong, buoc
-      // "Tiep nhan & Bao gia" da hoan tat va ho so cho khach xac nhan sua chua.
+      // Luu xong tiep nhan va bao gia: cho khach hang xac nhan sua chua.
       const quoteCompletedState = 1;
       if (activeFlow) {
         await execute(
@@ -252,7 +255,7 @@ router.post('/', async (req, res) => {
                   LYDO=?, GHICHU=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
             WHERE ID=?`,
           [id, TTIEPNHANXEID || null, quoteCompletedState, technicianId, advisorId,
-            'Da hoan tat tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor, workflowId]
+            'Da luu tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor, workflowId]
         );
       } else {
         await execute(
@@ -265,7 +268,7 @@ router.post('/', async (req, res) => {
                    ?, ?, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP)`,
           [workflowId, `WF-${ma}`, DXEID, DKHACHHANGID, TTIEPNHANXEID || null, id,
             quoteCompletedState, NGAY, technicianId, advisorId,
-            'Da hoan tat tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor]
+            'Da luu tiep nhan va bao gia, cho xac nhan sua chua', NOTE || null, actor]
         );
       }
       await execute(
@@ -275,7 +278,7 @@ router.post('/', async (req, res) => {
             STATUS, USERCREATEDID, TIMECREATED)
          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, NULL, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
         [historyId, workflowId, DXEID, activeFlow ? Number(activeFlow.TRANGTHAI) : null,
-          quoteCompletedState, 'Hoan tat tiep nhan va bao gia, chuyen sang xac nhan sua chua',
+          quoteCompletedState, 'Luu tiep nhan va bao gia, cho xac nhan sua chua',
           NOTE || null, activeFlow ? 2 : 1, actor]
       );
       return { id, workflowId, code: ma, workflowState: quoteCompletedState };

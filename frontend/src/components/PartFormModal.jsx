@@ -1,4 +1,5 @@
 import RatePolicyField from './RatePolicyField';
+import CommissionConfig from './CommissionConfig';
 import { Package, ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { preparePartImage } from '../utils/partImage';
@@ -142,6 +143,7 @@ export default function PartFormModal({ partForm, setPartForm, savingPart: savin
                   Giá bán
                   <input type="number" min="0" value={partForm.GIABAN} onChange={(event) => setPartForm({ ...partForm, GIABAN: event.target.value })} placeholder="0" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
                 </label>
+                <CommissionConfig form={partForm} setForm={setPartForm} disabled={savingPart} />
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
                   Bảo hành (tháng)

@@ -23,6 +23,7 @@ function fixture(state = 'pending', rates = { taxRate: 0, serviceRate: 0 }) {
     if (sql.includes('FROM SCONFIG')) return [];
     if (sql.includes('FROM TTRANGTHAIXE')) return [{ ID: 'flow', TRANGTHAI: 2 }];
     if (sql.includes('FROM THOADONSUACHUA')) return [];
+    if (sql.includes('FROM TPHANCONGNHANVIEN')) return [];
     if (sql.includes('FROM TPHATSINHSUACHUA WHERE')) return [{ ID: 'proposal', TRANGTHAI: state, LYDO: 'Hỏng thêm' }];
     if (sql.includes('FROM TPHATSINHSUACHUACT')) return items;
     if (sql.includes('FROM TLENHSUACHUACHITIET')) return [{ PT: 250, CONG: 0 }];

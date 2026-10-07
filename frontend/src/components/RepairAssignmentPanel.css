@@ -1,0 +1,19 @@
+.repair-assignment-panel { border: 1px solid #fed7aa; border-radius: 6px; margin-top: 12px; padding: 12px; background: #fffaf5; color: #334155; }
+.repair-assignment-heading { display: flex; justify-content: space-between; gap: 12px; color: #9a3412; }
+.repair-assignment-hint { font-size: 12px; color: #64748b; margin: 8px 0; }
+.repair-assignment-search { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+.repair-assignment-search input { flex: 1; min-width: 0; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; }
+.repair-assignment-panel button { border: 1px solid #fed7aa; background: #e65100; color: #fff; border-radius: 4px; padding: 7px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.repair-assignment-panel button:disabled { opacity: .5; cursor: default; }
+.repair-assignment-options { max-height: 140px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 7px; padding: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; }
+.repair-assignment-options label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.repair-assignment-options small { display: block; color: #64748b; }
+.repair-assignment-table-wrap, .repair-assignment-breakdown { overflow-x: auto; margin-top: 10px; }
+.repair-assignment-panel table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.repair-assignment-panel th, .repair-assignment-panel td { padding: 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+.repair-assignment-panel th { background: #fff3e0; white-space: nowrap; }
+.repair-assignment-panel td input[type=number] { width: 80px; padding: 5px; border: 1px solid #cbd5e1; border-radius: 4px; }
+.repair-assignment-panel td:last-child { white-space: nowrap; }
+.repair-assignment-error { color: #b91c1c; padding: 8px 0; font-size: 12px; }
+.repair-assignment-hint button, .repair-assignment-error button { margin-left: 8px; }
+.repair-assignment-breakdown summary { cursor: pointer; font-size: 12px; color: #9a3412; }

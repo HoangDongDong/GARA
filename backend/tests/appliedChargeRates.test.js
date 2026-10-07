@@ -53,14 +53,14 @@ test('repair invoice preserves saved quote rates after defaults change and store
 });
 
 test('legacy unpaid repair uses defaults; saved zero rates stay zero', async () => {
-  const legacy = await invoice({}, { TILETHUE: null, TILEPHIDICHVU: null });
+  const legacy = await invoice({ TIENMAT: 1134000 }, { TILETHUE: null, TILEPHIDICHVU: null });
   assert.equal(legacy.result.total, 1134000);
-  const zero = await invoice({}, { TILETHUE: 0, TILEPHIDICHVU: 0 });
+  const zero = await invoice({ TIENMAT: 1000000 }, { TILETHUE: 0, TILEPHIDICHVU: 0 });
   assert.equal(zero.result.total, 1000000);
 });
 
 test('repair discount affects both charges; partial payment retains outstanding balance', async () => {
-  const { result } = await invoice({ TIENGIAMGIA: 100000, TIENMAT: 500000 });
+  const { result } = await invoice({ TIENGIAMGIA: 100000, TIENMAT: 500000, ALLOW_DEBT: true });
   assert.equal(result.serviceFee, 90000);
   assert.equal(result.tax, 198000);
   assert.equal(result.total, 1188000);

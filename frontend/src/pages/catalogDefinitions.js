@@ -21,9 +21,15 @@ export const catalogDefinitions = {
   shifts:standard('Ca làm việc','shifts',[name('Tên ca'),field('GIOBATDAU','Giờ bắt đầu',{type:'time'}),field('GIOKETTHUC','Giờ kết thúc',{type:'time'}),note],['Tên ca','Giờ bắt đầu','Giờ kết thúc','Trạng thái'],['NAME','GIOBATDAU','GIOKETTHUC','STATUS']),
   fuels:standard('Loại nhiên liệu','fuels',[name('Tên nhiên liệu'),code('Mã nhiên liệu'),note]),
   cashReasons:{name:'Lý do thu / chi',resource:'cashReasons',group:'Loại giao dịch',columns:['Tên lý do','Loại','Ghi chú','Trạng thái'],columnFields:['NAME','GROUP_NAME','NOTE','STATUS'],fields:[name('Tên lý do'),field('LOAI','Loại giao dịch',{options:[{ID:'0',NAME:'Thu'},{ID:'1',NAME:'Chi'}],required:true}),note]},
-  banks:{name:'Tài khoản ngân hàng',resource:'banks',group:'Ngân hàng',columns:['Số tài khoản','Chủ tài khoản','Ngân hàng','Chi nhánh'],columnFields:['SOTAIKHOAN','NAME','TENNGANHANG','CHINHANH'],fields:[name('Chủ tài khoản'),field('SOTAIKHOAN','Số tài khoản',{required:true}),field('TENNGANHANG','Ngân hàng',{required:true}),field('CHINHANH','Chi nhánh'),note]},
+  stores:standard('Chi nhánh / Cửa hàng','stores',[name('Tên chi nhánh / cửa hàng'),code('Mã cửa hàng'),field('DIACHI','Địa chỉ'),field('DIENTHOAI','Số điện thoại'),field('EMAIL','Email'),note],['Mã','Tên cửa hàng','Địa chỉ','Điện thoại','Trạng thái'],['CODE','NAME','DIACHI','DIENTHOAI','STATUS']),
+  banks:{name:'Tài khoản ngân hàng',resource:'banks',group:'Ngân hàng',columns:['Số tài khoản','Chủ tài khoản','Ngân hàng','Chi nhánh','Số dư đầu kỳ'],columnFields:['SOTAIKHOAN','NAME','TENNGANHANG','CHINHANH','SODUDAU'],fields:[name('Chủ tài khoản'),field('SOTAIKHOAN','Số tài khoản',{required:true}),field('TENNGANHANG','Ngân hàng',{required:true}),field('CHINHANH','Chi nhánh'),field('SODUDAU','Số dư đầu kỳ (đ)',{type:'number'}),note]},
   funds:standard('Quỹ tiền mặt','funds',[name('Tên quỹ'),code('Mã quỹ'),note]),
 };
+for (const key of ['parts', 'services']) {
+  catalogDefinitions[key].fields.push(field('HHKIEU', 'Cách tính hoa hồng', { type: 'commission' }), field('HHGIATRI', 'Mức hoa hồng', { type: 'hidden' }));
+  catalogDefinitions[key].columns.push('Hoa hồng');
+  catalogDefinitions[key].columnFields.push('HH_LABEL');
+}
 export const masterFormDefinitions = {
   customer_groups:{name:'Nhóm khách hàng',fields:[name('Tên nhóm khách hàng'),discount,note]},
   supplier_groups:{name:'Nhóm nhà cung cấp',fields:[name('Tên nhóm nhà cung cấp'),note]},
@@ -36,6 +42,7 @@ export const masterFormDefinitions = {
   locations:{name:'Vị trí kho',fields:catalogDefinitions.warehouses.fields},
 };
 export function displayCatalogValue(row, key) {
+  if (key === 'HH_LABEL') return Number(row.HHKIEU) === 1 ? `${Number(row.HHGIATRI || 0)}%` : Number(row.HHKIEU) === 2 ? `${Number(row.HHGIATRI || 0).toLocaleString('vi-VN')} đ / đơn vị` : 'Không tính';
   if (key==='STATUS') return Number(row.STATUS)===1?'Đang sử dụng':'Ngừng sử dụng';
   if (key==='GIOBATDAU'||key==='GIOKETTHUC') return row[key] ? new Date(row[key]).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) : '';
   if (key==='GIABAN'||key==='GIA') return row[key] == null ? '' : Number(row[key]).toLocaleString('vi-VN')+' đ';

@@ -31,6 +31,7 @@ router.get('/:type/:id/pdf', async (req, res) => {
   try {
     const result = await printing.render(req.printType, req.params.id, req.query, req.accessUser.USERNAME);
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${encodeURIComponent(result.name)}.pdf"`, 'Cache-Control': 'no-store', 'X-Template-Name': encodeURIComponent(result.template.NAME) });
+    if(result.notice)res.set({ 'X-Print-Notice':encodeURIComponent(result.notice),'Access-Control-Expose-Headers':'X-Print-Notice' });
     res.send(result.pdf);
   } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });

@@ -168,6 +168,10 @@ export const vehicles = {
 
 /* ===== EMPLOYEES (DNHANVIEN) ===== */
 export const employees = {
+  imageUrl: (row) => protectedMediaUrl(`/api/employees/${encodeURIComponent(row.ID)}/image?v=${encodeURIComponent(row.SIMAGEID || '')}`),
+  meta: () => api.get('/employees/meta').then(response => response.data.data),
+  commissions: (params) => api.get('/employees/commissions', { params }).then(response => response.data),
+  setStatus: (id, status) => api.patch(`/employees/${encodeURIComponent(id)}/status`, { status }).then(response => response.data),
   list:   (params) => list('employees', params),
   create: (payload) => create('employees', payload),
   update: (id, payload) => update('employees', id, payload),
@@ -213,7 +217,7 @@ export const inventoryReceipts = {
   },
   get: (id) => get('inventory-receipts', id),
   create: (payload) => create('inventory-receipts', payload),
-  pay: (id) => api.patch(`/inventory-receipts/${id}/pay`).then((response) => response.data),
+  pay: (id, payment) => api.patch(`/inventory-receipts/${id}/pay`, {TIENTHANHTOAN:payment}).then((response) => response.data),
   remove: (id) => remove('inventory-receipts', id),
 };
 

@@ -42,3 +42,4 @@ backend/tools/part-background-check.jpg
 bin/
 obj/
 *.user
+backend/tmp/

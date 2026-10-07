@@ -11,9 +11,9 @@ import RepairSupplementQueue from '../components/RepairSupplementQueue';
 import './HoSoChoDuyetPage.css';
 
 export const WORKFLOW_STAGES = [
-  { id: 0, label: 'Chờ duyệt báo giá', icon: <FileText size={16}/>, color: '#d97706', nextBtn: 'Duyệt & Xác nhận sửa' },
+  { id: 0, label: 'Chờ duyệt báo giá', icon: <FileText size={16}/>, color: '#ea580c', nextBtn: 'Duyệt & Xác nhận sửa' },
   { id: 1, label: 'Xác nhận sửa chữa', icon: <CheckCircle2 size={16}/>, color: '#2563eb', nextBtn: 'Bắt đầu sửa chữa' },
-  { id: 2, label: 'Đang sửa chữa', icon: <Wrench size={16}/>, color: '#7c3aed', nextBtn: 'Hoàn thành kỹ thuật (QC)' },
+  { id: 2, label: 'Đang sửa chữa', icon: <Wrench size={16}/>, color: '#dc2626', nextBtn: 'Hoàn thành kỹ thuật (QC)' },
   { id: 3, label: 'Chờ giao xe', icon: <CarFront size={16}/>, color: '#0891b2', nextBtn: 'Giao xe & Hoàn tất' },
   { id: 4, label: 'Hoàn thành', icon: <ShieldCheck size={16}/>, color: '#059669', nextBtn: null },
 ];
@@ -35,7 +35,7 @@ function readPermission() {
 }
 
 function mapOrder(row) {
-  const ticketCode = row.SO_LENH || row.SO_PHIEU_TN || 'Chưa lập lệnh';
+  const ticketCode = row.SO_LENH || row.SO_PHIEU_TN || (row.PROFILE_ONLY ? 'Mới tạo hồ sơ' : 'Chưa lập lệnh');
   return {
     id: row.ID, vehicleId: row.DXEID, repairId: row.TLENHSUACHUAID,
     soPhieuText: ticketCode,
@@ -43,7 +43,7 @@ function mapOrder(row) {
     bienSo: row.BIENSO || '—',
     tenXe: [row.HANG_XE, row.DONG_XE, row.PHIENBAN, row.NAMSANXUAT ? `(${row.NAMSANXUAT})` : ''].filter(Boolean).join(' ') || 'Chưa có thông tin xe',
     khachHang: row.TEN_KH || 'Khách vãng lai', dienThoai: row.DIENTHOAI || '—',
-    coVan: row.TEN_CV || 'Chưa phân công', ktv: row.TEN_KTV || 'Chưa phân công',
+    coVan: row.TEN_CV || 'Chưa phân công', ktv: row.TEN_KTV ? `${row.TEN_KTV}${Number(row.SO_KTV) > 1 ? ` (+${Number(row.SO_KTV) - 1})` : ''}` : 'Chưa phân công',
     trangThai: Math.max(0, Math.min(4, Number(row.TRANGTHAI || 0))),
     tienDuKien: Number(row.TONGCONG || 0), ngayVao: row.NGAY_VAO, ngayHenGiao: row.NGAY_DUKIEN,
     ngayCapNhatTrangThai: row.NGAY_TRANGTHAI,
@@ -90,11 +90,24 @@ export default function HoSoChoDuyetPage() {
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
   const handleNextStep = async (order) => {
+    if (!order.repairId) {
+      if (!canAdd) return notify('Chức vụ của bạn chưa có quyền lập báo giá.', 'error');
+      navigate(`/sua-chua?vehicleId=${encodeURIComponent(order.vehicleId)}`);
+      return;
+    }
     if (!canEdit) return notify('Chức vụ của bạn chưa có quyền Sửa cho chức năng Sửa chữa - Dịch vụ.', 'error');
+    if (order.trangThai === 1) {
+      navigate(`/sua-chua?vehicleId=${encodeURIComponent(order.vehicleId)}&repairId=${encodeURIComponent(order.repairId)}&confirm=1`);
+      return;
+    }
+    if (order.trangThai === 3) {
+      navigate(`/sua-chua?vehicleId=${encodeURIComponent(order.vehicleId)}&repairId=${encodeURIComponent(order.repairId)}&payment=1`);
+      return;
+    }
     if (order.trangThai >= 4) return;
     setChangingId(order.id);
     try {
-      await workflow.transition({ DXEID: order.vehicleId, TRANGTHAI: order.trangThai + 1, LYDO: `Chuyển sang bước ${WORKFLOW_STAGES[order.trangThai + 1].label}`, GHICHU: order.yeuCau });
+      await workflow.transition({ DXEID: order.vehicleId, TLENHSUACHUAID: order.repairId, TRANGTHAI: order.trangThai + 1, LYDO: `Chuyển sang bước ${WORKFLOW_STAGES[order.trangThai + 1].label}`, GHICHU: order.yeuCau });
       notify(`Xe ${order.bienSo} đã chuyển sang ${WORKFLOW_STAGES[order.trangThai + 1].label}.`);
       await loadBoard();
     } catch (error) { notify(errorText(error), 'error'); }
@@ -112,11 +125,35 @@ export default function HoSoChoDuyetPage() {
   }, [orders, search, filterStage, filterAdvisor]);
 
   const action = (order, compact = false) => {
-    const stage = WORKFLOW_STAGES[order.trangThai];
-    if (!stage.nextBtn) return <div style={{ color: '#059669', fontWeight: 700, flex: 1, textAlign: 'center' }}>✓ Đã bàn giao</div>;
-    return <button type="button" className={compact ? 'hscd-btn-table-detail' : 'hscd-btn-step-next'} disabled={!canEdit || changingId === order.id} onClick={(event) => { event.stopPropagation(); handleNextStep(order); }} title={!canEdit ? 'Cần quyền Sửa' : 'Chuyển đúng sang bước tiếp theo'}>
-      {changingId === order.id ? 'Đang lưu...' : compact ? 'Bước kế →' : stage.nextBtn}<ArrowRight size={13}/>
-    </button>;
+    const stageId = order.trangThai;
+    if (!order.repairId && stageId === 0) return (
+      <button
+        type="button"
+        className={`${compact ? 'hscd-btn-table-detail' : 'hscd-btn-step-next'} btn-stage-0`}
+        disabled={!canAdd}
+        onClick={(event) => { event.stopPropagation(); handleNextStep(order); }}
+      >
+        Tiếp nhận & Báo giá<ArrowRight size={13}/>
+      </button>
+    );
+    const stage = WORKFLOW_STAGES[stageId];
+    if (!stage.nextBtn) return (
+      <div style={{ color: '#059669', fontWeight: 700, flex: 1, textAlign: 'center' }}>
+        ✓ Đã bàn giao
+      </div>
+    );
+    return (
+      <button
+        type="button"
+        className={`${compact ? 'hscd-btn-table-detail' : 'hscd-btn-step-next'} btn-stage-${stageId}`}
+        disabled={!canEdit || changingId === order.id}
+        onClick={(event) => { event.stopPropagation(); handleNextStep(order); }}
+        title={!canEdit ? 'Cần quyền Sửa' : 'Chuyển đúng sang bước tiếp theo'}
+      >
+        {changingId === order.id ? 'Đang lưu...' : compact ? 'Bước kế →' : stage.nextBtn}
+        <ArrowRight size={13}/>
+      </button>
+    );
   };
 
   return <div className="hscd-page">

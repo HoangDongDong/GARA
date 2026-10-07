@@ -209,7 +209,7 @@
 
 .hscd-stat-card.stage-0::before { background: #f59e0b; }
 .hscd-stat-card.stage-1::before { background: #3b82f6; }
-.hscd-stat-card.stage-2::before { background: #8b5cf6; }
+.hscd-stat-card.stage-2::before { background: #dc2626; }
 .hscd-stat-card.stage-3::before { background: #06b6d4; }
 .hscd-stat-card.stage-4::before { background: #10b981; }
 
@@ -270,7 +270,7 @@
 
 .stage-0 .hscd-stat-icon-wrap { background: #fef3c7; color: #d97706; }
 .stage-1 .hscd-stat-icon-wrap { background: #dbeafe; color: #2563eb; }
-.stage-2 .hscd-stat-icon-wrap { background: #ede9fe; color: #7c3aed; }
+.stage-2 .hscd-stat-icon-wrap { background: #fee2e2; color: #dc2626; }
 .stage-3 .hscd-stat-icon-wrap { background: #cffafe; color: #0891b2; }
 .stage-4 .hscd-stat-icon-wrap { background: #d1fae5; color: #059669; }
 
@@ -431,11 +431,11 @@
   min-width: 0;
 }
 
-.hscd-col-header.stage-0 { border-color: #f59e0b; }
-.hscd-col-header.stage-1 { border-color: #3b82f6; }
-.hscd-col-header.stage-2 { border-color: #8b5cf6; }
-.hscd-col-header.stage-3 { border-color: #06b6d4; }
-.hscd-col-header.stage-4 { border-color: #10b981; }
+.hscd-col-header.stage-0 { border-color: #ea580c; }
+.hscd-col-header.stage-1 { border-color: #2563eb; }
+.hscd-col-header.stage-2 { border-color: #dc2626; }
+.hscd-col-header.stage-3 { border-color: #0891b2; }
+.hscd-col-header.stage-4 { border-color: #059669; }
 
 .hscd-col-title-wrap {
   display: flex;
@@ -463,11 +463,11 @@
   flex-shrink: 0;
 }
 
-.stage-0 .hscd-col-count { background: #f59e0b; }
-.stage-1 .hscd-col-count { background: #3b82f6; }
-.stage-2 .hscd-col-count { background: #8b5cf6; }
-.stage-3 .hscd-col-count { background: #06b6d4; }
-.stage-4 .hscd-col-count { background: #10b981; }
+.stage-0 .hscd-col-count { background: #ea580c; }
+.stage-1 .hscd-col-count { background: #2563eb; }
+.stage-2 .hscd-col-count { background: #dc2626; }
+.stage-3 .hscd-col-count { background: #0891b2; }
+.stage-4 .hscd-col-count { background: #059669; }
 
 .hscd-col-body {
   padding: 7px;
@@ -677,40 +677,89 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 5px 6px;
-  border-radius: 5px;
+  gap: 5px;
+  padding: 6px 9px;
+  border-radius: 6px;
   border: none;
-  font-size: clamp(10px, 0.75vw, 11px);
+  font-size: clamp(10.5px, 0.78vw, 11.5px);
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
-  color: white;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+}
+
+.hscd-btn-step-next:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+}
+
+.hscd-btn-step-next:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .hscd-btn-step-next:disabled,
 .hscd-btn-table-detail:disabled {
   opacity: .45;
   cursor: not-allowed;
+  transform: none !important;
 }
 
-.stage-0 .hscd-btn-step-next { background: #d97706; }
-.stage-0 .hscd-btn-step-next:hover { background: #b45309; }
+/* 1. NÚT: Tiếp nhận & Báo giá (Chờ duyệt) - Màu Cam TMĐT (Shopee / Lazada Orange - Pending / To Pay) */
+.btn-stage-0,
+.stage-0 .hscd-btn-step-next {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.28);
+}
+.btn-stage-0:hover:not(:disabled),
+.stage-0 .hscd-btn-step-next:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%) !important;
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.4);
+}
 
-.stage-1 .hscd-btn-step-next { background: #2563eb; }
-.stage-1 .hscd-btn-step-next:hover { background: #1d4ed8; }
+/* 2. NÚT: Bắt đầu sửa chữa (Xác nhận sửa) - Màu Xanh dương TMĐT (Processing / Confirmed) */
+.btn-stage-1,
+.stage-1 .hscd-btn-step-next {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+}
+.btn-stage-1:hover:not(:disabled),
+.stage-1 .hscd-btn-step-next:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+}
 
-.stage-2 .hscd-btn-step-next { background: #7c3aed; }
-.stage-2 .hscd-btn-step-next:hover { background: #6d28d9; }
+/* 3. NÚT: Hoàn thành kỹ thuật (QC) (Đang sửa chữa) - Màu Đỏ */
+.btn-stage-2,
+.stage-2 .hscd-btn-step-next {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.32);
+}
+.btn-stage-2:hover:not(:disabled),
+.stage-2 .hscd-btn-step-next:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%) !important;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.45);
+}
 
-.stage-3 .hscd-btn-step-next { background: #0891b2; }
-.stage-3 .hscd-btn-step-next:hover { background: #0e7490; }
+/* 4. NÚT: Giao xe & Hoàn tất (Chờ giao xe -> Hoàn tất) - Màu Xanh lá cây thành công TMĐT (Success Green / Delivered) */
+.btn-stage-3,
+.stage-3 .hscd-btn-step-next {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+.btn-stage-3:hover:not(:disabled),
+.stage-3 .hscd-btn-step-next:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
 
-.stage-4 .hscd-btn-step-next { background: #059669; }
-.stage-4 .hscd-btn-step-next:hover { background: #047857; }
+/* Giai đoạn đã bàn giao */
+.btn-stage-4,
+.stage-4 .hscd-btn-step-next {
+  background: #059669 !important;
+}
 
 .hscd-btn-card-more {
   padding: 5px 7px;
@@ -787,26 +836,59 @@
 
 .status-0 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
 .status-1 { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.status-2 { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+.status-2 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 .status-3 { background: #cffafe; color: #0e7490; border: 1px solid #a5f3fc; }
 .status-4 { background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
 
 .hscd-btn-table-detail {
   padding: 4px 8px;
-  background: #fff7ed;
-  border: 1px solid #ffedd5;
   border-radius: 5px;
-  color: #c2410c;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
 
-.hscd-btn-table-detail:hover {
-  background: #ffedd5;
+.hscd-btn-table-detail.btn-stage-0 {
+  background: #fff7ed;
   border-color: #fed7aa;
+  color: #c2410c;
+}
+.hscd-btn-table-detail.btn-stage-0:hover {
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+.hscd-btn-table-detail.btn-stage-1 {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+.hscd-btn-table-detail.btn-stage-1:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.hscd-btn-table-detail.btn-stage-2 {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+.hscd-btn-table-detail.btn-stage-2:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.hscd-btn-table-detail.btn-stage-3 {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+.hscd-btn-table-detail.btn-stage-3:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
 }
 
 .hscd-table-mobile {

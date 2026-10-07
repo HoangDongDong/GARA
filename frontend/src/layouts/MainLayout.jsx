@@ -19,6 +19,7 @@ import {
   LineChart, 
   Shield, 
   Settings,
+  Printer,
   Menu,
   X,
   ClipboardCheck,
@@ -43,6 +44,7 @@ const NAV = [
   { to: '/thu-chi',        code: 'FINANCE', icon: <CircleDollarSign size={18} />, label: 'Thu - Chi / Công nợ' },
   { to: '/nhan-vien',      code: 'EMPLOYEES', icon: <UserCog size={18} />, label: 'Nhân viên &\nKỹ thuật viên' },
   { to: '/bao-cao',        code: 'REPORTS', icon: <LineChart size={18} />, label: 'Báo cáo' },
+  { to: '/in-chung-tu',    icon: <Printer size={18} />, label: 'In chứng từ' },
   { to: '/quan-tri',       code: 'ADMIN', icon: <Shield size={18} />, label: 'Quản trị - Phân quyền' },
   { to: '/cau-hinh',       code: 'SETTINGS', icon: <Settings size={18} />, label: 'Cấu hình' },
 ];
@@ -60,7 +62,7 @@ export default function MainLayout() {
   const loc = useLocation();
   const user = JSON.parse(localStorage.getItem('garage_user') || '{}');
   const canView = (code) => Number(user.ISADMIN) === 1 || (!['ADMIN', 'SETTINGS'].includes(code) && (Number(user.PERMISSIONS?.[code] || 0) & 1) === 1);
-  const visibleNav = NAV.filter((item) => canView(item.code));
+  const visibleNav = NAV.filter((item) => !item.code || canView(item.code));
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [now, setNow] = useState(new Date());

@@ -3,6 +3,32 @@ const assert = require('node:assert/strict');
 const policy = require('../src/services/pricingPolicy');
 const { applyTaxBreakdown } = require('../src/services/chargePrint');
 
+test('frontend and backend apply line discounts before the additional bill discount', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '../../frontend/src/utils/pricingPolicy.js'), 'utf8');
+  const frontend = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  const lines = [
+    { amount: 120000, taxRate: 10, discountRate: 10 },
+    { amount: 100000, taxRate: 8, discountRate: 0 },
+    { amount: 50000, taxRate: 10, discountRate: null },
+    { amount: 20000, taxRate: 10, discountRate: 100 },
+  ];
+  const rates = { taxRate: 10, serviceRate: 0 };
+  const actual = policy.calculate(lines, rates, 5);
+  assert.deepEqual(frontend.calculate(lines, rates, 5), actual);
+  assert.equal(actual.lineDiscount, 32000);
+  assert.equal(actual.billDiscount, 12900);
+  assert.equal(actual.discount, 44900);
+  assert.deepEqual(actual.details.map(line => line.net), [102600, 95000, 47500, 0]);
+  for (const calculate of [policy.calculate, frontend.calculate]) {
+    const example = calculate([{ amount: 100000, discountRate: 90, taxRate: 0 }], { taxRate: 0, serviceRate: 0 }, 10);
+    assert.equal(example.details[0].lineNet, 10000);
+    assert.equal(example.billDiscount, 1000);
+    assert.equal(example.total, 9000);
+  }
+});
+
 test('item overrides group; explicit zero differs from inherited null; POS toggle prevails', () => {
   const defaults = { taxRate: 20 };
   assert.equal(policy.taxPolicy({THUESUATRIENG:null,THUENHOM:10},defaults).taxRate,10);

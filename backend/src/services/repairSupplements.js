@@ -119,6 +119,7 @@ async function decide(query, execute, uuid, repairId, id, body, actor) {
     LYDO, GHICHU, STT, STATUS, USERCREATEDID, TIMECREATED)
     SELECT ?, ID, DXEID, 2, 2, CURRENT_TIMESTAMP, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP FROM TTRANGTHAIXE WHERE ID=?`,
     [uuid(), 'Khách xác nhận phát sinh sửa chữa', `${id}: ${state}; ${customer}; ${evidence}`.slice(0, 1000), actor, flow.ID]);
+  await require('./repairCommissions').captureAdditional(query, execute, uuid, repairId, actor);
   return { state };
 }
 async function assertResolved(query, repairId) {

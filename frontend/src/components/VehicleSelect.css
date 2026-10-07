@@ -1,0 +1,9 @@
+.repair-vehicle-select { position: relative; flex: 1; min-width: 0; }
+.repair-vehicle-select input { width: 100%; height: clamp(28px, 3.2vh, 31px); padding: 0 28px 0 8px; border: 1px solid #CBD5E1; border-radius: 4px; font-size: inherit; font-family: inherit; color: #334155; outline: none; background: #fff; box-sizing: border-box; text-overflow: ellipsis; }
+.repair-vehicle-select input:focus { border-color: #E65100; box-shadow: 0 0 0 2px #E651001A; }
+.repair-vehicle-select-toggle { position: absolute; top: 0; right: 0; height: 100%; width: 28px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #374151; cursor: pointer; padding: 0; }
+.repair-vehicle-select-dropdown { position: absolute; top: calc(100% + 2px); left: 0; width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; background: white; box-shadow: 0 6px 16px #0002; z-index: 100; box-sizing: border-box; }
+.repair-vehicle-select-options { max-height: 300px; overflow-y: auto; }
+.repair-vehicle-select-option { padding: 8px 12px; color: #1f2937; cursor: pointer; overflow-wrap: anywhere; }
+.repair-vehicle-select-option.active { background: #1967d2; color: white; }
+.repair-vehicle-select-empty { padding: 10px 12px; color: #64748b; }

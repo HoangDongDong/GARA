@@ -1,0 +1,23 @@
+.employee-form-overlay { position: fixed; inset: 0; z-index: 10000; background: #0f172a80; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.employee-form-card { width: 660px; max-width: 100%; max-height: 92vh; display: flex; flex-direction: column; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 16px 50px #0004; }
+.employee-form-card header { background: #e65100; color: #fff; padding: 15px 18px; display: flex; justify-content: space-between; align-items: center; }
+.employee-form-card header b { display: flex; gap: 8px; align-items: center; font-size: 16px; }
+.employee-form-card header button { background: transparent; border: 0; color: white; cursor: pointer; }
+.employee-form-body { padding: 18px; overflow-y: auto; }.employee-form-body h3 { font-size: 13px; margin: 0 0 12px; color: #9a3412; }
+.employee-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }.employee-form-full { grid-column: 1/-1; }
+.employee-form-card label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #475569; }
+.employee-form-card input, .employee-form-card select, .employee-form-card textarea { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 5px; padding: 9px 10px; font: inherit; color: #1e293b; background: #fff; box-sizing: border-box; }
+.employee-form-select-add { display: flex; gap: 6px; }.employee-form-select-add select { flex: 1; }
+.employee-form-card button { border-radius: 5px; padding: 9px 14px; font: inherit; cursor: pointer; }.employee-form-select-add button { border: 0; background: #e65100; color: #fff; display: flex; align-items: center; gap: 3px; }
+.employee-form-note { padding: 10px; background: #fff7ed; color: #9a3412; font-size: 12px; line-height: 1.5; }.employee-form-error { background: #fef2f2; color: #b91c1c; padding: 10px; font-size: 12px; }
+.employee-form-card footer { padding: 12px 18px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; }.employee-form-card footer button { border: 1px solid #cbd5e1; background: white; }.employee-form-card footer .employee-form-primary { background: #e65100; border-color: #e65100; color: #fff; font-weight: 700; }
+.employee-form-card button:disabled { opacity: .5; cursor: default; }
+.employee-photo { width: 136px; height: 172px; flex-shrink: 0; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; color: #94a3b8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; overflow: hidden; }
+.employee-photo img { width: 100%; height: 100%; object-fit: cover; }
+.employee-photo span { font-size: 11px; }
+.employee-photo-editor { display: flex; gap: 18px; align-items: center; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid #e2e8f0; }
+.employee-photo-editor .employee-photo { width: 100px; height: 126px; }
+.employee-photo-editor b { font-size: 14px; color: #334155; }
+.employee-photo-editor p { font-size: 12px; color: #64748b; }
+.employee-photo-editor button { background: #fff; color: #475569; border: 1px solid #cbd5e1; margin-right: 6px; }
+@media (max-width: 540px) { .employee-form-grid { grid-template-columns: 1fr; }.employee-form-card input, .employee-form-card select, .employee-form-card textarea { font-size: 16px; } }

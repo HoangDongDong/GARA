@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const charges = require('../services/defaultChargeRates');
 const policy = require('../services/pricingPolicy');
+const repairPayment = require('../services/repairPayment');
 
 /**
  * GARAGE.FDB - THOADONSUACHUA:
@@ -75,10 +76,9 @@ router.post('/', async (req, res) => {
         : { ...charges.calculate(subtotal, rates, fixedDiscount ?? subtotal * discountRate / 100), taxGroups: [] };
       const discount = totals.discount;
       const payments = ['TIENMAT', 'CHUYENKHOAN', 'THE'].map(key => Number(req.body[key] ?? 0));
-      if (payments.some(value => !Number.isFinite(value) || value < 0)) throw Object.assign(new Error('Số tiền thanh toán không hợp lệ.'), { status: 400 });
-      const received = payments.reduce((sum, value) => sum + value, 0);
-      const paid = received >= totals.total;
-      const remaining = Math.max(0, totals.total - received);
+      const { paid, remaining } = repairPayment.calculate(totals.total, payments, req.body.ALLOW_DEBT, order.DKHACHHANGID);
+      const paymentSettings = await require('../services/paymentSettings').load('repair', query);
+      require('../services/paymentSettings').assertDebt(paymentSettings, remaining);
       const id = uuidv4();
       const code = await require('../services/documentNumbers').nextInTransaction('HoaDonSuaChua', query, execute);
       await execute(`INSERT INTO THOADONSUACHUA
@@ -96,10 +96,10 @@ router.post('/', async (req, res) => {
         [order.CHARGEVERSION || null, req.body.TILEGIAMGIA != null || fixedDiscount != null ? 'Giảm giá riêng cho phiếu này' : discountPolicy.discountSource,
           JSON.stringify(totals.taxGroups), id]);
       await execute(`UPDATE TLENHSUACHUA SET TRANGTHAI=?, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP),
-        USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [paid ? 3 : 5, actor, TLENHSUACHUAID]);
-      if (paid) await query('EXECUTE PROCEDURE SP_CHUYEN_TRANGTHAI(?, 4, ?, ?, ?, ?, ?)',
-        [order.DXEID, actor, 'Da giao xe va thanh toan du', 'Tu dong hoan thanh khi thanh toan', uuidv4(), uuidv4()]);
-      return { id, code, ...totals, ...rates, paid, remaining };
+        USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [3, actor, TLENHSUACHUAID]);
+      await query('EXECUTE PROCEDURE SP_CHUYEN_TRANGTHAI(?, 4, ?, ?, ?, ?, ?)',
+        [order.DXEID, actor, paid ? 'Da giao xe va thanh toan du' : 'Da giao xe va ghi nhan cong no', 'Tu dong hoan thanh khi xac nhan thanh toan', uuidv4(), uuidv4()]);
+      return { id, code, ...totals, ...rates, paid, remaining, completed: true, requireBill: paymentSettings.requireBill };
     });
     res.json({ ok: true, ...result });
   } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
@@ -108,47 +108,56 @@ router.post('/', async (req, res) => {
 router.patch('/:id/pay', async (req, res) => {
   try {
     const { TIENMAT, CHUYENKHOAN, THE } = req.body;
-    const rows = await db.query(
-      `SELECT ID, TONGCONG, TIENMAT, CHUYENKHOAN, THE, DXEID, TLENHSUACHUAID
-         FROM THOADONSUACHUA WHERE ID=? AND STATUS=1`,
+    const result = await db.transaction(async (query, execute, uuidv4) => {
+    const rows = await query(
+      `SELECT ID, TONGCONG, TIENMAT, CHUYENKHOAN, THE, DXEID, TLENHSUACHUAID, DKHACHHANGID
+         FROM THOADONSUACHUA WHERE ID=? AND STATUS=1 WITH LOCK`,
       [req.params.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Hoa don khong ton tai' });
+    if (!rows.length) throw Object.assign(new Error('Hóa đơn không tồn tại.'), { status: 404 });
     const invoice = rows[0];
     const cash = TIENMAT == null ? Number(invoice.TIENMAT || 0) : Number(TIENMAT || 0);
     const transfer = CHUYENKHOAN == null ? Number(invoice.CHUYENKHOAN || 0) : Number(CHUYENKHOAN || 0);
     const card = THE == null ? Number(invoice.THE || 0) : Number(THE || 0);
-    if ([cash, transfer, card].some(value => !Number.isFinite(value) || value < 0)) return res.status(400).json({ error: 'Số tiền thanh toán không hợp lệ.' });
-    const remaining = Math.max(0, Number(invoice.TONGCONG || 0) - cash - transfer - card);
-    const paid = remaining <= 0 ? 1 : 0;
-    await db.execute(
+    if ([cash, transfer, card].some((value, index) => value < Number(invoice[['TIENMAT', 'CHUYENKHOAN', 'THE'][index]] || 0))) {
+      throw Object.assign(new Error('Không được giảm số tiền đã thu trên hóa đơn.'), { status: 409 });
+    }
+    const { remaining, paid } = repairPayment.calculate(Number(invoice.TONGCONG || 0), [cash, transfer, card], req.body.ALLOW_DEBT, invoice.DKHACHHANGID);
+    const paymentSettings = await require('../services/paymentSettings').load('repair', query);
+    require('../services/paymentSettings').assertDebt(paymentSettings, remaining);
+    await execute(
       `UPDATE THOADONSUACHUA
-          SET TIENMAT=?, CHUYENKHOAN=?, THE=?, CONLAI=?, DATHANHTOAN=?,
+          SET TIENMAT=?, CHUYENKHOAN=?, THE=?, CONLAI=?, CONGNO=?, DATHANHTOAN=?,
               USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
         WHERE ID = ?`,
-      [cash, transfer, card, remaining, paid, req.params.id]
+      [cash, transfer, card, remaining, remaining, paid ? 1 : 0, req.params.id]
     );
-    if (paid && invoice.TLENHSUACHUAID) {
-      const flow = await db.query(
+    let completed = false;
+    if (invoice.TLENHSUACHUAID) {
+      const flow = await query(
         `SELECT FIRST 1 TRANGTHAI FROM TTRANGTHAIXE
           WHERE DXEID=? AND TLENHSUACHUAID=? AND STATUS=1
           ORDER BY NGAY_TRANGTHAI DESC`,
         [invoice.DXEID, invoice.TLENHSUACHUAID]
       );
+      completed = Number(flow[0]?.TRANGTHAI) === 4;
       if (Number(flow[0]?.TRANGTHAI) === 3) {
         const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
-        await db.query(
+        await query(
           `EXECUTE PROCEDURE SP_CHUYEN_TRANGTHAI(?, 4, ?, ?, ?, ?, ?)`,
-          [invoice.DXEID, actor, 'Da giao xe va thanh toan du', 'Tu dong hoan thanh khi thanh toan', db.uuidv4(), db.uuidv4()]
+          [invoice.DXEID, actor, paid ? 'Da giao xe va thanh toan du' : 'Da giao xe va ghi nhan cong no', 'Tu dong hoan thanh khi xac nhan thanh toan', uuidv4(), uuidv4()]
         );
-        await db.execute(
+        await execute(
           `UPDATE TLENHSUACHUA SET TRANGTHAI=3, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP), USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
           [actor, invoice.TLENHSUACHUAID]
         );
+        completed = true;
       }
     }
-    res.json({ ok: true, paid: Boolean(paid), remaining });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    return { ok: true, paid: Boolean(paid), remaining, completed, requireBill: paymentSettings.requireBill };
+    });
+    res.json(result);
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 module.exports = router;

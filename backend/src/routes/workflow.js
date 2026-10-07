@@ -74,7 +74,8 @@ router.get('/board', async (req, res) => {
               KH.NAME AS TEN_KH,KH.DIENTHOAI,
               TN.NAME AS SO_PHIEU_TN,TN.YEUCAUKHACH,TN.TINHTRANGXE,TN.ODO,
               LS.NAME AS SO_LENH,LS.NOTE AS LENH_NOTE,LS.TONGCONG,LS.TONGTIENCONG,LS.TONGTIENPHUTUNG,
-              KTV.NAME AS TEN_KTV,CV.NAME AS TEN_CV,W.TEN AS TRANGTHAI_TEN
+              KTV.NAME AS TEN_KTV,CV.NAME AS TEN_CV,W.TEN AS TRANGTHAI_TEN,
+              (SELECT COUNT(*) FROM TPHANCONGNHANVIEN P WHERE P.TLENHSUACHUAID=TT.TLENHSUACHUAID AND P.STATUS=1 AND P.TILECHIA IS NOT NULL) AS SO_KTV
          FROM TTRANGTHAIXE TT
          LEFT JOIN DXE V ON V.ID=TT.DXEID
          LEFT JOIN DHANGXE HX ON HX.ID=V.DHANGXEID
@@ -127,6 +128,25 @@ router.get('/board', async (req, res) => {
       const list = historyByWorkflow.get(item.TTRANGTHAIXEID) || [];
       list.push(item); historyByWorkflow.set(item.TTRANGTHAIXEID, list);
     });
+    // Ho so xe moi chua lap phieu van nam trong hang cho bao gia.
+    // Khong tao quy trinh gia va khong dua xe da hoan thanh quay lai hang cho.
+    const newProfiles = await db.query(
+      `SELECT V.ID AS DXEID,V.DKHACHHANGID,V.BIENSO,V.PHIENBAN,V.NAMSANXUAT,
+              V.TIMECREATED AS NGAY_VAO,V.TIMECREATED AS NGAY_TRANGTHAI,V.GHICHU,
+              HX.NAME AS HANG_XE,DX.NAME AS DONG_XE,KH.NAME AS TEN_KH,KH.DIENTHOAI
+         FROM DXE V
+         LEFT JOIN DHANGXE HX ON HX.ID=V.DHANGXEID
+         LEFT JOIN DDONGXE DX ON DX.ID=V.DDONGXEID
+         LEFT JOIN DKHACHHANG KH ON KH.ID=V.DKHACHHANGID
+        WHERE V.STATUS=1
+          AND NOT EXISTS (SELECT 1 FROM TTRANGTHAIXE TT WHERE TT.DXEID=V.ID AND TT.STATUS=1)
+          AND NOT EXISTS (SELECT 1 FROM TLENHSUACHUA LS WHERE LS.DXEID=V.ID AND LS.STATUS=1)
+        ORDER BY V.TIMECREATED DESC`
+    );
+    rows.push(...newProfiles.map((row) => ({ ...row, ID: `vehicle-${row.DXEID}`,
+      TRANGTHAI: 0, TLENHSUACHUAID: null, PROFILE_ONLY: true,
+      YEUCAUKHACH: row.GHICHU || 'Mới tạo hồ sơ xe, chưa lập Tiếp nhận & Báo giá',
+    })));
     res.json({ data: rows.map((row) => ({
       ...row,
       ITEMS: detailsByRepair.get(row.TLENHSUACHUAID) || [],
@@ -390,6 +410,7 @@ router.post('/transition', async (req, res) => {
       );
       if (!currentRows.length) throw Object.assign(new Error('Xe chua co quy trinh sua chua'), { statusCode: 404 });
       const current = currentRows[0];
+      if (req.body.TLENHSUACHUAID && req.body.TLENHSUACHUAID !== current.TLENHSUACHUAID) throw Object.assign(new Error('Phiếu đã thay đổi, vui lòng tải lại.'), { statusCode: 409 });
       if (targetState !== Number(current.TRANGTHAI) + 1) {
         throw Object.assign(new Error('Phai chuyen trang thai theo dung thu tu quy trinh'), { statusCode: 400 });
       }
@@ -413,6 +434,13 @@ router.post('/transition', async (req, res) => {
       const { v4: uuidv4 } = require('uuid');
       const newTtId = uuidv4();
       const newLsId = uuidv4();
+      let primaryEmployee = null;
+      if (targetState === 2) {
+        if (req.accessUser && Number(req.accessUser.ISADMIN) !== 1 && (Number(req.accessUser.permissions?.REPAIR || 0) & 4) !== 4) throw Object.assign(new Error('Cần quyền Sửa để xác nhận phân công.'), { statusCode: 403 });
+        if (!current.TLENHSUACHUAID) throw Object.assign(new Error('Cần lập báo giá trước khi phân công sửa chữa.'), { statusCode: 400 });
+        primaryEmployee = await require('../services/repairCommissions').capture(query, execute, uuidv4,
+          current.TLENHSUACHUAID, req.body.assignments, req.accessUser?.ID || 'SYSTEM');
+      }
 
       await query(
         `EXECUTE PROCEDURE SP_CHUYEN_TRANGTHAI(?, ?, ?, ?, ?, ?, ?)`,
@@ -421,6 +449,8 @@ router.post('/transition', async (req, res) => {
 
       if (current.TLENHSUACHUAID) {
         if (targetState === 2) {
+          await execute('UPDATE TTRANGTHAIXE SET DNHANVIENKTVID=? WHERE TLENHSUACHUAID=? AND STATUS=1', [primaryEmployee, current.TLENHSUACHUAID]);
+          if (current.TTIEPNHANXEID) await execute('UPDATE TTIEPNHANXE SET DNHANVIENKTVID=? WHERE ID=?', [primaryEmployee, current.TTIEPNHANXEID]);
           await execute(
             `UPDATE TLENHSUACHUA SET TRANGTHAI=1, BATDAU=COALESCE(BATDAU,CURRENT_TIMESTAMP), USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
             [current.TLENHSUACHUAID]

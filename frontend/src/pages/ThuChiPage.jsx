@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import DocumentNumberField from '../components/DocumentNumberField';
+import { useState, useEffect, useCallback } from 'react';
+import api from '../api';
+import DebtLedger from '../components/DebtLedger';
+import CashVoucherModal from '../components/CashVoucherModal';
 import { 
   CircleDollarSign, TrendingUp, TrendingDown, Wallet, BookOpen, 
   Search, Plus, FileSpreadsheet, MoreVertical, Calendar, 
@@ -64,41 +66,26 @@ export default function ThuChiPage() {
     { date: '25/09/2025', content: 'Chi phí điện nước', category: 'Văn phòng', amount: '1.800.000đ' },
   ];
 
-  // Công nợ phải thu
-  const debtReceivable = [
-    { customer: 'Nguyễn Văn A', amount: '25.000.000đ', dueDate: '05/10/2025' },
-    { customer: 'Công ty TNHH Phụ Tùng A', amount: '18.500.000đ', dueDate: '10/10/2025' },
-    { customer: 'Trần Thị B', amount: '15.000.000đ', dueDate: '15/10/2025' },
-    { customer: 'Lê Văn C', amount: '12.000.000đ', dueDate: '20/10/2025' },
-    { customer: 'Phạm Thị D', amount: '8.000.000đ', dueDate: '25/10/2025' },
-  ];
-
-  // Công nợ phải trả
-  const debtPayable = [
-    { customer: 'Công ty CP Phụ Tùng Denso', amount: '35.000.000đ', dueDate: '05/10/2025' },
-    { customer: 'Đại lý Dầu Nhớt Motul', amount: '22.000.000đ', dueDate: '12/10/2025' },
-    { customer: 'Nhà cung cấp Sơn Dupont', amount: '14.500.000đ', dueDate: '18/10/2025' },
-    { customer: 'Công ty Lốp Michelin VN', amount: '18.000.000đ', dueDate: '22/10/2025' },
-  ];
-
-  // Form tạo phiếu mới
-  const [modalType, setModalType] = useState('THU');
-  const [modalAmount, setModalAmount] = useState('');
-  const [modalPartner, setModalPartner] = useState('');
-  const [modalContent, setModalContent] = useState('');
-
-  const handleCreateSubmit = (e) => {
-    e.preventDefault();
-    if (!modalAmount || !modalPartner) {
-      alert('Vui lòng nhập số tiền và đối tác/khách hàng!');
-      return;
-    }
-    setShowAddModal(false);
-    showToastMsg(`Đã tạo thành công Phiếu ${modalType === 'THU' ? 'Thu' : 'Chi'}: ${Number(modalAmount).toLocaleString('vi-VN')}đ`);
-    setModalAmount('');
-    setModalPartner('');
-    setModalContent('');
-  };
+  const [debts, setDebts] = useState({receivable: [], payable: [], receivableTotal: 0, payableTotal: 0});
+  const [debtLoading, setDebtLoading] = useState(true);
+  const [debtError, setDebtError] = useState('');
+  const loadDebts = useCallback(async () => {
+    setDebtLoading(true);
+    setDebtError('');
+    try { const response = await api.get('/finance/debts'); setDebts(response.data.data); }
+    catch (error) { setDebtError(error.response?.data?.error || 'Không tải được công nợ.'); }
+    finally { setDebtLoading(false); }
+  }, []);
+  useEffect(() => {
+    loadDebts();
+    window.addEventListener('focus', loadDebts);
+    return () => window.removeEventListener('focus', loadDebts);
+  }, [loadDebts]);
+  const debtReceivable = debts.receivable;
+  const debtPayable = debts.payable;
+  const debtRows = (debtTab === 'receivable' ? debtReceivable : debtPayable)
+    .filter(item => item.customer.toLocaleLowerCase('vi').includes(searchTerm.trim().toLocaleLowerCase('vi')));
+  const debtMoney = amount => Number(amount || 0).toLocaleString('vi-VN') + 'đ';
 
   const tableHeaderThStyle = {
     background: '#FFE0B2',
@@ -331,14 +318,16 @@ export default function ThuChiPage() {
           </div>
           <div>
             <div style={{ fontSize: 11, color: '#616161', fontWeight: 500 }}>Công nợ phải thu</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#E65100' }}>78.500.000đ</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#E65100' }}>{debtLoading ? 'Đang tải…' : debtError ? '—' : debtMoney(debts.receivableTotal)}</div>
             <div style={{ fontSize: 9.5, color: '#616161', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Users size={11} /> 5 khách hàng
+              <Users size={11} /> {debtReceivable.length} khách hàng
             </div>
           </div>
         </div>
 
       </div>
+
+      <DebtLedger kind={debtTab} onKindChange={setDebtTab} onLoaded={setDebts} mobileTab={mobileTab}/>
 
       {/* Middle Section: Biểu đồ thu - chi theo tháng (~60%) & Giao dịch gần đây (~40%) */}
       <div className={`tc-middle-grid ${mobileTab !== 'overview' ? 'tc-mobile-hidden' : ''}`}>
@@ -557,175 +546,9 @@ export default function ThuChiPage() {
           </div>
         </div>
 
-        {/* Card 3: Công nợ */}
-        <div className={`card tc-bottom-card ${mobileTab !== 'debt' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#E65100', fontSize: 13 }}>📑</span>
-                <h2 style={{ fontSize: 11, fontWeight: 700, margin: 0, color: '#212121' }}>Công nợ</h2>
-              </div>
-              <div style={{ display: 'flex', gap: 2, marginLeft: 6 }}>
-                <button 
-                  onClick={() => setDebtTab('receivable')}
-                  style={{
-                    background: debtTab === 'receivable' ? '#E65100' : '#EEEEEE',
-                    color: debtTab === 'receivable' ? 'white' : '#424242',
-                    border: 'none',
-                    padding: '2px 8px',
-                    borderRadius: 3,
-                    fontSize: 8.5,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Phải thu
-                </button>
-                <button 
-                  onClick={() => setDebtTab('payable')}
-                  style={{
-                    background: debtTab === 'payable' ? '#E65100' : '#EEEEEE',
-                    color: debtTab === 'payable' ? 'white' : '#424242',
-                    border: 'none',
-                    padding: '2px 8px',
-                    borderRadius: 3,
-                    fontSize: 8.5,
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Phải trả
-                </button>
-              </div>
-            </div>
-            <span style={{ fontSize: 9.5, color: '#1976D2', cursor: 'pointer' }}>Xem tất cả</span>
-          </div>
-
-          <div className="tc-table-responsive" style={{ flex: 1, overflowY: 'auto' }}>
-            <table className="tc-table-debt" style={{ margin: 0, width: '100%', fontSize: 9.5, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#FFE0B2', borderBottom: '1px solid #FFE0B2' }}>
-                  <th style={{ ...tableHeaderThStyle }}>{debtTab === 'receivable' ? 'Khách hàng' : 'Nhà cung cấp'}</th>
-                  <th style={{ ...tableHeaderThStyle, width: 75, textAlign: 'right' }}>Số tiền</th>
-                  <th style={{ ...tableHeaderThStyle, width: 75, textAlign: 'center' }}>Hạn thanh toán</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(debtTab === 'receivable' ? debtReceivable : debtPayable).map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F0F0F0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 600, color: '#333' }}>{item.customer}</td>
-                    <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700, color: debtTab === 'receivable' ? '#E65100' : '#D32F2F' }}>
-                      {item.amount}
-                    </td>
-                    <td style={{ padding: '4px 6px', textAlign: 'center', color: '#616161' }}>{item.dueDate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ padding: '4px 10px', background: '#FAFAFA', borderTop: '1px solid #E0E0E0', textAlign: 'right', fontSize: 10.5, flexShrink: 0 }}>
-            <span style={{ color: '#616161' }}>{debtTab === 'receivable' ? 'Tổng cộng nợ phải thu: ' : 'Tổng cộng nợ phải trả: '}</span>
-            <b style={{ color: '#E65100' }}>{debtTab === 'receivable' ? '78.500.000đ' : '89.500.000đ'}</b>
-          </div>
-        </div>
-
       </div>
 
-      {/* Modal Tạo phiếu thu / chi */}
-      {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16
-        }}>
-          <div style={{ background: 'white', borderRadius: 8, width: 440, overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
-            <div style={{ padding: '10px 14px', background: '#E65100', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <CircleDollarSign size={16} /> + TẠO PHIẾU THU / CHI
-              </div>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <DocumentNumberField type={modalType==='THU'?'Thu':'Chi'}/>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Loại phiếu <span style={{color:'red'}}>*</span></label>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
-                    <input type="radio" name="modalType" value="THU" checked={modalType === 'THU'} onChange={() => setModalType('THU')} />
-                    <span style={{ color: '#2E7D32' }}>Phiếu thu</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
-                    <input type="radio" name="modalType" value="CHI" checked={modalType === 'CHI'} onChange={() => setModalType('CHI')} />
-                    <span style={{ color: '#D32F2F' }}>Phiếu chi</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Số tiền (VNĐ) <span style={{color:'red'}}>*</span></label>
-                <input 
-                  type="number" 
-                  value={modalAmount} 
-                  onChange={(e) => setModalAmount(e.target.value)} 
-                  placeholder="Ví dụ: 5000000" 
-                  style={{ width: '100%', padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, fontWeight: 700 }} 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Đối tác / Người nộp - nhận <span style={{color:'red'}}>*</span></label>
-                <input 
-                  type="text" 
-                  value={modalPartner} 
-                  onChange={(e) => setModalPartner(e.target.value)} 
-                  placeholder="Họ tên khách hàng hoặc nhà cung cấp..." 
-                  style={{ width: '100%', padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Nội dung thu / chi</label>
-                <textarea 
-                  value={modalContent} 
-                  onChange={(e) => setModalContent(e.target.value)} 
-                  placeholder="Lý do thu hoặc chi tiết thanh toán..." 
-                  style={{ width: '100%', height: 45, padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'none' }} 
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddModal(false)}
-                  style={{ padding: '5px 12px', border: '1px solid #ccc', borderRadius: 4, background: 'white', color: '#333', fontSize: 11, cursor: 'pointer' }}
-                >
-                  Hủy
-                </button>
-                <button 
-                  type="submit"
-                  style={{ padding: '5px 16px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Tạo phiếu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showAddModal && <CashVoucherModal onClose={() => setShowAddModal(false)} onSaved={() => { loadDebts(); window.dispatchEvent(new Event('garage-cashbook-changed')); }} />}
 
     </div>
   );

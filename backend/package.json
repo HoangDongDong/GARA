@@ -4,6 +4,11 @@
   "description": "Backend Express + Firebird 2.5 cho He thong quan ly gara oto",
   "main": "src/server.js",
   "scripts": {
+    "test:employee-compensation": "node --test --test-concurrency=1 tests/employeeCompensation*.test.js",
+    "migrate:employee-profiles": "node migrate_employee_profiles.js",
+    "migrate:repair-commissions": "node migrate_repair_commissions.js",
+    "test:repair-commissions": "node --test --test-concurrency=1 tests/repairCommissions*.test.js",
+    "migrate:finance-accounts": "node migrate_finance_accounts.js",
     "migrate:applied-charge-rates": "node migrate_applied_charge_rates.js",
     "migrate:default-charge-rates": "node migrate_default_charge_rates.js",
     "start": "node src/server.js",

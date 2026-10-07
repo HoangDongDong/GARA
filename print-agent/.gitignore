@@ -1,0 +1,6 @@
+data/
+helper/bin/
+helper/obj/
+dist/
+dist-manifest.csv
+installer-output/

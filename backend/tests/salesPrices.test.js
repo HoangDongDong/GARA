@@ -17,6 +17,10 @@ async function save(items, discount = 0, rates = { taxRate: 0, serviceRate: 0 },
       { NAME: 'MacDinhPhiDichVu', DECIMALVALUE: rates.serviceRate },
       ...(rates.taxEnabled === undefined ? [] : [{ NAME: 'BanHangTinhThue', INTVALUE: rates.taxEnabled ? 30 : 0 }]),
       ...(rates.serviceEnabled === undefined ? [] : [{ NAME: 'BanHangTinhPhiDichVu', INTVALUE: rates.serviceEnabled ? 30 : 0 }]),
+      ...(rates.requireCustomer === undefined ? [] : [{ NAME: 'BatBuocNhapKhachHang', INTVALUE: rates.requireCustomer ? 30 : 0 }]),
+      ...(rates.allowDiscount === undefined ? [] : [{ NAME: 'ChoPhepNhapGiamGia', INTVALUE: rates.allowDiscount ? 30 : 0 }]),
+      { NAME: 'MacDinhGiamGia', DECIMALVALUE: rates.defaultDiscount || 0 },
+      { NAME: 'LamTronTien', INTVALUE: rates.roundingStep || 0 },
     ] : [{ ID: params[0], NAME: params[0], GIABAN: 2200000, GIANHAP: 1000000, TON_KHO: 20 }],
     async (sql, params) => { inserts.push({ sql, params }); },
     () => 'test-id',
@@ -48,6 +52,35 @@ test('saves individual edited prices and calculates discount from those prices',
   assert.deepEqual(details.map(row => [row[3], row[5], row[6], row[7]]), [
     ['battery', 4000000, 2000000, 2], ['filter', 300000, 100000, 3],
   ]);
+});
+
+test('line discounts and additional bill discount persist and reduce the VAT base', async () => {
+  const result = await save([
+    { DMATHANGID: 'part-a', SOLUONG: 1, DONGIA: 120000, TILEGIAMGIA: 10 },
+    { DMATHANGID: 'part-b', SOLUONG: 1, DONGIA: 100000, TILEGIAMGIA: 0 },
+    { DMATHANGID: 'part-c', SOLUONG: 1, DONGIA: 100000 },
+  ], 5, { taxRate: 10, serviceRate: 0 });
+  assert.equal(result.status, 200, result.body.error);
+  assert.equal(result.body.lineDiscount, 12000);
+  assert.equal(result.body.billDiscount, 15400);
+  assert.equal(result.body.discount, 27400);
+  assert.equal(result.body.tax, 29260);
+  assert.equal(result.body.total, 321860);
+  const details = result.inserts.filter(entry => entry.sql.includes('INSERT INTO TDONHANGCHITIET'));
+  assert.deepEqual(details.map(row => row.params.slice(11, 15)), [[10, 10260, 10, 17400], [10, 9500, 0, 5000], [10, 9500, 5, 5000]]);
+  const lineDiscounts = result.inserts.filter(entry => entry.sql.includes('SET TILECHIETKHAU='));
+  assert.deepEqual(lineDiscounts.map(row => row.params.slice(0, 2)), [[10, 12000], [0, 0], [0, 0]]);
+});
+
+test('invalid or disabled line discounts are rejected before saving', async () => {
+  for (const value of [-1, 101, 'bad', 1.001]) {
+    const result = await save([{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 100, TILEGIAMGIA: value }]);
+    assert.equal(result.status, 400);
+    assert.equal(result.inserts.length, 0);
+  }
+  const disabled = await save([{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 100, TILEGIAMGIA: 10 }], null, { taxRate: 0, serviceRate: 0, allowDiscount: false });
+  assert.equal(disabled.status, 400);
+  assert.equal(disabled.inserts.length, 0);
 });
 
 test('accepts a zero price and keeps catalog prices for clients omitting DONGIA', async () => {
@@ -88,4 +121,22 @@ test('disabled POS charges override stale client rates and persist zero tax and 
   assert.equal(result.body.taxEnabled, false);
   assert.equal(result.body.serviceEnabled, false);
   assert.deepEqual(result.inserts[0].params.slice(-4), [0, 0, 0, 0]);
+});
+
+test('POS config rejects unidentified customers and manual discounts before writing', async () => {
+  const items = [{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 12345 }];
+  for (const rates of [{ requireCustomer: true }, { allowDiscount: false }]) {
+    const result = await save(items, 0, { taxRate: 0, serviceRate: 0, ...rates });
+    assert.equal(result.status, 400);
+    assert.equal(result.inserts.length, 0);
+  }
+});
+test('POS config default discount and rounding are saved and used for payment', async () => {
+  const result = await save([{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 12345 }], null,
+    { taxRate:0, serviceRate:0, defaultDiscount:10, roundingStep:500 }, { TILEGIAMGIA:null });
+  assert.equal(result.status, 200, result.body.error);
+  assert.equal(result.body.discountRate, 10);
+  assert.equal(result.body.total, 11000);
+  assert.equal(result.body.payment.paid, 11000);
+  assert.equal(result.inserts[0].params[10], 11000);
 });

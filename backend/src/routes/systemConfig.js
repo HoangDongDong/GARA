@@ -158,6 +158,7 @@ async function updateItems(items, userId) {
       if (rows.length !== 1) throw inputError(`Không tìm thấy cấu hình duy nhất: ${item.id || item.name}`);
       const row = rows[0];
       require('../services/defaultChargeRates').validate(row.NAME, item.value);
+      require('../services/salesSettings').validate(row.NAME, item.value);
       require('../services/salesPrintVisibility').validate(row.NAME, item.value);
       if (require('../services/documentNumbers').definitions.some(type=>type.name===row.NAME)) require('../services/documentNumbers').parsePattern(item.value);
       if (seen.has(row.ID)) throw inputError(`Cấu hình bị trùng: ${row.NAME}`);

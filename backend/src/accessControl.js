@@ -23,6 +23,7 @@ function requiredCodes(path) {
   if (path.startsWith('/api/inventory-receipts')) return ['INVENTORY'];
   if (path.startsWith('/api/suppliers')) return ['SUPPLIERS'];
   if (path.startsWith('/api/invoices')) return ['SALES', 'FINANCE'];
+  if (path.startsWith('/api/finance')) return ['FINANCE'];
   if (path.startsWith('/api/parts')) return ['SALES', 'INVENTORY', 'REPAIR'];
   if (path.startsWith('/api/reports/dashboard')) return ['DASHBOARD'];
   if (path.startsWith('/api/reports')) return ['REPORTS'];

@@ -1,6 +1,7 @@
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import api from '../api';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {createPortal} from 'react-dom';
 import {
   ShoppingCart,
   Search,
@@ -42,6 +43,12 @@ import './BanHangPage.css';
 
 const money = (value) => Number(value || 0).toLocaleString('vi-VN');
 const dateTime = (value) => value ? new Date(value).toLocaleString('vi-VN') : '—';
+function CheckoutAmount({value,onChange,autoFocus=false}) {
+  const [editing,setEditing]=useState(false);
+  return <input type="text" inputMode="numeric" autoFocus={autoFocus} value={editing?value:money(value)} onFocus={event=>{setEditing(true);event.target.select();}} onBlur={()=>setEditing(false)} onChange={event=>{
+    const raw=event.target.value.replace(/[.,\s]/g,'');if(/^\d*$/.test(raw))onChange(raw);
+  }}/>;
+}
 
 const pad = (n) => String(n).padStart(2, '0');
 const defaultTicketCode = () => '';
@@ -100,6 +107,19 @@ export default function BanHangPage() {
   const [discountPercent, setDiscountPercent] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(0); // 0: Tiền mặt
   const [processing, setProcessing] = useState(false);
+  const [showCheckoutConfirm,setShowCheckoutConfirm]=useState(false);
+  const [checkoutError,setCheckoutError]=useState('');
+  const checkoutDialog=useRef(null);
+  const checkoutPending=useRef(false);
+  const [checkoutAmounts,setCheckoutAmounts]=useState({cashGiven:'0',card:'0',transfer:'0',allowDebt:false});
+  const [checkoutAccount,setCheckoutAccount]=useState('');
+  const [checkoutTransferEnabled,setCheckoutTransferEnabled]=useState(false);
+  const [checkoutBanks,setCheckoutBanks]=useState([]);
+  const [checkoutBankError,setCheckoutBankError]=useState('');
+  const autoPrintInvoice=useRef(false);
+  useEffect(()=>{
+    if(showCheckoutConfirm && !checkoutDialog.current.open)checkoutDialog.current.showModal();
+  },[showCheckoutConfirm]);
 
   // Modals & UI helpers
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
@@ -233,15 +253,20 @@ export default function BanHangPage() {
   }, [cart]);
 
   const selectedCustPolicy = customerList.find(customer => customer.ID === customerId);
-  const appliedDiscount = discountPolicy(selectedCustPolicy, discountPercent);
+  const discountBase = discountPolicy(selectedCustPolicy, chargeConfig.rates.allowDiscount===false ? null : discountPercent);
+  const appliedDiscount = discountBase.discountSource==='Không có giảm giá mặc định' ? {discountRate:chargeConfig.rates.defaultDiscount || 0,discountSource:'Giảm giá mặc định trong cấu hình'} : discountBase;
   const chargeRates = savedSale ? { taxRate: savedSale.taxRate, serviceRate: savedSale.serviceRate, taxEnabled: savedSale.taxEnabled, serviceEnabled: savedSale.serviceEnabled } : chargeConfig.rates;
   const pricedCart = cart.map(item => ({...item, amount: Number(item.GIABAN || 0) * (item.quantity || 1),
+    discountRate: chargeConfig.rates.allowDiscount === false ? null : item.TILEGIAMGIA,
     ...taxPolicy(item, chargeRates, item.TILETHUE)}));
   const chargeTotals = savedSale || calculate(pricedCart, chargeRates, appliedDiscount.discountRate);
   const discountAmount = chargeTotals.discount;
   const otherFees = chargeTotals.serviceFee;
   const taxAmount = chargeTotals.tax;
   const total = chargeTotals.total;
+  const checkoutCash=Number(checkoutAmounts.cashGiven || 0),checkoutCard=Number(checkoutAmounts.card || 0),checkoutTransfer=checkoutTransferEnabled?Number(checkoutAmounts.transfer || 0):0;
+  const checkoutChange=Math.max(0,checkoutCash+checkoutCard+checkoutTransfer-total);
+  const checkoutDebt=Math.max(0,total-checkoutCash-checkoutCard-checkoutTransfer);
   useEffect(() => { setDiscountPercent(null); }, [customerId]);
 
   // Thêm vào giỏ
@@ -328,6 +353,7 @@ export default function BanHangPage() {
   // Xử lý quét barcode
   const handleBarcodeSubmit = (e) => {
     e.preventDefault();
+    if(chargeConfig.rates.barcodeEnabled===false)return;
     const query = barcodeInput.trim().toLowerCase();
     if (!query) return;
     const found = productList.find(
@@ -438,37 +464,67 @@ export default function BanHangPage() {
   };
 
   // Thanh toán: lưu phiếu -> backend render mẫu in mặc định -> xem/in
+  const requestCheckout=()=>{
+    if(!cart.length || processing || checkoutPending.current || showInvoiceModal || showCheckoutConfirm)return;
+    if(chargeConfig.rates.requireCustomer && !customerId){setToastMsg('Vui lòng chọn khách hàng trước khi bán.');return;}
+    if(chargeConfig.loading || chargeConfig.error){
+      setToastMsg(chargeConfig.error || 'Đang tải cấu hình thuế và phí dịch vụ.');return;
+    }
+    setCheckoutError('');setShowCheckoutConfirm(true);
+    setCheckoutAmounts({cashGiven:String(paymentMethod===1?0:total),card:'0',transfer:String(paymentMethod===1?total:0),allowDebt:false});
+    setCheckoutTransferEnabled(paymentMethod===1);
+    setCheckoutAccount('');setCheckoutBankError('');
+    api.get('/master-data/bank_accounts',{params:{status:1}}).then(response=>setCheckoutBanks(response.data.data || [])).catch(()=>setCheckoutBankError('Không tải được tài khoản ngân hàng. Hãy đóng và mở lại form để thử lại.'));
+  };
   const handleCheckout = async () => {
-    if (!cart.length || processing) return;
+    if (!showCheckoutConfirm || !cart.length || processing || checkoutPending.current) return;
+    if(checkoutTransferEnabled && checkoutTransfer<=0){setCheckoutError('Vui lòng nhập số tiền chuyển khoản lớn hơn 0.');return;}
     if (chargeConfig.loading || chargeConfig.error) {
       setToastMsg(chargeConfig.error || 'Đang tải cấu hình thuế và phí dịch vụ.');
       return;
     }
-    setProcessing(true);
+    checkoutPending.current=true;
+    setProcessing(true);setCheckoutError('');
     try {
       const result = await sales.create({
         DKHACHHANGID: customerId || null,
         DKHOXUATID: warehouseId || null,
         NOTE: note,
-        TILEGIAMGIA: discountPercent == null ? null : Number(discountPercent || 0),
+        TILEGIAMGIA: chargeConfig.rates.allowDiscount===false || discountPercent == null ? null : Number(discountPercent || 0),
         LOAITHANHTOAN: paymentMethod,
+        payments:{...checkoutAmounts,allowDebt:chargeConfig.rates.allowDebt!==false && checkoutAmounts.allowDebt,transfer:checkoutTransferEnabled?checkoutAmounts.transfer:'0'},
+        DTAIKHOANNGANHANGID:checkoutTransferEnabled?checkoutAccount || null:null,
         TILETHUE: chargeRates.taxRate,
         TILEPHIDICHVU: chargeRates.serviceRate,
-        items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity, DONGIA: item.GIABAN, TILETHUE: item.TILETHUE })),
+        items: cart.map((item) => ({ DMATHANGID: item.ID, SOLUONG: item.quantity, DONGIA: item.GIABAN, TILETHUE: item.TILETHUE,
+          TILEGIAMGIA: chargeConfig.rates.allowDiscount === false ? null : item.TILEGIAMGIA })),
       });
       if (!result?.id) throw new Error('Máy chủ không trả về mã phiếu bán hàng.');
       setSavedSale({ ...result });
       setSaleCode(result.code);
-      setShowInvoiceModal(true);
-      loadInvoicePrint(result.id);
+      setShowCheckoutConfirm(false);
+      if(result.requireBill)openDocumentPrint({type:'MauHoaDonBanHang',id:result.id,requiredPrint:true,autoPrint:true});
+      resetSale();
+      setToastMsg(`Đã lưu phiếu ${result.code}${result.payment?.debt>0?` — còn nợ ${money(result.payment.debt)} đ`:''}.`);
+      setTimeout(()=>setToastMsg(''),4000);
       await loadData();
     } catch (err) {
       console.error(err);
+      setCheckoutError(err?.response?.data?.error || err.message || 'Không lưu được thanh toán.');
       setToastMsg(`Thanh toán thất bại: ${err?.response?.data?.error || err.message}`);
       setTimeout(() => setToastMsg(''), 4000);
     } finally {
+      checkoutPending.current=false;
       setProcessing(false);
     }
+  };
+  const printDraft=()=>{
+    if(chargeConfig.rates.allowDraftPrint===false || !cart.length || processing || chargeConfig.loading || chargeConfig.error)return;
+    const preview=window.open('','_blank','width=760,height=800');
+    if(!preview){setCheckoutError('Trình duyệt đang chặn cửa sổ in tạm tính.');return;}
+    const escape=value=>String(value ?? '').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    preview.document.write(`<html lang="vi"><head><meta charset="utf-8"><title>Phiếu tạm tính</title><style>body{font:14px Arial;padding:24px}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}h1{font-size:22px}.total{text-align:right;font-size:20px}</style></head><body><h1>PHIẾU TẠM TÍNH</h1><p>${escape(saleCode)} — ${escape(customerList.find(row=>row.ID===customerId)?.NAME || 'Khách lẻ')}</p><table><thead><tr><th>Mặt hàng</th><th>SL</th><th>Đơn giá</th><th>Chiết khấu</th><th>Thành tiền</th></tr></thead><tbody>${cart.map((row, idx)=>`<tr><td>${escape(row.NAME)}</td><td>${escape(row.quantity)}</td><td>${money(row.GIABAN)}</td><td>${escape(row.TILEGIAMGIA ?? 0)}%</td><td>${money(chargeTotals.details[idx]?.lineNet ?? row.GIABAN*row.quantity)}</td></tr>`).join('')}</tbody></table><p class="total">Tổng thanh toán: <b>${money(total)} đ</b></p><p>Phiếu tạm tính — chưa xác nhận thanh toán.</p></body></html>`);
+    preview.document.close();preview.focus();preview.print();
   };
 
   // Bắt phím F5 để thanh toán nhanh
@@ -477,13 +533,17 @@ export default function BanHangPage() {
       if (e.key === 'F5') {
         e.preventDefault();
         if (cart.length && !processing) {
-          handleCheckout();
+          requestCheckout();
         }
+      }
+      if(e.key==='F8' && !showInvoiceModal){e.preventDefault();printDraft();}
+      if(showCheckoutConfirm && !processing && e.key==='F9'){
+        e.preventDefault();handleCheckout();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, processing, customerId, warehouseId, note, discountPercent, paymentMethod, chargeRates.taxRate, chargeRates.serviceRate, chargeConfig.loading, chargeConfig.error]);
+  }, [cart, processing, showCheckoutConfirm, showInvoiceModal, customerId, warehouseId, note, discountPercent, paymentMethod, chargeRates.taxRate, chargeRates.serviceRate, chargeConfig.rates, chargeConfig.loading, chargeConfig.error,checkoutAmounts,checkoutAccount,checkoutTransferEnabled,total,saleCode]);
 
   const selectedCustObj = customerList.find((c) => c.ID === customerId);
   const currentSeller = (() => {
@@ -517,10 +577,10 @@ export default function BanHangPage() {
         </div>
 
         <div className="pos-top-actions">
-          <button className="btn-pos-barcode" onClick={() => setShowBarcodeModal(true)}>
+          {chargeConfig.rates.barcodeEnabled!==false && <button className="btn-pos-barcode" onClick={() => setShowBarcodeModal(true)}>
             <Barcode size={17} />
             <span>Quét mã vạch</span>
-          </button>
+          </button>}
 
           <button className="btn-pos-white" onClick={resetSale}>
             <FilePlus size={16} color="#E65100" />
@@ -625,7 +685,7 @@ export default function BanHangPage() {
                       style={{ opacity: outOfStock ? 0.6 : 1 }}
                       title={outOfStock ? 'Hết hàng trong kho' : 'Click để thêm vào đơn hàng'}
                     >
-                      <div className="pos-card-img-wrap">
+                      {chargeConfig.rates.showProductImages!==false && <div className="pos-card-img-wrap">
                         <img
                           src={p.IMAGE || '/parts/no-image.svg'}
                           alt={p.NAME}
@@ -636,7 +696,7 @@ export default function BanHangPage() {
                             e.currentTarget.src = '/parts/no-image.svg';
                           }}
                         />
-                      </div>
+                      </div>}
                       <div className="pos-card-name">{p.NAME}</div>
                       <div className="pos-card-code">Mã: {p.CODE || p.MAOEM || '—'}</div>
                       <div className="pos-card-bottom">
@@ -749,6 +809,7 @@ export default function BanHangPage() {
                     <th style={{ width: 75, textAlign: 'left' }}>Mã hàng</th>
                     <th style={{ width: 72, textAlign: 'center' }}>Số lượng</th>
                     <th style={{ width: 80, textAlign: 'right' }}>Đơn giá</th>
+                    <th style={{ width: 80, textAlign: 'right' }}>Chiết khấu</th>
                     {chargeRates.taxEnabled !== false && <th style={{width: 85, textAlign: "right"}}>Thuế</th>}
                     <th style={{ width: 88, textAlign: 'right' }}>Thành tiền</th>
                     <th style={{ width: 32, textAlign: 'center' }}></th>
@@ -779,12 +840,26 @@ export default function BanHangPage() {
                         <EditableSalePrice value={item.GIABAN} name={item.NAME} disabled={processing}
                           onChange={(price) => updatePrice(item.ID, price)} />
                       </td>
+                      <td style={{ textAlign: 'right' }} title="Chiết khấu riêng cho món này, trừ trước giảm giá toàn bill">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+                          <input type="number" min="0" max="100" step="0.01"
+                            aria-label={`Chiết khấu ${item.NAME} (%)`}
+                            style={{ width: 50, border: '1px solid #cbd5e1', borderRadius: 4, padding: 3 }}
+                            disabled={processing || !!savedSale || !canEditPolicy || chargeConfig.rates.allowDiscount === false}
+                            value={item.TILEGIAMGIA ?? ''} placeholder="0"
+                            onChange={event => {
+                              const value = event.target.value;
+                              if (value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) return;
+                              setCart(current => current.map(row => row.ID === item.ID ? { ...row, TILEGIAMGIA: value === '' ? null : value } : row));
+                            }} />%
+                        </div>
+                      </td>
                       {chargeRates.taxEnabled !== false && <td className="pos-line-tax">
                         <LineTaxField name={item.NAME} value={item.TILETHUE} policy={pricedCart[idx]} disabled={processing || !!savedSale || !canEditPolicy}
                           onChange={value => setCart(current => current.map(row => row.ID === item.ID ? {...row,TILETHUE:value} : row))} />
                       </td>}
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#E65100', fontSize: '11.5px' }}>
-                        {money(Number(item.GIABAN || 0) * (item.quantity || 1))}
+                        {money(chargeTotals.details[idx]?.lineNet ?? Number(item.GIABAN || 0) * (item.quantity || 1))}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <button
@@ -800,7 +875,7 @@ export default function BanHangPage() {
                   {cart.length === 0 && (
                     <tr>
                       <td
-                        colSpan={chargeRates.taxEnabled === false ? 7 : 8}
+                        colSpan={chargeRates.taxEnabled === false ? 8 : 9}
                         style={{ textAlign: 'center', color: '#9ca3af', padding: '36px 12px' }}
                       >
                         <div style={{ fontSize: '28px', marginBottom: '6px' }}>🛒</div>
@@ -910,8 +985,8 @@ export default function BanHangPage() {
                     min="0"
                     max="100"
                     className="pos-discount-input"
-                    disabled={!!savedSale || !canEditPolicy}
-                    value={discountPercent ?? appliedDiscount.discountRate}
+                    disabled={!!savedSale || !canEditPolicy || chargeConfig.rates.allowDiscount===false}
+                    value={chargeConfig.rates.allowDiscount===false ? appliedDiscount.discountRate : discountPercent ?? appliedDiscount.discountRate}
                     onChange={(e) => setDiscountPercent(e.target.value)}
                   />
                   <select className="pos-discount-select">
@@ -919,9 +994,13 @@ export default function BanHangPage() {
                   </select>
                 </div>
               </div>
+              {chargeTotals.lineDiscount > 0 && <div className="pos-sum-row">
+                <span style={{ color: '#6b7280' }}>Chiết khấu mặt hàng</span>
+                <span style={{ color: '#6b7280' }}>{money(chargeTotals.lineDiscount)} đ</span>
+              </div>}
               <div className="pos-sum-row">
-                <span style={{ color: '#6b7280' }}>Tiền giảm</span>
-                <span style={{ color: '#6b7280' }}>{money(discountAmount)} đ</span>
+                <span style={{ color: '#6b7280' }}>Giảm giá toàn bill</span>
+                <span style={{ color: '#6b7280' }}>{money(chargeTotals.billDiscount ?? discountAmount)} đ</span>
               </div>
               {chargeRates.serviceEnabled !== false && <div className="pos-sum-row">
                 <span style={{ color: '#6b7280' }}>Phí dịch vụ ({chargeRates.serviceRate}%)</span>
@@ -930,6 +1009,9 @@ export default function BanHangPage() {
               {chargeRates.taxEnabled !== false && (chargeTotals.taxGroups || []).map(group => <div className="pos-sum-row" key={group.rate}>
                 <span style={{color:'#6b7280'}}>VAT {group.rate}%</span><span>{money(group.amount)} đ</span>
               </div>)}
+              {Math.abs(total - (chargeTotals.subtotal - discountAmount + otherFees + taxAmount)) > 0.01 && <div className="pos-sum-row">
+                <span>Điều chỉnh làm tròn</span><span>{money(total - (chargeTotals.subtotal - discountAmount + otherFees + taxAmount))} đ</span>
+              </div>}
               {chargeConfig.loading && <div role="status">Đang tải thuế và phí dịch vụ…</div>}
               {chargeConfig.error && <div role="alert" style={{ color: '#b91c1c', fontSize: 12 }}>{chargeConfig.error} <button type="button" onClick={chargeConfig.reload}>Thử lại</button></div>}
 
@@ -981,21 +1063,6 @@ export default function BanHangPage() {
                 </span>
               </label>
 
-              <label className={`pos-pm-label ${paymentMethod === 2 ? 'active' : ''}`}>
-                <div className="pos-pm-left">
-                  <input
-                    type="radio"
-                    name="pm"
-                    checked={paymentMethod === 2}
-                    onChange={() => setPaymentMethod(2)}
-                  />
-                  <span>Thẻ ngân hàng</span>
-                </div>
-                <span className={`pos-pm-amount ${paymentMethod === 2 ? '' : 'muted'}`}>
-                  {paymentMethod === 2 ? `${money(total)} đ` : '0 đ'}
-                </span>
-              </label>
-
               <label className={`pos-pm-label ${paymentMethod === 3 ? 'active' : ''}`}>
                 <div className="pos-pm-left">
                   <input
@@ -1029,19 +1096,51 @@ export default function BanHangPage() {
           </div>
 
           {/* Nút Thanh toán F5 */}
+          <div className="pos-checkout-buttons">
+          {chargeConfig.rates.allowDraftPrint!==false && <button type="button" className="btn-pos-checkout btn-pos-draft" onClick={printDraft}
+            disabled={!cart.length || processing || chargeConfig.loading || !!chargeConfig.error}>
+            <Printer size={20}/><span>In tạm tính (F8)</span>
+          </button>}
           <button
             className="btn-pos-checkout"
-            onClick={handleCheckout}
+            onClick={requestCheckout}
             disabled={!cart.length || processing || chargeConfig.loading || !!chargeConfig.error}
           >
             <BadgeDollarSign size={20} />
             <span>{processing ? 'Đang thanh toán...' : 'Thanh toán (F5)'}</span>
           </button>
+          </div>
         </div>
       </div>
 
+      {showCheckoutConfirm && createPortal(<dialog ref={checkoutDialog} className="pos-checkout-confirm" aria-labelledby="pos-checkout-confirm-title" onCancel={event=>{event.preventDefault();if(!checkoutPending.current)setShowCheckoutConfirm(false);}}>
+        <div className="pos-modal-header"><h4 id="pos-checkout-confirm-title">Xác nhận thanh toán</h4><button type="button" className="pos-modal-close" aria-label="Đóng xác nhận thanh toán" disabled={processing} onClick={()=>setShowCheckoutConfirm(false)}>×</button></div>
+        <div className="pos-modal-body">
+          <div className="pos-confirm-ticket"><strong>{saleCode || 'Phiếu bán hàng'} — {selectedCustObj?.NAME || 'Khách lẻ'}</strong>{chargeConfig.rates.allowDraftPrint!==false && <button type="button" className="btn-pos-white" disabled={processing} onClick={printDraft}><Printer size={15}/> In tạm tính (F8)</button>}</div>
+          <fieldset className="pos-confirm-fields" disabled={processing}>
+            <label className="pos-confirm-total">TỔNG TIỀN:<output>{money(total)}</output></label>
+            <label>Khách đưa:<CheckoutAmount autoFocus value={checkoutAmounts.cashGiven} onChange={cashGiven=>setCheckoutAmounts(row=>({...row,cashGiven}))}/></label>
+            <label className="pos-confirm-transfer-toggle"><input type="checkbox" checked={checkoutTransferEnabled} onChange={event=>{
+              setCheckoutTransferEnabled(event.target.checked);setCheckoutError('');
+              if(!event.target.checked){setCheckoutAmounts(row=>({...row,transfer:'0'}));setCheckoutAccount('');}
+            }}/> Chuyển khoản</label>
+            {checkoutTransferEnabled && <>
+              <label>Số tiền chuyển khoản:<CheckoutAmount value={checkoutAmounts.transfer} onChange={transfer=>setCheckoutAmounts(row=>({...row,transfer}))}/></label>
+              <label className="pos-confirm-bank">Tài khoản<select value={checkoutAccount} onChange={event=>setCheckoutAccount(event.target.value)}><option value="">Chọn tài khoản nhận</option>{checkoutBanks.map(row=><option key={row.ID} value={row.ID}>{row.NAME} — {row.SOTAIKHOAN}</option>)}</select></label>
+              {checkoutBankError && <p className="pos-confirm-error">{checkoutBankError}</p>}
+            </>}
+            <label>Thẻ trả trước:<input readOnly disabled value="0" title="Chưa có dữ liệu thẻ trả trước"/></label>
+            <label className="pos-confirm-change">Trả lại:<output>{money(checkoutChange)}</output></label>
+            {chargeConfig.rates.allowDebt!==false && <label className="pos-confirm-debt"><input type="checkbox" checked={checkoutAmounts.allowDebt} onChange={event=>setCheckoutAmounts(row=>({...row,allowDebt:event.target.checked}))}/> Khách nợ</label>}
+            {chargeConfig.rates.allowDebt!==false && checkoutAmounts.allowDebt && <div className="pos-confirm-debt-amount">Còn nợ: <b>{money(checkoutDebt)} đ</b>{!customerId && <p>Chọn khách hàng trên phiếu bán để ghi nhận công nợ.</p>}</div>}
+          </fieldset>
+          {checkoutError && <p className="pos-confirm-error" role="alert">{checkoutError}</p>}
+        </div>
+        <div className="pos-modal-footer pos-confirm-actions"><p>{chargeConfig.rates.requireBill!==false ? 'Bill bắt buộc in khi xác nhận thanh toán, kể cả khi khách còn nợ.' : 'Xác nhận để lưu thanh toán. Có thể in bill từ In chứng từ.'}</p><button type="button" className="btn-pos-barcode" disabled={processing || chargeConfig.loading || !!chargeConfig.error} onClick={handleCheckout}><Printer size={15}/>{processing?'Đang lưu…':chargeConfig.rates.requireBill!==false?'Xác nhận và in bill (F9)':'Xác nhận thanh toán (F9)'}</button><button type="button" className="btn-pos-white" disabled={processing} onClick={()=>setShowCheckoutConfirm(false)}>Hủy bỏ</button></div>
+      </dialog>,document.body)}
+
       {/* ===== POPUP: QUÉT MÃ VẠCH ===== */}
-      {showBarcodeModal && (
+      {showBarcodeModal && chargeConfig.rates.barcodeEnabled!==false && (
         <div className="pos-modal-overlay" onClick={() => setShowBarcodeModal(false)}>
           <div className="pos-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
@@ -1223,6 +1322,7 @@ export default function BanHangPage() {
               )}
               {invoicePrint.url && (
                 <iframe
+                  onLoad={event=>{if(autoPrintInvoice.current){autoPrintInvoice.current=false;try{event.currentTarget.contentWindow.focus();event.currentTarget.contentWindow.print();}catch{setToastMsg('Hóa đơn đã lưu. Bấm In hóa đơn để mở bản in.');}}}}
                   id="invoice-print-frame"
                   title="Bản in hóa đơn"
                   src={invoicePrint.url}
@@ -1250,7 +1350,7 @@ export default function BanHangPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span>Phương thức:</span>
-                  <span>{paymentMethod === 0 ? 'Tiền mặt' : 'Chuyển khoản'}</span>
+                  <span>{savedSale?.payment?.cash>0 && savedSale?.payment?.transfer>0?'Tiền mặt + Chuyển khoản':savedSale?.payment?.transfer>0?'Chuyển khoản':savedSale?.payment?.paid===0?'Ghi công nợ':'Tiền mặt'}</span>
                 </div>
               </div>
 

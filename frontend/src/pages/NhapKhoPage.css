@@ -416,3 +416,34 @@
     display: none !important;
   }
 }
+.nk-line-number {
+  width: 100%;
+  min-width: 45px;
+  box-sizing: border-box;
+  padding: 5px 6px;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  color: #1E293B;
+  background: #fff;
+  font: inherit;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.nk-line-number::-webkit-inner-spin-button,
+.nk-line-number::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.nk-line-number:focus {
+  outline: none;
+  border-color: #E65100;
+  box-shadow: 0 0 0 2px #FFF3E0;
+}
+
+.nk-line-number:disabled {
+  background: #F8FAFC;
+  color: #64748B;
+}

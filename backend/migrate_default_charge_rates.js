@@ -3,7 +3,7 @@ const { definitions, salesToggles } = require('./src/services/defaultChargeRates
 
 async function migrate(database = db) {
   return database.transaction(async (query, execute, uuidv4) => {
-    const groupName = 'Thuế & phí dịch vụ';
+    const groupName = 'Thanh toán';
     const groups = await query('SELECT ID FROM SCONFIGGROUP WHERE NAME=?', [groupName]);
     const groupId = groups[0]?.ID || uuidv4();
     if (!groups.length) await execute(
@@ -13,23 +13,33 @@ async function migrate(database = db) {
     let added = 0;
     for (const [index, item] of definitions.entries()) {
       const existing = await query('SELECT ID FROM SCONFIG WHERE NAME=?', [item.name]);
-      if (existing.length) continue;
+      const sortOrder = `CHARGE${String(index + 1).padStart(3, '0')}`;
+      if (existing.length) {
+        await execute('UPDATE SCONFIG SET SCONFIGGROUPID=?, SORTORDER=? WHERE ID=?', [groupId, sortOrder, existing[0].ID]);
+        continue;
+      }
       await execute(`INSERT INTO SCONFIG
         (ID, NAME, CAPTION, DATATYPE, CONTROLTYPE, DECIMALVALUE, SCONFIGGROUPID, STATUS, SORTORDER, MOREDETAIL, USERCREATEDID, TIMECREATED)
         VALUES (?, ?, ?, 4, 9, ?, ?, 30, ?, ?, 'SYSTEM', CURRENT_TIMESTAMP)`,
-      [uuidv4(), item.name, item.caption, item.value, groupId, String(index + 1).padStart(3, '0'),
+      [uuidv4(), item.name, item.caption, item.value, groupId, sortOrder,
         'Nhập tỷ lệ từ 0 đến 100%, tối đa 2 chữ số thập phân.']);
       added++;
     }
     for (const [index, item] of salesToggles.entries()) {
       const existing = await query('SELECT ID FROM SCONFIG WHERE NAME=?', [item.name]);
-      if (existing.length) continue;
+      const sortOrder = `CHARGE${String(index + 3).padStart(3, '0')}`;
+      if (existing.length) {
+        await execute('UPDATE SCONFIG SET SCONFIGGROUPID=?, SORTORDER=? WHERE ID=?', [groupId, sortOrder, existing[0].ID]);
+        continue;
+      }
       await execute(`INSERT INTO SCONFIG
         (ID, NAME, CAPTION, DATATYPE, CONTROLTYPE, INTVALUE, SCONFIGGROUPID, STATUS, SORTORDER, USERCREATEDID, TIMECREATED)
         VALUES (?, ?, ?, 3, 7, ?, ?, 30, ?, 'SYSTEM', CURRENT_TIMESTAMP)`,
-      [uuidv4(), item.name, item.caption, item.value, groupId, String(index + 3).padStart(3, '0')]);
+      [uuidv4(), item.name, item.caption, item.value, groupId, sortOrder]);
       added++;
     }
+    await execute(`UPDATE SCONFIGGROUP SET STATUS=-1 WHERE NAME=?
+      AND NOT EXISTS (SELECT 1 FROM SCONFIG s WHERE s.SCONFIGGROUPID=SCONFIGGROUP.ID AND (s.STATUS<>-1 OR s.STATUS IS NULL))`, ['Thuế & phí dịch vụ']);
     return { added };
   });
 }

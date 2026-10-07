@@ -1,11 +1,16 @@
 import { Folder, Folders, Layers, Search, Plus, Pencil, Ban, RotateCcw, Info, ChevronRight } from 'lucide-react';
 import useCatalogController, { ALL, UNGROUPED } from '../hooks/useCatalogController';
 import CatalogForms from '../components/CatalogForms';
+import {useState} from 'react';
+import Cashbook from '../components/Cashbook';
 import './DanhMucPage.css';
 
 export default function DanhMucPage() {
   const controller = useCatalogController();
+  const [fundsView,setFundsView]=useState('ledger');
+  const [fundsRefresh,setFundsRefresh]=useState(0);
   const { data, type, definition, group, setGroup, search, setSearch, status, setStatus, setSelectedId, shownRows, selected, notice, loading, error, saving, groupOptions, groupName, groupTitle, groupAddLabel, listTitle, selectType, openEditor, toggleActive, load } = controller;
+  const isFundsLedger=type==='funds' && fundsView==='ledger';
   return (
     <div className="catalog-page">
       <header className="catalog-page-heading">
@@ -17,15 +22,15 @@ export default function DanhMucPage() {
           </div>
         </div>
         <div className="catalog-heading-actions">
-          <button type="button" className="catalog-secondary catalog-reset" disabled={loading || saving} onClick={() => {
-            load(type);
+          <button type="button" className="catalog-secondary catalog-reset" disabled={(!isFundsLedger && loading) || saving} onClick={() => {
+            if(isFundsLedger)setFundsRefresh(value=>value+1);else load(type);
           }}>
             <RotateCcw size={14} /> Tải lại
           </button>
         </div>
       </header>
 
-      {(loading || error || definition.available === false || definition.sourceNote) && <div className="catalog-demo-note" role={error ? 'alert' : 'status'}>
+      {!isFundsLedger && (loading || error || definition.available === false || definition.sourceNote) && <div className="catalog-demo-note" role={error ? 'alert' : 'status'}>
         <div className="catalog-demo-note-content"><Info size={15}/><span>{loading ? 'Đang tải dữ liệu…' : error || definition.sourceNote || 'Danh mục chưa có bảng trong database hiện tại. Đã chuẩn bị luồng tải và form nhập.'}</span></div>
       </div>}
 
@@ -53,7 +58,7 @@ export default function DanhMucPage() {
           </div>
         </nav>
 
-        <section className={`catalog-workspace ${definition.simple ? 'without-groups' : ''}`}>
+        {isFundsLedger ? <Cashbook refreshKey={fundsRefresh} onManageFunds={()=>setFundsView('catalog')}/> : <section className={`catalog-workspace ${definition.simple ? 'without-groups' : ''}`}>
           {!definition.simple && (
             <aside className="catalog-groups">
               <div className="catalog-panel-heading">
@@ -98,6 +103,7 @@ export default function DanhMucPage() {
 
           <section className="catalog-records">
             <div className="catalog-panel-heading catalog-record-title">
+              {type==='funds' && <button type="button" className="catalog-secondary" onClick={()=>setFundsView('ledger')}>← Sổ quỹ</button>}
               <span className="catalog-record-title-main">{listTitle}</span>
               {!definition.simple && <span className="catalog-record-title-sub">/ {groupName}</span>}
               <span className="catalog-record-count-pill">{shownRows.length} mục</span>
@@ -232,7 +238,7 @@ export default function DanhMucPage() {
               )}
             </section>
           </section>
-        </section>
+        </section>}
       </div>
 
       <CatalogForms controller={controller}/>

@@ -2,6 +2,7 @@ import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import useDocumentNumber from '../hooks/useDocumentNumber';
 import DocumentNumberField from '../components/DocumentNumberField';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Wrench, Calendar, Search, CheckSquare, Square, Check, XCircle, RotateCcw, 
   Send, Printer, Bookmark, CheckCircle, ChevronDown, Sparkles, Filter, 
@@ -10,7 +11,9 @@ import {
 } from 'lucide-react';
 import { customers, employees, invoices, masterData, parts as partsApi, repairOrders, vehicles, workflow } from '../services';
 import VehicleProfileModal from '../components/VehicleProfileModal';
+import VehicleSelect from '../components/VehicleSelect';
 import EmployeeFormModal from '../components/EmployeeFormModal';
+import RepairAssignmentPanel from '../components/RepairAssignmentPanel';
 import RepairSupplements from '../components/RepairSupplements';
 import LineTaxField from '../components/LineTaxField';
 import ChargeSummary from '../components/ChargeSummary';
@@ -49,6 +52,11 @@ const compressWorkflowImage = (file) => new Promise((resolve, reject) => {
 });
 
 export default function SuaChuaPage() {
+  const [searchParams] = useSearchParams();
+  const requestedVehicleId = searchParams.get('vehicleId');
+  const requestedRepairId = searchParams.get('repairId');
+  const requestedConfirmation = searchParams.get('confirm') === '1';
+  const requestedPayment = searchParams.get('payment') === '1';
   // Toast thông báo
   const [toastMessage, setToastMessage] = useState('');
   const showToast = (msg) => {
@@ -89,8 +97,11 @@ export default function SuaChuaPage() {
   const [vehicleFlowOptions, setVehicleFlowOptions] = useState([]);
   const vehicleSelectionRequest = useRef(0);
   const [showRepairConfirmation, setShowRepairConfirmation] = useState(false);
+  const [repairAssignment, setRepairAssignment] = useState({ valid: false, assignments: [] });
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [allowPaymentDebt, setAllowPaymentDebt] = useState(false);
+  const [paymentCollected, setPaymentCollected] = useState('');
   const [workflowImages, setWorkflowImages] = useState([]);
   const [draftWorkflowImages, setDraftWorkflowImages] = useState([]);
   const [selectedImageState, setSelectedImageState] = useState(0);
@@ -169,8 +180,14 @@ export default function SuaChuaPage() {
           })),
         ];
         setServices(catalog);
-        const first = availableVehicles[0];
+        if (requestedVehicleId && !availableVehicles.some(vehicle => String(vehicle.ID) === requestedVehicleId)) {
+          showToast('Không tìm thấy xe được chọn. Vui lòng tải lại Hồ sơ xe.');
+          return;
+        }
+        const first = availableVehicles.find((vehicle) => String(vehicle.ID) === requestedVehicleId) || availableVehicles[0];
         if (first) {
+          setRepairFlow({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
+          setSavedOrder(null); setSavedDetails([]); setRepairNotes(''); setShowRepairConfirmation(false); setShowPayment(false);
           setVehicleInfo((current) => ({
             ...current, vehicleId: first.ID, customerId: first.DKHACHHANGID || '',
             plate: first.BIENSO || '', customer: first.TEN_KH || '',
@@ -182,7 +199,11 @@ export default function SuaChuaPage() {
           const flowRows = await workflow.byVehicleAll(first.ID).catch(() => []);
           const flowOptions = Array.isArray(flowRows) ? flowRows : [];
           setVehicleFlowOptions(flowOptions);
-          const activeFlow = flowOptions[0] || null;
+          if (requestedRepairId && !flowOptions.some(flow => String(flow.TLENHSUACHUAID) === requestedRepairId)) {
+            showToast('Không tìm thấy quy trình của phiếu sửa chữa được chọn. Vui lòng tải lại Hồ sơ xe.');
+            return;
+          }
+          const activeFlow = flowOptions.find(flow => String(flow.TLENHSUACHUAID) === requestedRepairId) || flowOptions[0] || null;
           if (activeFlow) {
             setRepairFlow({
               repairId: activeFlow.TLENHSUACHUAID || null,
@@ -198,8 +219,15 @@ export default function SuaChuaPage() {
               const order = await repairOrders.get(activeFlow.TLENHSUACHUAID).catch(() => null);
               setSavedDetails(order?.details || []);
               setSavedOrder(order);
+              setRepairNotes(order?.NOTE || '');
               const detailIds = new Set((order?.details || []).map((detail) => detail.DMATHANGID || detail.DDICHVUID));
               setServices(catalog.map((item) => ({ ...item, checked: detailIds.has(item.sourceId) })));
+              if (requestedConfirmation && Number(activeFlow.TRANGTHAI) === 1) setShowRepairConfirmation(true);
+              if (requestedPayment && order && String(activeFlow.TLENHSUACHUAID) === requestedRepairId) {
+                if (Number(activeFlow.TRANGTHAI) === 3) {
+                  setPaymentMethod('cash'); setAllowPaymentDebt(false); setPaymentCollected(''); setShowPayment(true);
+                } else showToast('Phiếu không còn ở bước Chờ giao xe. Trạng thái đã được cập nhật.');
+              }
             }
           }
         }
@@ -208,7 +236,7 @@ export default function SuaChuaPage() {
       }
     };
     loadDatabase();
-  }, []);
+  }, [requestedVehicleId, requestedRepairId, requestedConfirmation, requestedPayment]);
 
   useEffect(() => {
     const customRoles = [];
@@ -304,6 +332,7 @@ export default function SuaChuaPage() {
   useEffect(() => { setDiscountOverride(null); }, [vehicleInfo.customerId]);
 
   const businessStage = Math.max(0, Math.min(4, Number(repairFlow.workflowState ?? 0)));
+  const processStage = repairFlow.repairId ? Math.max(1, businessStage) : businessStage;
   const isFlowCompleted = Number(repairFlow.workflowState) === 4;
   const isServiceSelectionLocked = Boolean(repairFlow.repairId);
   const activeVehicleFlow = vehicleFlowOptions.find((flow) => Number(flow.TRANGTHAI) < 4) || null;
@@ -755,9 +784,8 @@ export default function SuaChuaPage() {
             showToast(imageError?.response?.data?.error || 'Phiếu đã lưu nhưng chưa thể lưu ảnh trạng thái.');
           }
         } else {
-          showToast('Đã hoàn tất Tiếp nhận & Báo giá. Hồ sơ đã chuyển sang Xác nhận sửa chữa.');
+          showToast('Đã lưu Tiếp nhận & Báo giá. Hồ sơ chuyển sang Xác nhận sửa chữa.');
         }
-        setShowRepairConfirmation(true);
       } else if (repairFlow.workflowState === 0 || repairFlow.workflowState === 1) {
         setShowRepairConfirmation(true);
       } else if (repairFlow.workflowState < 3) {
@@ -773,6 +801,8 @@ export default function SuaChuaPage() {
         showToast(`Đã chuyển sang: ${nextLabel}.`);
       } else if (repairFlow.workflowState === 3) {
         setPaymentMethod('cash');
+        setAllowPaymentDebt(false);
+        setPaymentCollected('');
         setShowPayment(true);
       } else {
         showToast('Phiếu sửa chữa đã hoàn thành.');
@@ -785,19 +815,24 @@ export default function SuaChuaPage() {
   };
 
   const handleConfirmRepair = async () => {
+    if (!repairAssignment.valid) return showToast('Chọn nhân viên, người phụ trách chính và chia đủ 100% trước khi xác nhận.');
+    if (!repairFlow.repairId || ![0, 1].includes(Number(repairFlow.workflowState))) return showToast('Phiếu cần ở bước Tiếp nhận & Báo giá hoặc Xác nhận sửa chữa.');
     setSavingProcess(true);
     try {
-      // Ho tro phieu cu van con o buoc Tiep nhan & Bao gia.
       if (Number(repairFlow.workflowState) === 0) {
         await workflow.transition({
           DXEID: vehicleInfo.vehicleId, TRANGTHAI: 1,
+          TLENHSUACHUAID: repairFlow.repairId,
           DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
-          LYDO: 'Hoan tat tiep nhan va bao gia, cho xac nhan sua chua',
-          GHICHU: repairNotes,
+          LYDO: 'Duyệt báo giá và xác nhận sửa chữa', GHICHU: repairNotes,
         });
+        setRepairFlow((current) => ({ ...current, workflowState: 1 }));
+        updateSelectedFlowState(1);
       }
       await workflow.transition({
         DXEID: vehicleInfo.vehicleId, TRANGTHAI: 2,
+        TLENHSUACHUAID: repairFlow.repairId,
+        assignments: repairAssignment.assignments,
         DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
         LYDO: 'Bat dau sua chua sau khi khach hang xac nhan',
         GHICHU: repairNotes,
@@ -805,7 +840,7 @@ export default function SuaChuaPage() {
       setRepairFlow((current) => ({ ...current, workflowState: 2 }));
       updateSelectedFlowState(2);
       setShowRepairConfirmation(false);
-      showToast('Đã xác nhận và chuyển sang Đang sửa.');
+      showToast('Đã lưu phân công, hoa hồng và chuyển sang Đang sửa.');
     } catch (error) {
       showToast(error?.response?.data?.error || error.message || 'Không thể xác nhận sửa chữa.');
     } finally {
@@ -814,7 +849,7 @@ export default function SuaChuaPage() {
   };
 
   const handlePayment = async () => {
-    if (!savedInvoice && (chargeConfig.loading || chargeConfig.error)) return showToast(chargeConfig.error || 'Đang tải cấu hình thuế và phí dịch vụ.');
+    if (chargeConfig.loading || chargeConfig.error) return showToast(chargeConfig.error || 'Đang tải cấu hình thanh toán.');
     if (!repairFlow.repairId) return showToast('Không tìm thấy lệnh sửa chữa để thanh toán.');
     if (totalAmount <= 0) return showToast('Tổng tiền thanh toán phải lớn hơn 0.');
     setSavingProcess(true);
@@ -824,34 +859,53 @@ export default function SuaChuaPage() {
         (item) => item.TLENHSUACHUAID === repairFlow.repairId
       );
       const payable = Number(existing?.TONGCONG ?? totalAmount);
+      const previous = ['TIENMAT', 'CHUYENKHOAN', 'THE'].reduce((sum, key) => sum + Number(existing?.[key] || 0), 0);
+      const outstanding = Math.max(0, payable - previous);
+      const debtEnabled = chargeConfig.rates.allowDebt !== false && allowPaymentDebt;
+      const collected = debtEnabled ? Number(paymentCollected || 0) : outstanding;
+      if (!Number.isFinite(collected) || collected < 0 || collected > outstanding) throw new Error('Số tiền thu phải từ 0 đến số tiền còn phải thanh toán.');
+      if (collected < outstanding && !vehicleInfo.customerId) throw new Error('Vui lòng chọn khách hàng để ghi nhận công nợ.');
       const amounts = {
-        TIENMAT: paymentMethod === 'cash' ? payable : 0,
-        CHUYENKHOAN: paymentMethod === 'transfer' ? payable : 0,
-        THE: paymentMethod === 'card' ? payable : 0,
+        TIENMAT: Number(existing?.TIENMAT || 0) + (paymentMethod === 'cash' ? collected : 0),
+        CHUYENKHOAN: Number(existing?.CHUYENKHOAN || 0) + (paymentMethod === 'transfer' ? collected : 0),
+        THE: Number(existing?.THE || 0),
+        ALLOW_DEBT: debtEnabled,
       };
 
+      let invoiceId = existing?.ID;
+      let requireBill;
+      let paymentResult;
       if (existing) {
-        await invoices.pay(existing.ID, amounts);
+        const result = await invoices.pay(existing.ID, amounts);
+        paymentResult = result;
+        requireBill = result.requireBill;
       } else {
-        await invoices.create({
+        const result = await invoices.create({
           TLENHSUACHUAID: repairFlow.repairId,
           NGAY: new Date().toISOString().slice(0, 10),
           TILETHUE: chargeRates.taxRate,
           TILEPHIDICHVU: chargeRates.serviceRate,
           ...amounts,
         });
+        paymentResult = result;
+        invoiceId = result.id;
+        requireBill = result.requireBill;
       }
 
+      setShowPayment(false);
+      if(requireBill)openDocumentPrint({ type: 'MauHoaDonSuaChua', id: invoiceId, requiredPrint: true, autoPrint: true });
       const paidOrder = await repairOrders.get(repairFlow.repairId);
       setSavedOrder(paidOrder);
-      if (Number(paidOrder.invoice?.DATHANHTOAN) !== 1) {
-        showToast('Đã ghi nhận thanh toán. Hóa đơn còn số tiền chưa thanh toán.');
+      if (!paymentResult.completed) {
+        showToast(`Đã ghi nhận thanh toán và công nợ ${formatMoney(paymentResult.remaining)}.${requireBill ? ' Vui lòng in bill.' : ''}`);
         return;
       }
       setRepairFlow((current) => ({ ...current, workflowState: 4 }));
       updateSelectedFlowState(4);
       setShowPayment(false);
-      showToast('Thanh toán thành công. Phiếu đã chuyển sang Hoàn thành.');
+      showToast(paymentResult.paid
+        ? 'Thanh toán thành công. Phiếu đã chuyển sang Hoàn thành.'
+        : `Phiếu đã chuyển sang Hoàn thành. Đã ghi nhận công nợ ${formatMoney(paymentResult.remaining)}.`);
     } catch (error) {
       showToast(error?.response?.data?.error || error.message || 'Không thể thanh toán phiếu sửa chữa.');
     } finally {
@@ -1008,8 +1062,8 @@ export default function SuaChuaPage() {
 
       <div className="repair-process-stepper">
         {processLabels.map((label, index) => {
-          const stepCompleted = index < businessStage || (isFlowCompleted && index === businessStage);
-          const stepActive = index === businessStage && !isFlowCompleted;
+          const stepCompleted = index < processStage || (isFlowCompleted && index === processStage);
+          const stepActive = index === processStage && !isFlowCompleted;
           return (
           <div key={label} className="repair-process-step">
             <div className="step-content" style={{ display: 'flex', alignItems: 'center', gap: 5, color: stepCompleted ? '#2E7D32' : stepActive ? '#E65100' : '#94A3B8', fontWeight: stepCompleted || stepActive ? 800 : 600 }}>
@@ -1019,7 +1073,7 @@ export default function SuaChuaPage() {
               <span className="step-label-full">{label}</span>
               <span className="step-label-short">{shortProcessLabels[index]}</span>
             </div>
-            {index < processLabels.length - 1 && <ChevronDown size={13} className="step-arrow" style={{ margin: '0 8px', transform: 'rotate(-90deg)', color: index < businessStage ? '#2E7D32' : '#CBD5E1', flexShrink: 0 }} />}
+            {index < processLabels.length - 1 && <ChevronDown size={13} className="step-arrow" style={{ margin: '0 8px', transform: 'rotate(-90deg)', color: index < processStage ? '#2E7D32' : '#CBD5E1', flexShrink: 0 }} />}
           </div>
           );
         })}
@@ -1045,26 +1099,7 @@ export default function SuaChuaPage() {
               Biển số xe
             </label>
             <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 6 }}>
-              <select
-                value={vehicleInfo.vehicleId}
-                onChange={(e) => selectVehicle(e.target.value)}
-                style={{
-                  flex: 1, minWidth: 0,
-                  height: 'clamp(28px, 3.2vh, 31px)',
-                  padding: '0 8px',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 4,
-                  fontSize: 'inherit',
-                  outline: 'none',
-                  background: '#FFFFFF', cursor: 'pointer',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value="">-- Chọn xe --</option>
-                {vehicleOptions.map((vehicle) => (
-                  <option key={vehicle.ID} value={vehicle.ID}>{vehicle.BIENSO} - {vehicle.TEN_KH || 'Chưa có chủ xe'}</option>
-                ))}
-              </select>
+              <VehicleSelect vehicles={vehicleOptions} value={vehicleInfo.vehicleId} onChange={selectVehicle} />
               <button type="button" onClick={openAddVehicle} style={{ height: 'clamp(28px, 3.2vh, 31px)', padding: '0 11px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 'inherit', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>＋ Thêm</button>
             </div>
           </div>
@@ -1521,7 +1556,10 @@ export default function SuaChuaPage() {
               <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 'clamp(11.5px, 0.85vw, 13px)' }}>
                 Danh sách đã chọn
               </span>
-              {repairFlow.repairId && Number(repairFlow.workflowState) >= 2 && <button type="button" onClick={() => setShowSupplements(true)} style={{ marginLeft: 'auto', border: '1px solid #FDBA74', borderRadius: 4, background: '#FFF7ED', color: '#9A3412', padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>Phát sinh</button>}
+              {repairFlow.repairId && Number(repairFlow.workflowState) >= 2 && <>
+                <button type="button" onClick={() => setShowRepairConfirmation(true)} style={{ marginLeft: 'auto', border: '1px solid #FDBA74', borderRadius: 4, background: '#FFF7ED', color: '#9A3412', padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>Phân công / HH</button>
+                <button type="button" onClick={() => setShowSupplements(true)} style={{ border: '1px solid #FDBA74', borderRadius: 4, background: '#FFF7ED', color: '#9A3412', padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>Phát sinh</button>
+              </>}
             </div>
 
             {/* Bảng các mục đã chọn */}
@@ -1784,15 +1822,13 @@ export default function SuaChuaPage() {
                   ? 'Đang xử lý...'
                   : !repairFlow.repairId
                     ? 'Lưu Tiếp nhận & Báo giá'
-                    : repairFlow.workflowState === 0
+                    : repairFlow.workflowState === 0 || repairFlow.workflowState === 1
                       ? 'Xác nhận sửa chữa'
-                      : repairFlow.workflowState === 1
-                        ? 'Bắt đầu sửa chữa'
-                        : repairFlow.workflowState === 2
-                          ? 'Giao xe'
-                          : repairFlow.workflowState === 3
-                            ? 'Thanh toán'
-                            : activeVehicleFlow ? 'Mở phiếu đang xử lý' : 'Tạo lượt sửa chữa mới'}
+                      : repairFlow.workflowState === 2
+                        ? 'Giao xe'
+                        : repairFlow.workflowState === 3
+                          ? 'Thanh toán'
+                          : activeVehicleFlow ? 'Mở phiếu đang xử lý' : 'Tạo lượt sửa chữa mới'}
               </span>
             </button>
           </div>
@@ -2201,21 +2237,32 @@ export default function SuaChuaPage() {
                 <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} disabled={savingProcess} style={{ height: 36, padding: '0 10px', border: '1px solid #CBD5E1', borderRadius: 5, background: '#fff', fontSize: 12 }}>
                   <option value="cash">Tiền mặt</option>
                   <option value="transfer">Chuyển khoản</option>
-                  <option value="card">Thẻ</option>
                 </select>
               </label>
 
+              {chargeConfig.rates.allowDebt!==false && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14 }}>
+                <input type="checkbox" checked={allowPaymentDebt} disabled={savingProcess} onChange={event => setAllowPaymentDebt(event.target.checked)} />
+                Khách nợ
+              </label>}
+              {chargeConfig.rates.allowDebt!==false && allowPaymentDebt && <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                Số tiền thu lần này (đ)
+                <input inputMode="numeric" value={paymentCollected ? Number(paymentCollected).toLocaleString('vi-VN') : ''} placeholder="0" disabled={savingProcess}
+                  onChange={event => setPaymentCollected(event.target.value.replace(/\D/g, ''))} style={{ height: 36, padding: '0 10px', border: '1px solid #CBD5E1', borderRadius: 5 }} />
+                <span>Còn nợ: {formatMoney(Math.max(0, totalAmount - ['TIENMAT', 'CHUYENKHOAN', 'THE'].reduce((sum, key) => sum + Number(savedInvoice?.[key] || 0), 0) - Number(paymentCollected || 0)))}</span>
+              </label>}
+
               <div style={{ marginTop: 12, padding: '8px 10px', borderRadius: 5, background: '#EFF6FF', color: '#1E40AF', fontSize: 11 }}>
-                Xác nhận thanh toán đủ sẽ tự động chuyển phiếu sang <b>Hoàn thành</b>.
+                Xác nhận thanh toán sẽ chuyển phiếu sang <b>Hoàn thành</b>. {chargeConfig.rates.allowDebt!==false && 'Nếu cho khách nợ, số tiền còn thiếu được ghi nhận công nợ. '} {chargeConfig.rates.requireBill!==false && 'Bắt buộc in bill sau khi lưu.'}
               </div>
             </div>
 
-            <div style={{ padding: '10px 15px', background: '#FAFAFA', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <div style={{ padding: '10px 15px', background: '#FAFAFA', borderTop: '1px solid #E2E8F0', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 }}>
+
               <button type="button" disabled={savingProcess} onClick={() => setShowPayment(false)} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
                 Hủy
               </button>
               <button type="button" disabled={savingProcess} onClick={handlePayment} style={{ height: 34, padding: '0 16px', background: savingProcess ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <CheckCircle size={14} /> {savingProcess ? 'Đang thanh toán...' : 'Xác nhận thanh toán'}
+                <CheckCircle size={14} /> {savingProcess ? 'Đang thanh toán...' : chargeConfig.rates.requireBill!==false ? 'Xác nhận và in bill' : 'Xác nhận thanh toán'}
               </button>
             </div>
           </div>
@@ -2236,7 +2283,7 @@ export default function SuaChuaPage() {
           <div style={{ width: 'min(760px, 96vw)', maxHeight: '90vh', background: '#fff', borderRadius: 8, boxShadow: '0 18px 45px rgba(15,23,42,0.32)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ background: '#E65100', color: '#fff', padding: '11px 15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: 14 }}>
-                <CheckSquare size={17} /> XÁC NHẬN SỬA CHỮA
+                <CheckSquare size={17} /> {Number(repairFlow.workflowState) >= 2 ? 'PHÂN CÔNG & HOA HỒNG' : 'XÁC NHẬN SỬA CHỮA'}
               </div>
               <button type="button" disabled={savingProcess} onClick={() => setShowRepairConfirmation(false)} style={{ border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', display: 'flex' }}>
                 <XCircle size={18} />
@@ -2283,18 +2330,22 @@ export default function SuaChuaPage() {
                 {chargeSummary}
               </div>
 
-              <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, background: '#EFF6FF', color: '#1E40AF', fontSize: 11 }}>
+              <RepairAssignmentPanel repairId={repairFlow.repairId} onChange={setRepairAssignment} disabled={savingProcess} readOnly={Number(repairFlow.workflowState) >= 2} />
+              {Number(repairFlow.workflowState) < 2 && <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, background: '#EFF6FF', color: '#1E40AF', fontSize: 11 }}>
                 Khi nhấn <b>Xác nhận sửa chữa</b>, hệ thống sẽ ghi lịch sử xác nhận của khách hàng và tự động chuyển xe sang bước <b>Đang sửa</b>.
-              </div>
+              </div>}
             </div>
 
             <div style={{ padding: '10px 15px', background: '#FAFAFA', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button type="button" disabled={savingProcess} onClick={() => setShowRepairConfirmation(false)} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
-                Chưa xác nhận
+              <button type="button" disabled={savingProcess} onClick={() => setShowRepairConfirmation(false)} style={{ marginRight: 'auto', height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
+                {Number(repairFlow.workflowState) >= 2 ? 'Đóng' : 'Chưa xác nhận'}
               </button>
-              <button type="button" disabled={savingProcess} onClick={handleConfirmRepair} style={{ height: 34, padding: '0 16px', background: savingProcess ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button type="button" disabled={savingProcess || !repairFlow.repairId} title="In lệnh sửa chữa đã lưu" onClick={() => openDocumentPrint({ type: 'MauPhieuSuaChua', types: ['MauPhieuSuaChua'], id: repairFlow.repairId, autoPreview: true })} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#E65100', fontWeight: 600, cursor: savingProcess || !repairFlow.repairId ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Printer size={14} /> In lệnh sửa chữa
+              </button>
+              {Number(repairFlow.workflowState) < 2 && <button type="button" disabled={savingProcess || !repairAssignment.valid} onClick={handleConfirmRepair} style={{ height: 34, padding: '0 16px', background: savingProcess || !repairAssignment.valid ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CheckCircle size={14} /> {savingProcess ? 'Đang xác nhận...' : 'Xác nhận sửa chữa'}
-              </button>
+              </button>}
             </div>
           </div>
         </div>

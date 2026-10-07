@@ -11,7 +11,7 @@ function validateMaster(body) {
 }
 function assertOverride(req, code) {
   const override = req.body.TILEGIAMGIA != null || req.body.TIENGIAMGIA != null
-    || req.body.items?.some(line => line.TILETHUE != null);
+    || req.body.items?.some(line => line.TILETHUE != null || line.TILEGIAMGIA != null);
   if (override && req.accessUser && Number(req.accessUser.ISADMIN) !== 1
     && (Number(req.accessUser.permissions?.[code] || 0) & 4) !== 4) {
     throw Object.assign(new Error('Bạn cần quyền Sửa để đặt thuế hoặc giảm giá riêng trên phiếu.'), { status: 403 });
@@ -51,7 +51,12 @@ async function item(query, type, id) {
 function calculate(lines, rates, discountRate = 0, fixedDiscount) {
   rate(discountRate);
   const subtotal = round(lines.reduce((sum, line) => sum + Number(line.amount), 0));
-  const discount = fixedDiscount == null ? round(subtotal * discountRate / 100) : round(Number(fixedDiscount));
+  const lineRates = lines.map(line => rate(line.discountRate) ?? 0);
+  const lineDiscounts = lines.map((line, index) => round(Number(line.amount) * lineRates[index] / 100));
+  const lineDiscount = round(lineDiscounts.reduce((sum, value) => sum + value, 0));
+  const afterLineDiscount = round(subtotal - lineDiscount);
+  const billDiscount = fixedDiscount == null ? round(afterLineDiscount * discountRate / 100) : round(Number(fixedDiscount));
+  const discount = round(lineDiscount + billDiscount);
   if (!Number.isFinite(subtotal) || subtotal < 0 || !Number.isFinite(discount) || discount < 0 || discount > subtotal) throw Object.assign(new Error('Tiền hàng hoặc giảm giá không hợp lệ.'), { status: 400 });
   let allocated = 0, cumulative = 0;
   const groups = new Map();
@@ -61,23 +66,28 @@ function calculate(lines, rates, discountRate = 0, fixedDiscount) {
   };
   const details = lines.map((line, index) => {
     const amount = round(Number(line.amount));
-    cumulative = round(cumulative + amount);
-    const target = index === lines.length - 1 ? discount : round(subtotal ? cumulative * discount / subtotal : 0);
-    const reduction = round(target - allocated);
+    const lineNet = round(amount - lineDiscounts[index]);
+    cumulative = round(cumulative + lineNet);
+    const target = index === lines.length - 1 ? billDiscount : round(afterLineDiscount ? cumulative * billDiscount / afterLineDiscount : 0);
+    const billReduction = round(target - allocated);
+    const reduction = round(lineDiscounts[index] + billReduction);
     allocated = target;
     const base = round(amount - reduction);
     const taxRate = rate(line.taxRate) ?? rates.taxRate;
     const tax = Math.round(base * taxRate / 100);
     addTax(taxRate, base, tax);
-    return { ...line, amount, discount: reduction, discountRate, taxRate, tax, net: base, total: round(base + tax) };
+    return { ...line, amount, lineDiscountRate: lineRates[index], lineDiscount: lineDiscounts[index], lineNet, billDiscount: billReduction,
+      discount: reduction, discountRate: line.discountRate == null ? discountRate : lineRates[index],
+      taxRate, tax, net: base, total: round(base + tax) };
   });
   const serviceFee = Math.round((subtotal - discount) * rates.serviceRate / 100);
   const serviceTax = Math.round(serviceFee * rates.taxRate / 100);
   if (serviceFee) addTax(rates.taxRate, serviceFee, serviceTax);
   const tax = round(details.reduce((sum, line) => sum + line.tax, 0) + serviceTax);
-  const total = round(subtotal - discount + serviceFee + tax);
+  const unrounded = round(subtotal - discount + serviceFee + tax);
+  const total = rates.roundingStep ? Math.round(unrounded / rates.roundingStep) * rates.roundingStep : unrounded;
   if (!Number.isFinite(total) || total > Number.MAX_SAFE_INTEGER) throw Object.assign(new Error('Tổng tiền không hợp lệ.'), { status: 400 });
-  return { subtotal, discount, discountRate, tax, serviceFee, serviceTax, total, details, taxGroups: [...groups.values()].sort((a, b) => a.rate - b.rate) };
+  return { subtotal, lineDiscount, afterLineDiscount, billDiscount, discount, discountRate, tax, serviceFee, serviceTax, total, details, taxGroups: [...groups.values()].sort((a, b) => a.rate - b.rate) };
 }
 function summary(value) {
   if (!value) return [];

@@ -70,6 +70,7 @@ export default function App() {
         <Route path="thu-chi"       element={secured('FINANCE', <ThuChiPage />)} />
         <Route path="nhan-vien"     element={secured('EMPLOYEES', <NhanVienPage />)} />
         <Route path="bao-cao"       element={secured('REPORTS', <BaoCaoPage />)} />
+        <Route path="in-chung-tu"   element={<DocumentPrintDialog embedded />} />
         <Route path="quan-tri"      element={secured('ADMIN', <QuanTriPage />)} />
         <Route path="cau-hinh"      element={secured('SETTINGS', <CauHinhPage />)} />
         <Route path="danh-muc"      element={secured('SETTINGS', <DanhMucPage />)} />

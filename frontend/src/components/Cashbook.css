@@ -1,0 +1,569 @@
+/* ===== SỔ QUỸ (CASHBOOK) STYLES ===== */
+.cashbook {
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  background: #ffffff;
+  overflow: hidden;
+  height: 100%;
+}
+
+.cashbook-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #FFF7ED;
+  border-bottom: 1px solid #FED7AA;
+  font-size: 13.5px;
+}
+.cashbook-heading strong {
+  margin-right: auto;
+  color: #9A3412;
+  font-weight: 700;
+}
+
+.cashbook button {
+  border: 1px solid #CBD5E1;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #334155;
+  padding: 6px 10px;
+  font: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cashbook button:hover:not(:disabled) {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+}
+.cashbook button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cashbook-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ===== CỘT TRÁI: CÂY ĐIỀU HƯỚNG QUỸ & TÀI KHOẢN ===== */
+.cashbook-tree {
+  background: #FBFBFD;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+.cashbook-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1E293B;
+  flex-shrink: 0;
+}
+
+.cashbook-tree-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+}
+
+.cashbook-tree-header-icon {
+  color: #EA580C;
+}
+
+.cashbook-tree-header-badge {
+  background: #EDF2F7;
+  color: #64748B;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1.5px 7px;
+  border-radius: 12px;
+}
+
+.cashbook-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  scrollbar-width: thin;
+}
+
+.cashbook-tree-list::-webkit-scrollbar {
+  width: 4px;
+}
+.cashbook-tree-list::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+/* Mục điều hướng cấp 1 */
+.cashbook-nav-item {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid transparent !important;
+  border-left: 3px solid transparent !important;
+  border-radius: 6px;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+  color: #334155 !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  background: transparent !important;
+  text-align: left;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+.cashbook-nav-item:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+  border-left-color: #CBD5E1 !important;
+}
+
+.cashbook-nav-item.active {
+  background: linear-gradient(90deg, #FFF7ED 0%, #FFFDF9 100%) !important;
+  color: #C2410C !important;
+  border-color: #FED7AA !important;
+  border-left-color: #EA580C !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(234, 88, 12, 0.08);
+}
+
+.cashbook-nav-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.12s ease;
+}
+
+.cashbook-nav-icon.is-all {
+  background: #EDF2F7;
+  color: #475569;
+}
+.cashbook-nav-icon.is-cash {
+  background: #DCFCE7;
+  color: #16A34A;
+}
+.cashbook-nav-icon.is-bank {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+.cashbook-nav-icon.is-card {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+.cashbook-nav-item.active .cashbook-nav-icon {
+  transform: scale(1.06);
+}
+
+.cashbook-nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cashbook-nav-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1.5px 6px;
+  border-radius: 10px;
+  background: #EDF2F7;
+  color: #64748B;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+}
+
+.cashbook-nav-item.active .cashbook-nav-count {
+  background: #EA580C;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Nhóm Ngân hàng & Toggle */
+.cashbook-tree-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.cashbook-group-header {
+  padding: 4px 6px !important;
+  gap: 4px;
+}
+
+.cashbook-group-toggle {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #64748B !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.cashbook-group-toggle:hover {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+.cashbook-group-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* Danh sách con các tài khoản ngân hàng */
+.cashbook-bank-sublist {
+  margin: 3px 0 4px 17px;
+  padding-left: 11px;
+  border-left: 2px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cashbook-bank-item {
+  display: flex !important;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid transparent !important;
+  border-radius: 5px;
+  padding: 5px 8px !important;
+  font-size: 11.5px !important;
+  color: #475569 !important;
+  font-weight: 500 !important;
+  cursor: pointer;
+  background: transparent !important;
+  text-align: left;
+  position: relative;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+/* Nhánh nối mượt mà từ đường trục chính sang từng tài khoản */
+.cashbook-bank-item::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 11px;
+  height: 2px;
+  background: #E2E8F0;
+  transition: background 0.12s ease;
+}
+
+.cashbook-sub-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #94A3B8;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+}
+
+.cashbook-bank-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cashbook-bank-item:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+}
+.cashbook-bank-item:hover::before {
+  background: #CBD5E1;
+}
+.cashbook-bank-item:hover .cashbook-sub-dot {
+  background: #64748B;
+}
+
+.cashbook-bank-item.active {
+  background: #FFF7ED !important;
+  color: #C2410C !important;
+  border-color: #FED7AA !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 2px rgba(234, 88, 12, 0.06);
+}
+.cashbook-bank-item.active::before {
+  background: #EA580C;
+}
+.cashbook-bank-item.active .cashbook-sub-dot {
+  background: #EA580C;
+  transform: scale(1.3);
+}
+
+.cashbook-bank-item.active .cashbook-nav-count.is-sub {
+  background: #EA580C;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.cashbook-nav-count.is-sub {
+  font-size: 10px;
+  padding: 1px 5px;
+}
+
+.cashbook-unassigned-icon {
+  color: #F59E0B;
+  flex-shrink: 0;
+}
+
+.cashbook-bank-item.is-unassigned {
+  color: #64748B !important;
+}
+
+.cashbook-tree-empty {
+  padding: 6px 8px;
+  color: #94A3B8;
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ===== NỘI DUNG CHÍNH (BẢNG DỮ LIỆU SỔ QUỸ) ===== */
+.cashbook-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #ffffff;
+}
+
+.cashbook-filters {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid #E2E8F0;
+  background: #FAFAFA;
+}
+.cashbook-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-weight: 600;
+  color: #475569;
+}
+.cashbook-filters input,
+.cashbook-filters select {
+  padding: 6px 8px;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  font: inherit;
+  background: #ffffff;
+  outline: none;
+}
+.cashbook-filters input:focus,
+.cashbook-filters select:focus {
+  border-color: #EA580C;
+}
+.cashbook-filters input[type=search] {
+  flex: 1;
+  min-width: 180px;
+}
+
+.cashbook-account-title {
+  padding: 8px 12px;
+  background: #FFF7ED;
+  border-bottom: 1px solid #FED7AA;
+  font-weight: 700;
+  font-size: 12px;
+  color: #9A3412;
+}
+
+.cashbook-table-wrap {
+  flex: 1;
+  min-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cashbook table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.cashbook th,
+.cashbook td {
+  border: 1px solid #E2E8F0;
+  padding: 6px 6px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.cashbook th {
+  background: #FFE0B2;
+  color: #9A3412;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-weight: 700;
+  padding: 7px 6px;
+}
+
+.cashbook .col-stt {
+  width: 34px;
+  text-align: center;
+  padding: 6px 2px;
+}
+.cashbook .col-code {
+  width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.cashbook .col-date {
+  width: 78px;
+  text-align: center;
+  white-space: nowrap;
+}
+.cashbook .col-desc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cashbook .col-partner {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cashbook .col-method {
+  width: 76px;
+  white-space: nowrap;
+}
+.cashbook .col-account {
+  width: 82px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cashbook .col-income {
+  width: 95px;
+  text-align: right;
+  white-space: nowrap;
+}
+.cashbook .col-expense {
+  width: 95px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cashbook tbody tr:nth-child(even) {
+  background: #F8FAFC;
+}
+.cashbook tbody tr:hover {
+  background: #FFFBF5;
+}
+.cashbook tbody tr.selected {
+  background: #FFF0DD;
+  outline: 1px solid #FB923C;
+  outline-offset: -1px;
+}
+.cashbook .number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.cashbook .income {
+  color: #15803D;
+}
+.cashbook .expense {
+  color: #C2410C;
+}
+.cashbook .empty {
+  padding: 28px;
+  text-align: center;
+  color: #64748B;
+}
+
+.cashbook-totals {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #FFF7ED;
+  border-top: 1px solid #FED7AA;
+  font-size: 12px;
+  color: #475569;
+}
+.cashbook-totals > span:first-child {
+  margin-right: auto;
+  font-weight: 600;
+}
+.cashbook-totals b {
+  color: #1E293B;
+}
+
+.cashbook-error {
+  padding: 10px 12px;
+  color: #B91C1C;
+  background: #FEF2F2;
+  border-bottom: 1px solid #FCA5A5;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .cashbook-layout {
+    grid-template-columns: 1fr;
+  }
+  .cashbook-tree {
+    border-right: 0;
+    border-bottom: 1px solid #CBD5E1;
+    max-height: 230px;
+  }
+  .cashbook-heading {
+    flex-wrap: wrap;
+  }
+  .cashbook-heading strong {
+    width: 100%;
+  }
+  .cashbook-totals {
+    gap: 10px;
+  }
+}

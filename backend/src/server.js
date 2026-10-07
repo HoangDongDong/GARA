@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const config = require('./config');
 const db = require('./db');
+db.enablePool();
 
 const app = express();
 
@@ -20,6 +21,8 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth',           require('./routes/auth'));
+// Agent credentials are separate from user login tokens.
+app.use('/api/print-agent', require('./routes/printAgent').agent);
 const { authenticate, authorize } = require('./accessControl');
 app.use('/api', authenticate, authorize);
 app.use('/api/admin-access',   require('./routes/adminAccess'));
@@ -30,6 +33,7 @@ app.use('/api/employees',      require('./routes/employees'));
 app.use('/api/parts',          require('./routes/parts'));
 app.use('/api/invoices',       require('./routes/invoices'));
 app.use('/api/reports',        require('./routes/reports'));
+app.use('/api/finance',        require('./routes/finance'));
 app.use('/api/print-templates', require('./routes/printTemplates'));
 app.use('/api/workflow',       require('./routes/workflow'));
 app.use('/api/master-data',    require('./routes/masterData'));
@@ -40,6 +44,9 @@ app.use('/api/inventory-receipts', require('./routes/inventoryReceipts'));
 app.use('/api/ocr',            require('./routes/ocr'));
 app.use('/api/system-config',  require('./routes/systemConfig'));
 app.use('/api/printing',       require('./routes/printing'));
+app.use('/api/print-control', require('./routes/printAgent').users);
+const printMaintenance=setInterval(()=>require('./services/printAgent').maintenance().catch(e=>console.error('Print retention:',e.message)),60*60*1000);
+printMaintenance.unref();
 app.use('/api/document-numbers', require('./routes/documentNumbers'));
 
 app.use((err, req, res, next) => {

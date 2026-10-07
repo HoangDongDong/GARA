@@ -46,6 +46,7 @@ test('Firebird: POS, repair quote, invoice and print snapshots agree; test rows 
       await execute('UPDATE DDICHVU SET THUESUATRIENG=20 WHERE ID=?', [work.ID]);
       await execute('UPDATE DKHACHHANG SET GIAMGIARIENG=0 WHERE ID=?', [customer.ID]);
       const sale = await call(handler(salesRouter, 'post', '/'), {
+        DKHACHHANGID: customer.ID, payments: { cashGiven: 1000000, allowDebt: true },
         TILEGIAMGIA: 10, items: [{ DMATHANGID: part.ID, SOLUONG: 2, DONGIA: 2000000 }],
       });
       created.push(['TDONHANG', sale.id]);
@@ -53,13 +54,20 @@ test('Firebird: POS, repair quote, invoice and print snapshots agree; test rows 
       const [saleRow] = await query('SELECT * FROM TDONHANG WHERE ID=?', [sale.id]);
       assert.equal(Number(saleRow.TIENTHUE), 792000);
       assert.equal(Number(saleRow.PHIDICHVU), 360000);
-      assert.equal(Number(saleRow.TIENTHANHTOAN), sale.total);
+      assert.equal(Number(saleRow.TIENTHANHTOAN), 1000000);
+      assert.equal(Number(saleRow.CONLAI), sale.total - 1000000);
+      assert.equal(Number(saleRow.CONGNO), sale.total - 1000000);
       const [saleDetail] = await query('SELECT DONGIA FROM TDONHANGCHITIET WHERE TDONHANGID=?', [sale.id]);
       assert.equal(Number(saleDetail.DONGIA), 2000000);
 
       const vehicleId = uuid();
       created.push(['DXE', vehicleId]);
       await execute("INSERT INTO DXE (ID,NAME,BIENSO,DKHACHHANGID,STATUS,USERCREATEDID) VALUES (?, 'CHARGE-ROLLBACK', 'TEST-CHARGE', ?, 1, 'TEST')", [vehicleId, customer.ID]);
+      const workflowRouter = require('../src/routes/workflow');
+      const profileBoard = await call(handler(workflowRouter, 'get', '/board'));
+      const profile = profileBoard.data.find(row => row.DXEID === vehicleId);
+      assert.ok(profile?.PROFILE_ONLY, 'New vehicle profile must appear before a quote is saved');
+      assert.equal(profile.TRANGTHAI, 0);
       const repair = await call(handler(repairsRouter, 'post', '/'), {
         DXEID: vehicleId, DKHACHHANGID: customer.ID, items: [
           { LOAI: 0, DMATHANGID: part.ID, SOLUONG: 1, DONGIA: 700000 },
@@ -67,22 +75,43 @@ test('Firebird: POS, repair quote, invoice and print snapshots agree; test rows 
         ],
       });
       created.push(['TLENHSUACHUA', repair.id]);
+      assert.equal(repair.workflowState, 1, 'Saved quotes must wait for repair confirmation');
+      const [quoteFlow] = await query('SELECT TRANGTHAI FROM TTRANGTHAIXE WHERE ID=? AND STATUS=1', [repair.workflowId]);
+      assert.equal(Number(quoteFlow.TRANGTHAI), 1);
+      const board = await call(handler(require('../src/routes/workflow'), 'get', '/board'));
+      assert.ok(board.data.some(row => row.TLENHSUACHUAID === repair.id && Number(row.TRANGTHAI) === 1), 'Saved quote must appear in the repair confirmation stage');
+      assert.equal(board.data.filter(row => row.DXEID === vehicleId).length, 1, 'Saving a quote must replace the profile card without a duplicate');
       const order = (await call(handler(repairsRouter, 'get', '/:id'), {}, { id: repair.id })).data;
       assert.equal(Number(order.TONGCONG), 1320000);
       assert.equal(Number(order.PHIDICHVU), 100000);
       assert.equal(Number(order.TIENTHUE), 220000);
       await execute('UPDATE TTRANGTHAIXE SET TRANGTHAI=3 WHERE ID=?', [repair.workflowId]);
+      const progressedBoard = await call(handler(workflowRouter, 'get', '/board'));
+      assert.ok(!progressedBoard.data.some(row => row.DXEID === vehicleId && row.PROFILE_ONLY), 'A vehicle in a later stage must not reappear as a new profile');
       // Defaults change between quote and payment; saved quote rates take precedence.
       await execute("UPDATE SCONFIG SET DECIMALVALUE=0 WHERE NAME IN ('MacDinhThueSuat','MacDinhPhiDichVu')");
-      const invoice = await call(handler(invoicesRouter, 'post', '/'), { TLENHSUACHUAID: repair.id, TIENMAT: 1320000 });
+      const invoice = await call(handler(invoicesRouter, 'post', '/'), { TLENHSUACHUAID: repair.id, TIENMAT: 320000, ALLOW_DEBT: true });
       created.push(['THOADONSUACHUA', invoice.id]);
       assert.equal(invoice.total, 1320000);
-      assert.equal(invoice.paid, true);
+      assert.equal(invoice.paid, false);
+      assert.equal(invoice.remaining, 1000000);
+      const [partial] = await query('SELECT CONLAI, CONGNO, DATHANHTOAN FROM THOADONSUACHUA WHERE ID=?', [invoice.id]);
+      assert.equal(Number(partial.CONLAI), 1000000);
+      assert.equal(Number(partial.CONGNO), 1000000);
+      assert.equal(Number(partial.DATHANHTOAN), 0);
+      const [debtFlow] = await query('SELECT TRANGTHAI FROM TTRANGTHAIXE WHERE ID=?', [repair.workflowId]);
+      assert.equal(Number(debtFlow.TRANGTHAI), 4);
+      const settlement = await call(handler(invoicesRouter, 'patch', '/:id/pay'), { CHUYENKHOAN: 1000000 }, { id: invoice.id });
+      assert.equal(settlement.paid, true);
       const [invoiceRow] = await query('SELECT * FROM THOADONSUACHUA WHERE ID=?', [invoice.id]);
       assert.equal(Number(invoiceRow.PHIDICHVU), 100000);
       assert.equal(Number(invoiceRow.TIENTHUE), 220000);
       assert.equal(Number(invoiceRow.TILETHUE), 20);
       assert.equal(Number(invoiceRow.TILEPHIDICHVU), 10);
+      assert.equal(Number(invoiceRow.TIENMAT), 320000);
+      assert.equal(Number(invoiceRow.CHUYENKHOAN), 1000000);
+      assert.equal(Number(invoiceRow.CONLAI), 0);
+      assert.equal(Number(invoiceRow.CONGNO), 0);
       const [flow] = await query('SELECT TRANGTHAI FROM TTRANGTHAIXE WHERE ID=?', [repair.workflowId]);
       assert.equal(Number(flow.TRANGTHAI), 4);
 

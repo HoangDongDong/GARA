@@ -13,21 +13,26 @@ const firebird = require('node-firebird');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
 
-/*
- * node-firebird connections are cheap enough for this local application.
- * Open one connection per operation and always detach it afterwards.
- *
- * The previous hand-written queue stored Promise resolver functions and later
- * returned those functions as database connections when requests arrived in
- * parallel. That made db.query undefined and also left queued requests hanging.
- */
+// Use the driver's pool in the API; standalone scripts retain short-lived
+// connections so migrations and CLI checks exit without holding open sockets.
+let connectionPool = null;
+function enablePool() {
+  if (!connectionPool) connectionPool=firebird.pool(6,{...config.firebird,idleTimeoutMillis:60000});
+}
+function closePool() {
+  const current=connectionPool;
+  connectionPool=null;
+  return new Promise((resolve,reject)=>current?current.destroy(error=>error?reject(error):resolve()):resolve());
+}
 
 function newConnection() {
   return new Promise((resolve, reject) => {
-    firebird.attach(config.firebird, (err, db) => {
+    const ready=(err, db) => {
       if (err) return reject(err);
       resolve(db);
-    });
+    };
+    if(connectionPool) connectionPool.get(ready);
+    else firebird.attach(config.firebird,ready);
   });
 }
 
@@ -122,4 +127,4 @@ async function ping() {
   return rows[0];
 }
 
-module.exports = { query, queryBlob, execute, transaction, ping, uuidv4 };
+module.exports = { query, queryBlob, execute, transaction, ping, uuidv4, enablePool, closePool };

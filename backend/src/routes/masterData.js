@@ -195,6 +195,7 @@ router.post('/:resource', async (req, res) => {
 
     const id = uuidv4();
     require('../services/pricingPolicy').validateMaster(req.body);
+    require('../services/repairCommissions').validateConfig(req.body);
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, ID: id, STATUS: req.body.STATUS ?? 1, USERCREATEDID: actor };
     delete data.TIMECREATED;
@@ -220,6 +221,7 @@ router.put('/:resource/:id', async (req, res) => {
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, USERMODIFIEDID: actor };
     require('../services/pricingPolicy').validateMaster(data);
+    require('../services/repairCommissions').validateConfig(data);
     delete data.ID;
     delete data.TIMEMODIFIED;
 

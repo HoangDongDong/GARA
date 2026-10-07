@@ -7,8 +7,8 @@ const master = (table, extra = '') => ({ table, fields: fields(`NAME NOTE ${extr
 const resources = {
   customers: { table: 'DKHACHHANG', fields: fields('NAME MAKHACH DIENTHOAI EMAIL DIACHI MASOTHUE DNHOMKHACHHANGID GIAMGIARIENG'), required: ['NAME'], code: 'MAKHACH', links: { DNHOMKHACHHANGID: 'DNHOMKHACHHANG' } },
   suppliers: { table: 'DNHACUNGCAP', fields: fields('NAME MANHACUNGCAP DIENTHOAI EMAIL DIACHI WEBSITE NOTE DNHOMNHACUNGCAPID'), required: ['NAME', 'MANHACUNGCAP'], code: 'MANHACUNGCAP', links: { DNHOMNHACUNGCAPID: 'DNHOMNHACUNGCAP' } },
-  parts: { table: 'DMATHANG', fields: fields('NAME CODE BARCODE MAOEM GIANHAP GIABAN GIABAN2 GIABAN3 BAOHANH TONTOITHIEU TONTOIDA MASANCO DNHOMMATHANGID DHANGSANXUATID DDONVITINHID DVITRIKHOID THUESUATRIENG'), required: ['NAME', 'CODE'], code: 'CODE' },
-  services: { ...master('DDICHVU', 'CODE GIA THOIGIAN DLOAIDICHVUID THUESUATRIENG'), code: 'CODE', links: { DLOAIDICHVUID: 'DLOAIDICHVU' } },
+  parts: { table: 'DMATHANG', fields: fields('NAME CODE BARCODE MAOEM GIANHAP GIABAN GIABAN2 GIABAN3 BAOHANH TONTOITHIEU TONTOIDA MASANCO DNHOMMATHANGID DHANGSANXUATID DDONVITINHID DVITRIKHOID THUESUATRIENG HHKIEU HHGIATRI'), required: ['NAME', 'CODE'], code: 'CODE' },
+  services: { ...master('DDICHVU', 'CODE GIA THOIGIAN DLOAIDICHVUID THUESUATRIENG HHKIEU HHGIATRI'), code: 'CODE', links: { DLOAIDICHVUID: 'DLOAIDICHVU' } },
   models: { ...master('DDONGXE', 'CODE DHANGXEID'), code: 'CODE', scope: 'DHANGXEID', links: { DHANGXEID: 'DHANGXE' } },
   vehicles: { table: 'DXE', fields: fields('BIENSO NAME PHIENBAN NAMSANXUAT MAUXE SOKHUNG SOMAY ODO NHIENLIEU MUCNHIENLIEU GHICHU DHANGXEID DDONGXEID DKHACHHANGID'), readonly: true },
   warehouses: master('DKHOHANG', 'CHOPHEPAMKHO'),
@@ -20,7 +20,8 @@ const resources = {
   shifts: master('DCALAMVIEC', 'GIOBATDAU GIOKETTHUC'),
   fuels: master('DNHIENLIEU', 'CODE'),
   cashReasons: master('DLYDOTHUCHI', 'LOAI'),
-  banks: { ...master('DTAIKHOANNGANHANG', 'SOTAIKHOAN TENNGANHANG CHINHANH'), required: ['NAME', 'SOTAIKHOAN', 'TENNGANHANG'], code: 'SOTAIKHOAN', uniqueName: false },
+  stores: { ...master('DCUAHANG', 'CODE DIACHI DIENTHOAI EMAIL'), code: 'CODE' },
+  banks: { ...master('DTAIKHOANNGANHANG', 'SOTAIKHOAN TENNGANHANG CHINHANH SODUDAU'), required: ['NAME', 'SOTAIKHOAN', 'TENNGANHANG'], code: 'SOTAIKHOAN', uniqueName: false },
   funds: master('DQUYTIENMAT', 'CODE'),
   customer_groups: master('DNHOMKHACHHANG', 'GIAMGIARIENG'),
   supplier_groups: master('DNHOMNHACUNGCAP'),
@@ -105,6 +106,7 @@ async function save(resource, id, body, actor) {
   if (Object.keys(body).some((key) => !allowed.has(key))) throw failure('Dữ liệu có trường không thuộc danh mục.');
   const payload = {};
   require('./pricingPolicy').validateMaster(body);
+  require('./repairCommissions').validateConfig(body);
   for (const [key, value] of Object.entries(body)) {
     if (value != null && typeof value !== 'string' && typeof value !== 'number') throw failure('Giá trị không hợp lệ.');
     if (typeof value === 'number' && !Number.isFinite(value)) throw failure('Giá trị số không hợp lệ.');
@@ -117,6 +119,10 @@ async function save(resource, id, body, actor) {
     const combined = { ...current, ...payload };
     if ((def.required || ['NAME']).some((field) => !String(combined[field] ?? '').trim())) throw failure('Vui lòng điền đầy đủ các trường bắt buộc.');
     const numericFields = ['GIA', 'THOIGIAN', 'CHOPHEPAMKHO', 'LOAI'];
+    if (payload.SODUDAU != null) {
+      payload.SODUDAU=Number(payload.SODUDAU);
+      if (!Number.isFinite(payload.SODUDAU) || Math.abs(payload.SODUDAU)>Number.MAX_SAFE_INTEGER || Math.abs(payload.SODUDAU*100-Math.round(payload.SODUDAU*100))>1e-6) throw failure('Số dư đầu kỳ không hợp lệ, tối đa 2 chữ số thập phân.');
+    }
     for (const field of numericFields) if (payload[field] != null) {
       payload[field] = Number(payload[field]);
       if (!Number.isFinite(payload[field]) || payload[field] < 0 || (['LOAI', 'CHOPHEPAMKHO'].includes(field) && ![0, 1].includes(payload[field]))) throw failure('Giá trị số không hợp lệ.');

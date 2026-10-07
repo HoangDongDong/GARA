@@ -1,0 +1,64 @@
+.debt-ledger {padding:0!important;margin-top:12px;overflow:hidden;min-height:480px;flex-shrink:0;}
+.debt-toolbar {display:flex;align-items:center;gap:8px;padding:9px 12px;flex-wrap:wrap;border-bottom:1px solid #E2E8F0;background:#FFF7ED;font-size:12px;}
+.debt-toolbar button,.debt-groups button {border:1px solid #CBD5E1;background:#fff;color:#334155;border-radius:4px;padding:6px 9px;cursor:pointer;font:inherit;}
+.debt-toolbar button.active,.debt-groups button.active {background:#FFF0DD;border-color:#F97316;color:#C2410C;font-weight:600;}
+.debt-toolbar label {display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.debt-toolbar input[type=checkbox] {accent-color:#EA580C;}
+.debt-search {width:220px;min-width:140px;border:1px solid #CBD5E1;border-radius:4px;padding:6px 8px;font:inherit;}
+.debt-total {margin-left:auto;color:#C2410C;white-space:nowrap;}
+.debt-layout {display:grid;grid-template-columns:190px minmax(0,1fr);min-height:430px;}
+.debt-groups {padding:8px;border-right:1px solid #CBD5E1;background:#F8FAFC;font-size:12px;}
+.debt-groups h3 {margin:0 0 10px;font-size:13px;}
+.debt-groups button {display:block;width:100%;text-align:left;margin-bottom:5px;}
+.debt-tables {min-width:0;display:flex;flex-direction:column;}
+.debt-partners {height:240px;overflow:auto;}
+.debt-history {min-height:155px;max-height:260px;overflow:auto;}
+.debt-ledger table {width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.debt-ledger th {background:#FFE0B2;color:#9A3412;font-weight:600;position:sticky;top:0;z-index:1;}
+.debt-ledger th,.debt-ledger td {padding:7px 9px;border:1px solid #E2E8F0;text-align:left;}
+.debt-ledger tbody tr:nth-child(even) {background:#F8FAFC;}
+.debt-partners tbody tr {cursor:pointer;}
+.debt-partners tbody tr.selected {background:#FFF0DD;color:#9A3412;outline:1px solid #FB923C;outline-offset:-1px;}
+.debt-partners tbody tr:focus {outline:2px solid #F97316;outline-offset:-2px;}
+.debt-ledger .number {text-align:right;font-variant-numeric:tabular-nums;}
+.debt-ledger .empty {text-align:center;padding:20px;color:#64748B;}
+.debt-history-heading {border-top:3px solid #CBD5E1;padding:7px 10px;background:#F8FAFC;font-size:12px;font-weight:600;}
+.debt-footer {display:flex;justify-content:space-between;padding:8px 10px;border-top:1px solid #E2E8F0;font-size:12px;gap:10px;}
+.debt-error {padding:10px;color:#B91C1C;font-size:12px;}
+.debt-payment {padding:12px;background:#FFF7ED;border-top:1px solid #FED7AA;font-size:12px;}
+.debt-payment-heading {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.debt-payment-heading strong {color:#9A3412;font-size:13px;}
+.debt-payment-heading span {color:#64748B;}
+.debt-payment fieldset {border:0;padding:0;margin:0;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;min-width:0;}
+.debt-payment fieldset>div,.debt-payment fieldset>label {flex:1 1 150px;min-width:0;}
+.debt-payment label {display:block;font-weight:600;}
+.debt-payment input {display:block;width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;border:1px solid #CBD5E1;border-radius:4px;background:white;font:inherit;}
+.debt-payment input:focus {outline:2px solid #FB923C;outline-offset:1px;}
+.debt-payment .debt-payment-note {flex:2 1 200px;}
+.debt-payment-amount {display:flex;align-items:center;gap:5px;}
+.debt-payment button {border:1px solid #FB923C;border-radius:4px;padding:7px 9px;background:#fff;color:#C2410C;font:inherit;white-space:nowrap;cursor:pointer;}
+.debt-payment .debt-payment-submit {background:#EA580C;color:#fff;font-weight:600;min-height:32px;}
+.debt-payment button:disabled {opacity:.55;cursor:not-allowed;}
+.debt-payment-remaining {margin-top:10px;text-align:right;color:#475569;}
+.debt-payment-success {margin-top:8px;color:#15803D;}
+.debt-payment-actions {display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:8px 10px;border-top:1px solid #E2E8F0;font-size:12px;}
+.debt-payment-actions .debt-payment-success {margin:0;margin-right:auto;}
+.debt-open-payment {border:0;border-radius:4px;padding:8px 18px;background:#EA580C;color:white;font:inherit;font-weight:600;cursor:pointer;}
+.debt-open-payment:disabled {opacity:.55;cursor:not-allowed;}
+.debt-payment-dialog {position:fixed;inset:0;margin:auto;width:560px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding:0;border:0;border-radius:8px;box-shadow:0 12px 40px #0004;overflow:auto;color:#1E293B;}
+.debt-payment-dialog::backdrop {background:#0008;}
+.debt-payment-dialog-header {display:flex;justify-content:space-between;align-items:center;gap:12px;background:#EA580C;color:white;padding:12px 16px;font-size:15px;}
+.debt-payment-dialog-header button {border:0;background:transparent;color:white;font-size:24px;line-height:1;cursor:pointer;}
+.debt-payment-dialog-header button:disabled {opacity:.55;cursor:not-allowed;}
+.debt-payment-dialog .debt-payment {padding:16px;border:0;}
+.debt-payment-dialog .debt-payment fieldset {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start;}
+.debt-payment-dialog .debt-payment-note {grid-column:1 / -1;}
+.debt-payment-balance {padding:8px 10px;margin-bottom:14px;background:white;border:1px solid #FED7AA;border-radius:4px;}
+.debt-payment-dialog-actions {display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+.debt-payment select {width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;border:1px solid #CBD5E1;border-radius:4px;background:white;font:inherit;}
+.debt-payment-wide {grid-column:1 / -1;}
+.debt-payment .debt-payment-transfer {display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.debt-payment .debt-payment-transfer input {width:auto;margin:0;accent-color:#EA580C;}
+.debt-account-balance {padding:8px 10px;background:#fff;border:1px solid #E2E8F0;border-radius:4px;margin-top:8px;line-height:1.7;color:#475569;}
+@media(max-width:480px) {.debt-payment-dialog .debt-payment fieldset {grid-template-columns:1fr;}.debt-payment-dialog-actions {flex-wrap:wrap;}}
+@media(max-width:768px) {.debt-layout {grid-template-columns:1fr;}.debt-groups {border-right:0;border-bottom:1px solid #CBD5E1;display:flex;flex-wrap:wrap;gap:5px;}.debt-groups h3 {width:100%;margin-bottom:2px;}.debt-groups button {width:auto;margin:0;}.debt-total {margin-left:0;}.debt-search {flex:1;}.debt-footer {flex-wrap:wrap;}}

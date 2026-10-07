@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const receiptPayment = require('../services/receiptPayment');
 
 router.get('/', async (req, res) => {
   try {
@@ -65,7 +66,7 @@ router.post('/', async (req, res) => {
     const {
       NAME, NGAY, NOTE, SOLOHANG,
       DNHACUNGCAPID, DKHOHANGID, DNHANVIENID,
-      TIENHANG, TIENGIAMGIA, TONGCONG, DATHANHTOAN, items,
+      TIENHANG, TIENGIAMGIA, TONGCONG, TIENTHANHTOAN = 0, items,
     } = req.body;
     const requestedCode = String(NAME || '').trim();
     if (!DNHACUNGCAPID) return res.status(400).json({ error: 'Vui long chon nha cung cap' });
@@ -73,7 +74,7 @@ router.post('/', async (req, res) => {
     if (!DNHANVIENID) return res.status(400).json({ error: 'Vui long chon nhan vien nhap' });
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Phieu nhap chua co mat hang' });
 
-    const paid = Number(DATHANHTOAN) === 1;
+    const payment = receiptPayment.calculate(TONGCONG || 0, TIENTHANHTOAN);
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const result = await db.transaction(async (query, execute, uuidv4) => {
       if (requestedCode) await execute("UPDATE SNUMBERCOUNTER SET SEQ=SEQ WHERE CODE='NhapKho'");
@@ -98,7 +99,7 @@ router.post('/', async (req, res) => {
         VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?, ?)`,
         [receiptId, code, NOTE || null, actor, NGAY ? new Date(NGAY) : new Date(),
           DNHACUNGCAPID, DKHOHANGID, DNHANVIENID, goods,
-          discount, total, paid ? 0 : total, paid ? 1 : 0, SOLOHANG || null]
+          discount, total, payment.debt, payment.paid ? 1 : 0, SOLOHANG || null]
       );
 
       for (const item of items) {
@@ -118,7 +119,7 @@ router.post('/', async (req, res) => {
             quantity, price, amount, price, DKHOHANGID]
         );
       }
-      return { id: receiptId, code, debt: paid ? 0 : total, paid };
+      return { id: receiptId, code, ...payment };
     });
     res.json({ ok: true, ...result });
   } catch (e) {
@@ -129,16 +130,18 @@ router.post('/', async (req, res) => {
 router.patch('/:id/pay', async (req, res) => {
   try {
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
-    await db.execute(
-      `UPDATE TNHAPKHO
-          SET CONGNO=0, DATHANHTOAN=1,
-              USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
-        WHERE ID=? AND STATUS=1`,
-      [actor, req.params.id]
-    );
-    res.json({ ok: true });
+    const payment = await db.transaction(async (query,execute) => {
+      const [receipt] = await query('SELECT TONGCONG FROM TNHAPKHO WHERE ID=? AND STATUS=1 WITH LOCK',[req.params.id]);
+      if (!receipt) throw Object.assign(new Error('Không tìm thấy phiếu nhập kho.'), {statusCode:404});
+      if (req.body.TIENTHANHTOAN == null) throw Object.assign(new Error('Vui lòng nhập tiền thanh toán.'), {statusCode:400});
+      const amount = receiptPayment.calculate(receipt.TONGCONG || 0, req.body.TIENTHANHTOAN);
+      await execute(`UPDATE TNHAPKHO SET CONGNO=?, DATHANHTOAN=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
+        WHERE ID=? AND STATUS=1`,[amount.debt,amount.paid ? 1 : 0,actor,req.params.id]);
+      return amount;
+    });
+    res.json({ ok: true, ...payment });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 

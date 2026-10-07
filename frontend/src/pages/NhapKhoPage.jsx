@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { 
   Package, Calendar, Plus, Barcode, FileSpreadsheet, GitFork, 
   Calculator, Search, Truck, ArrowLeft, ArrowRight, Ban, Eye, 
-  Printer, CreditCard, LogOut, CheckCircle, Trash2, X, Edit,
+  Printer, Save, LogOut, CheckCircle, Trash2, X, Edit,
   Building2, Hash, UserCheck, AlertCircle, FileText, ImagePlus
 } from 'lucide-react';
 import { employees, inventoryReceipts, masterData, parts, suppliers as supplierApi } from '../services';
@@ -111,6 +111,9 @@ export default function NhapKhoPage() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [shippingFee, setShippingFee] = useState(0);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [recordedPayment, setRecordedPayment] = useState(0);
+  const [savedReceiptTotal, setSavedReceiptTotal] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -166,7 +169,8 @@ export default function NhapKhoPage() {
     }, 0);
   }, [detailItems]);
 
-  const grandTotal = goodsTotal - discountAmount + taxAmount + shippingFee;
+  const grandTotal = savedReceiptTotal ?? goodsTotal - discountAmount + taxAmount + shippingFee;
+  const remainingDebt = Math.round((grandTotal-Number(paymentAmount || 0))*100)/100;
 
   const applyReceipt = async (receiptId) => {
     const data = await inventoryReceipts.get(receiptId);
@@ -177,6 +181,10 @@ export default function NhapKhoPage() {
       ? `${receiptDate.getFullYear()}-${String(receiptDate.getMonth() + 1).padStart(2, '0')}-${String(receiptDate.getDate()).padStart(2, '0')}`
       : '';
     setCurrentReceiptId(receipt.ID);
+    const paidAmount = Number(receipt.TONGCONG || 0) - Number(receipt.CONGNO ?? (Number(receipt.DATHANHTOAN) === 1 ? 0 : receipt.TONGCONG || 0));
+    setPaymentAmount(paidAmount);
+    setRecordedPayment(paidAmount);
+    setSavedReceiptTotal(Number(receipt.TONGCONG || 0));
     setReceiptInfo({
       date: dateValue,
       code: receipt.NAME || '',
@@ -195,7 +203,9 @@ export default function NhapKhoPage() {
       unit: item.TEN_DVT || '—',
       qty: Number(item.SOLUONG || 0),
       price: Number(item.DONGIA || 0),
-      discount: 0,
+      discount: Number(item.SOLUONG) * Number(item.DONGIA) > 0 && item.THANHTIEN != null
+        ? Math.round(Math.max(0, Math.min(100, (1 - Number(item.THANHTIEN) / (Number(item.SOLUONG) * Number(item.DONGIA))) * 100)) * 1000000) / 1000000
+        : 0,
     })));
     setDiscountAmount(Number(receipt.TIENGIAMGIA || 0));
     setTaxAmount(0);
@@ -207,6 +217,9 @@ export default function NhapKhoPage() {
     const now = new Date();
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     setCurrentReceiptId(null);
+    setPaymentAmount(0);
+    setRecordedPayment(0);
+    setSavedReceiptTotal(null);
     setDetailItems([]);
     setDiscountAmount(0);
     setTaxAmount(0);
@@ -222,19 +235,25 @@ export default function NhapKhoPage() {
     if (showNotification) showToast('Đã khởi tạo phiếu nhập kho mới.');
   };
 
-  const saveReceipt = async (paid) => {
+  const saveReceipt = async () => {
     if (savingReceipt) return false;
+    const payment = Number(paymentAmount || 0);
+    if (!Number.isFinite(payment) || payment < 0 || Math.abs(payment*100-Math.round(payment*100))>1e-6) {
+      showToast('Tiền thanh toán phải là số không âm, tối đa 2 chữ số thập phân.');
+      return false;
+    }
     if (currentReceiptId) {
-      if (!paid) {
+      if (payment === recordedPayment) {
         showToast('Phiếu nhập kho này đã được lưu.');
         return true;
       }
       setSavingReceipt(true);
       try {
-        await inventoryReceipts.pay(currentReceiptId);
+        const result = await inventoryReceipts.pay(currentReceiptId, payment);
+        setRecordedPayment(result.payment);
         const nextReceipts = await inventoryReceipts.list();
         setReceipts(Array.isArray(nextReceipts) ? nextReceipts : []);
-        showToast('Thanh toán thành công. Phiếu không ghi công nợ.');
+        showToast(`Đã ghi nhận thanh toán ${formatMoney(result.payment)}. ${result.debt < 0 ? 'Trả dư' : 'Còn nợ'} ${formatMoney(Math.abs(result.debt))}.`);
         return true;
       } catch (error) {
         showToast(error?.response?.data?.error || error.message || 'Không thể thanh toán phiếu.');
@@ -255,6 +274,11 @@ export default function NhapKhoPage() {
       showToast('Phiếu phải có ít nhất một mặt hàng hợp lệ trong danh mục.');
       return false;
     }
+    if (detailItems.some(item => !Number.isFinite(Number(item.qty)) || !Number.isFinite(Number(item.price))
+      || Number(item.price) < 0 || !Number.isFinite(Number(item.discount)) || Number(item.discount) < 0 || Number(item.discount) > 100)) {
+      showToast('Số lượng phải lớn hơn 0, đơn giá không âm và giảm giá từ 0 đến 100%.');
+      return false;
+    }
 
     setSavingReceipt(true);
     try {
@@ -269,7 +293,7 @@ export default function NhapKhoPage() {
         TIENHANG: goodsTotal,
         TIENGIAMGIA: Number(discountAmount || 0),
         TONGCONG: grandTotal,
-        DATHANHTOAN: paid ? 1 : 0,
+        TIENTHANHTOAN: payment,
         items: detailItems.map((item) => ({
           DMATHANGID: item.productId,
           DDONVITINHID: item.unitId || null,
@@ -279,12 +303,12 @@ export default function NhapKhoPage() {
         })),
       });
       setCurrentReceiptId(result.id);
+      setRecordedPayment(result.payment);
+      setSavedReceiptTotal(grandTotal);
       setReceiptInfo(current=>({...current,code:result.code}));
       const nextReceipts = await inventoryReceipts.list();
       setReceipts(Array.isArray(nextReceipts) ? nextReceipts : []);
-      showToast(paid
-        ? 'Tạo phiếu và thanh toán thành công. Không ghi công nợ.'
-        : `Tạo phiếu thành công. Đã ghi công nợ ${formatMoney(result.debt)}.`);
+      showToast(`Đã lưu phiếu, thanh toán ${formatMoney(result.payment)}. ${result.debt < 0 ? 'Trả dư' : 'Còn nợ'} ${formatMoney(Math.abs(result.debt))}.`);
       return true;
     } catch (error) {
       showToast(error?.response?.data?.error || error.message || 'Không thể lưu phiếu nhập kho.');
@@ -293,6 +317,22 @@ export default function NhapKhoPage() {
       setSavingReceipt(false);
     }
   };
+
+
+  const handleSaveAndNew = async () => {
+    const saved = await saveReceipt();
+    if (saved) prepareNewReceipt(false);
+  };
+
+  useEffect(() => {
+    const handleSaveShortcut = event => {
+      if (event.key !== 'F12') return;
+      event.preventDefault();
+      if (!event.repeat && !savingReceipt) handleSaveAndNew();
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [handleSaveAndNew, savingReceipt]);
 
   const navigateReceipt = async (direction) => {
     if (!receipts.length) return;
@@ -521,19 +561,22 @@ export default function NhapKhoPage() {
 
   // Cập nhật số lượng trong bảng
   const handleUpdateQty = (id, newQty) => {
-    const val = Math.max(1, parseInt(newQty) || 1);
+    if (currentReceiptId || savingReceipt) return;
+    const val = newQty === '' ? '' : Math.max(0, Number(newQty) || 0);
     setDetailItems(prev => prev.map(it => it.id === id ? { ...it, qty: val } : it));
   };
 
   // Cập nhật đơn giá
   const handleUpdatePrice = (id, newPrice) => {
-    const val = Math.max(0, parseInt(newPrice) || 0);
+    if (currentReceiptId || savingReceipt) return;
+    const val = newPrice === '' ? '' : Math.max(0, Number(newPrice) || 0);
     setDetailItems(prev => prev.map(it => it.id === id ? { ...it, price: val } : it));
   };
 
   // Cập nhật giảm giá %
   const handleUpdateDiscount = (id, newDiscount) => {
-    const val = Math.min(100, Math.max(0, parseInt(newDiscount) || 0));
+    if (currentReceiptId || savingReceipt) return;
+    const val = newDiscount === '' ? '' : Math.min(100, Math.max(0, Number(newDiscount) || 0));
     setDetailItems(prev => prev.map(it => it.id === id ? { ...it, discount: val } : it));
   };
 
@@ -628,7 +671,6 @@ export default function NhapKhoPage() {
 
   // Modals phụ
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   return (
@@ -917,7 +959,7 @@ export default function NhapKhoPage() {
                 type="button"
                 className="nk-btn-primary"
                 onClick={async () => {
-                  const saved = await saveReceipt(false);
+                  const saved = await saveReceipt();
                   if (saved) setShowBarcodeModal(true);
                 }}
               >
@@ -943,7 +985,7 @@ export default function NhapKhoPage() {
                   className="nk-btn-primary"
                   onClick={async () => {
                     if (!currentReceiptId && detailItems.length) {
-                      const saved = await saveReceipt(false);
+                      const saved = await saveReceipt();
                       if (saved) prepareNewReceipt(false);
                       return;
                     }
@@ -957,17 +999,18 @@ export default function NhapKhoPage() {
                 <button
                   type="button"
                   className="nk-btn-primary"
-                  onClick={() => setShowPaymentModal(true)}
+                  disabled={savingReceipt}
+            onClick={handleSaveAndNew}
                 >
-                  <CreditCard size={14} />
-                  Thanh toán (F12)
+                  <Save size={14} />
+                  {savingReceipt ? 'Đang lưu...' : 'Lưu (F12)'}
                 </button>
 
                 <button
                   type="button"
                   className="nk-btn-primary"
                   onClick={async () => {
-                    const saved = await saveReceipt(false);
+                    const saved = await saveReceipt();
                     if (saved) setShowBarcodeModal(true);
                   }}
                 >
@@ -1173,18 +1216,13 @@ export default function NhapKhoPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#475569' }}>Tiền thanh toán</span>
-              <div style={{
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: 4,
-                padding: '2px 8px',
-                minWidth: 110,
-                textAlign: 'right',
-                fontWeight: 600,
-                color: '#1E293B'
-              }}>
-                {formatMoney(grandTotal)}
-              </div>
+              <input aria-label="Tiền thanh toán nhập kho" className="nk-line-number" type="number" min="0" step="0.01"
+                value={paymentAmount} disabled={savingReceipt} onChange={event=>setPaymentAmount(event.target.value)}
+                onBlur={()=>{if(paymentAmount==='')setPaymentAmount(0);}} style={{width:135,fontWeight:600}} />
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,color:'#E65100'}}>
+              <span>{remainingDebt < 0 ? 'Trả dư cho nhà cung cấp' : 'Còn nợ nhà cung cấp'}</span>
+              <strong>{formatMoney(Math.abs(remainingDebt))}</strong>
             </div>
           </div>
         </div>
@@ -1461,13 +1499,22 @@ export default function NhapKhoPage() {
                         <td style={{ padding: '4px 8px', color: '#334155' }}>{it.name}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'center', color: '#64748B' }}>{it.unit}</td>
                         <td style={{ padding: '5px 8px', textAlign: 'center', color: '#1E293B' }}>
-                          {it.qty}
+                          <input className="nk-line-number" type="number" min="0.01" step="any"
+                            aria-label={`Số lượng ${it.name}`} value={it.qty} disabled={!!currentReceiptId || savingReceipt}
+                            onChange={event => handleUpdateQty(it.id, event.target.value)}
+                            onBlur={() => { if (Number(it.qty) <= 0) handleUpdateQty(it.id, 1); }} />
                         </td>
                         <td style={{ padding: '5px 8px', textAlign: 'right', color: '#1E293B' }}>
-                          {formatNumber(it.price)}
+                          <input className="nk-line-number" type="number" min="0" step="any"
+                            aria-label={`Đơn giá nhập ${it.name}`} value={it.price} disabled={!!currentReceiptId || savingReceipt}
+                            onChange={event => handleUpdatePrice(it.id, event.target.value)}
+                            onBlur={() => { if (it.price === '') handleUpdatePrice(it.id, 0); }} />
                         </td>
                         <td style={{ padding: '5px 8px', textAlign: 'center', color: '#1E293B' }}>
-                          {it.discount}
+                          <input className="nk-line-number" type="number" min="0" max="100" step="any"
+                            aria-label={`Giảm giá % ${it.name}`} value={it.discount} disabled={!!currentReceiptId || savingReceipt}
+                            onChange={event => handleUpdateDiscount(it.id, event.target.value)}
+                            onBlur={() => { if (it.discount === '') handleUpdateDiscount(it.id, 0); }} />
                         </td>
                         <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 500, color: '#1E293B' }}>
                           {formatNumber(lineTotal)}
@@ -1528,7 +1575,7 @@ export default function NhapKhoPage() {
             className="nk-btn-primary"
             onClick={async () => {
               if (!currentReceiptId && detailItems.length) {
-                const saved = await saveReceipt(false);
+                const saved = await saveReceipt();
                 if (saved) prepareNewReceipt(false);
                 return;
               }
@@ -1572,10 +1619,11 @@ export default function NhapKhoPage() {
           <button
             type="button"
             className="nk-btn-primary"
-            onClick={() => setShowPaymentModal(true)}
+            disabled={savingReceipt}
+            onClick={handleSaveAndNew}
           >
-            <CreditCard size={14} />
-            Thanh toán (F12)
+            <Save size={14} />
+            {savingReceipt ? 'Đang lưu...' : 'Lưu (F12)'}
           </button>
 
           <button
@@ -1986,127 +2034,6 @@ export default function NhapKhoPage() {
         </div>
       )}
 
-      {/* Modal Thanh toán (F12) */}
-      {showPaymentModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: 8,
-            width: 460,
-            padding: 20,
-            boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CreditCard size={20} color="#E65100" />
-                <h3 style={{ margin: 0, fontSize: 16, color: '#1E293B' }}>Xác nhận thanh toán nhập kho</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPaymentModal(false)}
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748B' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ background: '#FFF3E0', padding: 12, borderRadius: 6 }}>
-                <div style={{ fontSize: 12, color: '#BF360C' }}>Tổng số tiền cần thanh toán cho NCC:</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#E65100', marginTop: 4 }}>
-                  {formatMoney(grandTotal)}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Hình thức thanh toán
-                </label>
-                <select style={{
-                  width: '100%',
-                  height: 34,
-                  padding: '0 10px',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  outline: 'none'
-                }}>
-                  <option value="tm">Tiền mặt (Quỹ tiền mặt gara)</option>
-                  <option value="ck">Chuyển khoản ngân hàng</option>
-                  <option value="no">Ghi nhận công nợ nhà cung cấp</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Ghi chú thanh toán
-                </label>
-                <input
-                  type="text"
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    padding: '0 10px',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: 4,
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-              <button
-                type="button"
-                onClick={() => setShowPaymentModal(false)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 4,
-                  border: '1px solid #CBD5E1',
-                  background: '#FFFFFF',
-                  color: '#475569',
-                  cursor: 'pointer'
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                disabled={savingReceipt}
-                onClick={async () => {
-                  const saved = await saveReceipt(true);
-                  if (saved) setShowPaymentModal(false);
-                }}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: 4,
-                  border: 'none',
-                  background: '#E65100',
-                  color: '#FFFFFF',
-                  fontWeight: 600,
-                  cursor: savingReceipt ? 'wait' : 'pointer',
-                  opacity: savingReceipt ? 0.7 : 1
-                }}
-              >
-                {savingReceipt ? 'Đang thanh toán...' : 'Xác nhận thanh toán'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -101,7 +101,13 @@ async function payload(type,id,filters,user) {
      if(![3,4,5].includes(Number(header.TRANGTHAI)))throw fail('Lệnh sửa chữa chưa hoàn thành để in biên bản bàn giao.',409);
      rows=rows.map(row=>({...row,ValueText:`${row.Quantity} ${row.Unit}`,Note:row.Note}));extra=`Ngày hoàn thành: ${date(header.KETTHUC)}; QC: ${header.NGUOIQC||''}`;
     }break;
-   case 'MauBaoGia':rows=await details('TBAOGIACHITIET','TBAOGIAID',id);break;
+   case 'MauBaoGia': {
+    rows=await details('TBAOGIACHITIET','TBAOGIAID',id);
+    const [fax]=await db.query("SELECT TEXTVALUE FROM SCONFIG WHERE NAME='CompanyFax' AND STATUS=30");
+    reception.CompanyFax=fax?.TEXTVALUE||'';
+    header={...header,TENKHACH:header.TENKHACH||customer?.NAME||'',DIACHI:header.DIACHI||customer?.DIACHI||'',DIENTHOAI:header.DIENTHOAI||customer?.DIENTHOAI||'',
+     TILEGIAMGIA:Number(header.TILEGIAMGIA||0),PHIVANCHUYEN:Number(header.PHIVANCHUYEN||0)};break;
+   }
    case 'MauHoaDonSuaChua':rows=header.TLENHSUACHUAID?await details('TLENHSUACHUACHITIET','TLENHSUACHUAID',header.TLENHSUACHUAID):[{ItemName:'Phụ tùng',Amount:Number(header.TIENPHUTUNG||0)},{ItemName:'Tiền công',Amount:Number(header.TIENCONG||0)},{ItemName:'Dịch vụ',Amount:Number(header.TIENDICHVU||0)}];extra=`Đã thu: ${money(Number(header.TIENMAT||0)+Number(header.CHUYENKHOAN||0)+Number(header.THE||0))}; còn lại: ${money(header.CONLAI)}`;break;
    case 'MauPhieuNhapKho': {
     const items=await db.query(`SELECT ct.*,m.NAME AS PART_NAME,m.CODE AS PART_CODE,u.NAME AS UNIT_NAME FROM TNHAPKHOCHITIET ct LEFT JOIN DMATHANG m ON m.ID=ct.DMATHANGID LEFT JOIN DDONVITINH u ON u.ID=ct.DDONVITINHID WHERE ct.TNHAPKHOID=? ORDER BY ct.TIMECREATED`,[id]);
@@ -119,9 +125,21 @@ async function payload(type,id,filters,user) {
     rows=[{ItemName:'Hạng mục bảo hành',ValueText:part?.NAME||service?.NAME||header.NOTE||''},{ItemName:'Thời hạn',ValueText:`${date(header.NGAYBATDAU)} - ${date(header.NGAYKETTHUC)}`},{ItemName:'Kết quả xử lý',ValueText:header.KETQUAXULY||''}];break;
    }
    case 'MauPhieuThu':case 'MauPhieuChi': {
-    const reason=await related('DLYDOTHUCHI',header.DLYDOTHUCHID);rows=[{ItemName:reason?.NAME||header.NOTE||type.label,Amount:Number(header.SOTIEN||0)}];header.TONGCONG=Number(header.SOTIEN||0);break;
+    const reason=await related('DLYDOTHUCHI',header.DLYDOTHUCHID);rows=[{ItemName:reason?.NAME||header.NOTE||type.label,Note:header.NOTE||'',Amount:Number(header.SOTIEN||0)}];
+    extra=[header.CHUNGTUGOC?`Chứng từ gốc: ${header.CHUNGTUGOC}`:'',header.DIACHIDOITUONG?`Địa chỉ: ${header.DIACHIDOITUONG}`:'',header.GHICHU?`Ghi chú: ${header.GHICHU}`:''].filter(Boolean).join('; ');
+    const amount=Number(header.SOTIEN||0);
+    header={...header,TONGCONG:amount,
+     THU:type.key==='MauPhieuThu'?amount:0,CHI:type.key==='MauPhieuChi'?amount:0,
+     TENDOITUONG:header.TENDOITUONG||customer?.NAME||supplier?.NAME||employee?.NAME||'',
+     DIACHI:header.DIACHIDOITUONG||customer?.DIACHI||supplier?.DIACHI||employee?.DIACHI||'',
+     DIENGIAI:header.NOTE||reason?.NAME||'',CHUNGTUGOC:header.CHUNGTUGOC||''};break;
    }
-   case 'MauMaVachPhuTung':rows=[{ItemName:header.NAME,ItemCode:header.CODE||'',BARCODE:header.BARCODE||header.CODE||header.ID,Amount:Number(header.GIABAN||0)}];break;
+   case 'MauMaVachPhuTung': {
+    const unit=await related('DDONVITINH',header.DDONVITINHID);
+    const group=await related('DNHOMMATHANG',header.DNHOMMATHANGID);
+    const manufacturer=await related('DHANGSANXUAT',header.DHANGSANXUATID);
+    rows=[{...header,DDONVITINH_NAME:unit?.NAME||'',DNHOMMATHANG_NAME:group?.NAME||'',DHANGSANXUAT_NAME:manufacturer?.NAME||'',ItemName:header.NAME,ItemCode:header.CODE||'',BARCODE:header.BARCODE||header.CODE||'',Amount:Number(header.GIABAN||0)}];break;
+   }
    case 'MauBangLuong': {
     const items=await db.query('SELECT ct.*,nv.NAME AS STAFF_NAME FROM TBANGLUONGCHITIET ct LEFT JOIN DNHANVIEN nv ON nv.ID=ct.DNHANVIENID WHERE ct.TBANGLUONGID=? AND COALESCE(ct.STATUS,0)>=0',[id]);
     rows=items.map(row=>({...clean(row),ItemName:row.STAFF_NAME||'',Amount:Number(row.TONGCONG||0),DNHANVIEN_NAME:row.STAFF_NAME||'',Note:`Cơ bản ${money(row.LUONGCOBAN)}, hoa hồng ${money(row.HOAHONG)}, thưởng ${money(row.THUONG)}, phạt ${money(row.PHAT)}`}));header.TONGCONG=header.TONGLUONG;break;
@@ -147,7 +165,7 @@ async function payload(type,id,filters,user) {
  const total=header.TONGCONG??(subtotal-Number(header.TIENGIAMGIA||0)+Number(header.TIENTHUE||0)+Number(header.PHIVANCHUYEN||0)+Number(header.PHIDICHVU||0));
  const parameters={...(await company()),CompanyEmail:companyEmail?.TEXTVALUE||'',...prefixed('DXE',vehicle),...prefixed('DKHACHHANG',customer),...prefixed('DNHACUNGCAP',supplier),...prefixed('DNHANVIEN',employee),...prefixed('DNHANVIEN2',employee),...prefixed('DKHOHANG',warehouse),...prefixed('DKHOHANG2',warehouse),...header,...reception,
  'In bởi':user||'',DocTitle:type.label.toLocaleUpperCase('vi'),DocNumber:type.key==='MauMaVachPhuTung'?(header.CODE||header.NAME||''):header.NAME||header.BIENSO||'',DocDate:date(header.NGAY||header.NGAYBATDAU||header.TIMECREATED),
- CustomerName:customer?.NAME||supplier?.NAME||header.DKHACHHANG_NAME||'',Contact:customer?.DIENTHOAI||supplier?.DIENTHOAI||'',VehiclePlate:vehicle?.BIENSO||'',
+ CustomerName:header.TENDOITUONG||customer?.NAME||supplier?.NAME||header.DKHACHHANG_NAME||'',Contact:customer?.DIENTHOAI||supplier?.DIENTHOAI||'',VehiclePlate:vehicle?.BIENSO||'',
  Description:header.NOTE||'',Extra:extra,TotalText:money(total),TONGCONG:total,
  FooterNote:['MauHoSoXe','MauLichSuSuaChua','MauBaoCao','MauMaVachPhuTung'].includes(type.key)?'': 'Khách hàng / người giao nhận                         Nhân viên GARA',
  TIENTHUE:Number(header.TIENTHUE||0),TIENGIAMGIA:Number(header.TIENGIAMGIA||0),TIENHANG:header.TIENHANG??rows.reduce((sum,row)=>sum+Number(row.Amount||0),0),
@@ -169,6 +187,8 @@ async function payload(type,id,filters,user) {
   parameters.TotalNumberText=parameters.TotalCommaText;
   parameters.PrintShow_additionalCharges=parameters.PrintShow_tax||parameters.PrintShow_shipping||parameters.PrintShow_serviceFee;
   parameters.SummaryText=`Tổng cộng: ${money(total)}${parameters.PrintShow_discount&&header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${header.PHIDICHVU?`; phí dịch vụ (${Number(header.TILEPHIDICHVU||0)}%): ${money(header.PHIDICHVU)}`:''}${parameters.PrintShow_tax&&header.TIENTHUE?`; thuế (${Number(header.TILETHUE||0)}%): ${money(header.TIENTHUE)}`:''}`;
+  const rounding = Math.round((total - (Number(header.TIENHANGCHUAGIAM || 0) - Number(header.TIENGIAMGIA || 0) + Number(header.PHIDICHVU || 0) + Number(header.TIENTHUE || 0))) * 100) / 100;
+  if(Number(header.CHARGEVERSION)===1 && rounding)parameters.SummaryText+=`; điều chỉnh làm tròn: ${money(rounding)}`;
   parameters.AdditionalChargesText=[Number(header.PHIDICHVU)?'Phí dịch vụ: '+money(header.PHIDICHVU):'',parameters.PrintShow_tax&&Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',parameters.PrintShow_shipping&&Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n');
  }
  const taxGroups=require('./pricingPolicy').summary(header.TAXSUMMARY);
@@ -206,11 +226,21 @@ async function render(type,id,filters,user) {
  const template=await resolve(type,filters.templateId);const data=await payload(type,id,filters,user);
  const logo=decodeConfigImage(await db.queryBlob("SELECT BLOBVALUE FROM SCONFIG WHERE NAME='CompanyLogo' AND STATUS=30",[],'BLOBVALUE'));
  let xml=require('./chargePrint').applyServiceFeeRow(mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data),data.parameters);
- if(type.key==='MauHoaDonBanHang')xml=require('./chargePrint').formatSalesTotal(xml);
+ if(type.key==='MauHoaDonBanHang'){
+  xml=require('./salesLineDiscountPrint').hideUnusedDiscountColumns(xml,data.tables.Table0);
+  xml=require('./salesLineDiscountPrint').fitMoneyColumns(xml,data.tables.Table0);
+  xml=require('./chargePrint').formatSalesTotal(xml);
+ }
  xml=require('./chargePrint').applyTaxBreakdown(xml,data.parameters);
+ let notice='';
+ if(type.key==='MauMaVachPhuTung'){
+  const barcode=require('./barcodePrint');
+  ({xml,notice}=barcode.adaptBarcodeTemplate(xml,data));
+  barcode.prepareBarcodePayload(xml,data);
+ }
  validateBindings(xml,data);fillMissingVariables(xml,data);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'garage-document-print-'));
- try{const templatePath=path.join(dir,'template.frx'),dataPath=path.join(dir,'data.json'),pdfPath=path.join(dir,'output.pdf');fs.writeFileSync(templatePath,xml);fs.writeFileSync(dataPath,JSON.stringify(data));const pdf=await runRenderer(templatePath,dataPath,pdfPath);return {pdf,name:data.parameters.DocNumber||type.label,template};}
+ try{const templatePath=path.join(dir,'template.frx'),dataPath=path.join(dir,'data.json'),pdfPath=path.join(dir,'output.pdf');fs.writeFileSync(templatePath,xml);fs.writeFileSync(dataPath,JSON.stringify(data));const pdf=await runRenderer(templatePath,dataPath,pdfPath);return {pdf,name:data.parameters.DocNumber||type.label,template,notice};}
  finally{const safeRoot=path.resolve(os.tmpdir())+path.sep;if(path.resolve(dir).startsWith(safeRoot))fs.rmSync(dir,{recursive:true,force:true});}
 }
 async function info(type) {

@@ -6,7 +6,7 @@ const charges = require('../services/defaultChargeRates');
 const policy = require('../services/pricingPolicy');
 
 router.get('/charge-rates', async (req, res) => {
-  try { res.json({ data: await charges.loadForSales() }); }
+  try { res.json({ data: { ...await charges.loadForSales(), ...await require('../services/paymentSettings').load('sales'), ...await require('../services/salesSettings').load() } }); }
   catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
@@ -87,8 +87,10 @@ router.post('/', async (req, res) => {
     const user = req.get('X-User') || 'SYSTEM';
     const result = await db.transaction(async (query, execute, uuidv4) => {
       const normalized = [];
-      const rates = charges.resolveForSales(req.body, await charges.loadForSales(query));
-      const discountPolicy = policy.discountPolicy(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA);
+      const salesSettings = await require('../services/salesSettings').load(query);
+      if(salesSettings.requireCustomer && !DKHACHHANGID)throw Object.assign(new Error('Vui lòng chọn khách hàng trước khi bán.'),{status:400});
+      const rates = {...charges.resolveForSales(req.body, await charges.loadForSales(query)), roundingStep:salesSettings.roundingStep};
+      const discountPolicy = require('../services/salesSettings').discount(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA, salesSettings);
       for (const item of items) {
         const quantity = Number(item.SOLUONG || 0);
         if (!item.DMATHANGID || quantity <= 0) throw new Error('So luong san pham khong hop le');
@@ -104,11 +106,20 @@ router.post('/', async (req, res) => {
         }
         const amount = quantity * price;
         if (!Number.isFinite(amount) || amount > Number.MAX_SAFE_INTEGER) throw new Error('Thành tiền sản phẩm không hợp lệ');
-        normalized.push({ ...product, GIABAN: price, quantity, amount, ...policy.taxPolicy(product, rates, item.TILETHUE) });
+        if (!salesSettings.allowDiscount && item.TILEGIAMGIA != null) throw Object.assign(new Error('Cấu hình không cho phép nhập giảm giá.'), { status: 400 });
+        normalized.push({ ...product, GIABAN: price, quantity, amount,
+          discountRate: policy.rate(item.TILEGIAMGIA), ...policy.taxPolicy(product, rates, item.TILETHUE) });
       }
 
       const totals = policy.calculate(normalized, rates, discountPolicy.discountRate);
       const { subtotal, discountRate, discount, tax, serviceFee, total } = totals;
+      const payment=require('../services/salePayment').calculate(total,req.body,DKHACHHANGID);
+      const paymentSettings = await require('../services/paymentSettings').load('sales', query);
+      require('../services/paymentSettings').assertDebt(paymentSettings, payment.debt);
+      if(req.body.DTAIKHOANNGANHANGID){
+        const [bank]=await query('SELECT ID FROM DTAIKHOANNGANHANG WHERE ID=? AND STATUS=1',[req.body.DTAIKHOANNGANHANGID]);
+        if(!bank)throw Object.assign(new Error('Tài khoản ngân hàng không còn hoạt động.'),{status:400});
+      }
       const id = uuidv4();
       const code = await require('../services/documentNumbers').nextInTransaction('BanPhuTung',query,execute);
       const method = Number(LOAITHANHTOAN || 0);
@@ -131,20 +142,27 @@ router.post('/', async (req, res) => {
       );
       await execute('UPDATE TDONHANG SET CHARGEVERSION=1, NGUONGIAMGIA=?, TAXSUMMARY=? WHERE ID=?',
         [discountPolicy.discountSource, JSON.stringify(totals.taxGroups), id]);
+      await execute(`UPDATE TDONHANG SET KHACHDUA=?,TRALAI=?,TIENMAT=?,CHUYENKHOAN=?,THE=?,
+        TIENTHANHTOAN=?,THANHTOAN=?,CONLAI=?,CONGNO=?,CONNO=?,DATHANHTOAN=?,LOAITHANHTOAN=?,DTAIKHOANNGANHANGID=? WHERE ID=?`,
+        [payment.cashGiven,payment.change,payment.cash,payment.transfer,payment.card,payment.paid,payment.paid,
+          payment.debt,payment.debt,payment.debt>0?1:0,payment.debt<=0?1:0,payment.method,req.body.DTAIKHOANNGANHANGID || null,id]);
 
       for (const item of totals.details) {
+        const uuidLineId = uuidv4();
         await execute(`
           INSERT INTO TDONHANGCHITIET
             (ID, TDONHANGID, STATUS, USERCREATEDID, TIMECREATED,
              DMATHANGID, BAOHANH, THANHTIEN, DONGIA, SLXUAT,
              DKHOHANGID, TENHANG, GIAVON, TILETHUE, TIENTHUE, TILEGIAMGIA, TIENGIAMGIA, NGUONTHUE)
           VALUES (?, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [uuidv4(), id, user, item.ID, item.BAOHANH || null, item.amount,
+          [uuidLineId, id, user, item.ID, item.BAOHANH || null, item.amount,
            Number(item.GIABAN || 0), item.quantity, DKHOXUATID || null,
-           item.NAME, Number(item.GIANHAP || 0), item.taxRate, item.tax, discountRate, item.discount, item.taxSource]
+           item.NAME, Number(item.GIANHAP || 0), item.taxRate, item.tax, item.discountRate, item.discount, item.taxSource]
         );
+        await execute('UPDATE TDONHANGCHITIET SET TILECHIETKHAU=?, TIENCHIETKHAU=? WHERE ID=?',
+          [item.lineDiscountRate, item.lineDiscount, uuidLineId]);
       }
-      return { id, code, ...totals, ...rates, ...discountPolicy };
+      return { id, code, ...totals, ...rates, ...discountPolicy, payment, requireBill: paymentSettings.requireBill };
     });
     res.json({ ok: true, ...result });
   } catch (e) {

@@ -1,0 +1,18 @@
+const express=require('express'),service=require('../services/printAgent');
+const wrap=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
+const agent=express.Router(),users=express.Router();
+agent.post('/pair',wrap(async(req,res)=>res.json(await service.pair(req.body.ticket,req.body.name))));
+agent.use(async(req,res,next)=>{try{req.station=await service.authenticate(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));next();}catch(e){res.status(e.status||401).json({error:e.message});}});
+agent.post('/heartbeat',wrap(async(req,res)=>res.json(await service.heartbeat(req.station,req.body))));
+agent.post('/claim',wrap(async(req,res)=>res.json({job:await service.claim(req.station)})));
+agent.get('/jobs/:id/pdf',wrap(async(req,res)=>res.type('pdf').send(await service.pdf(req.station,req.params.id))));
+agent.post('/jobs/:id/status',wrap(async(req,res)=>res.json(await service.report(req.station,req.params.id,req.body))));
+users.get('/configuration',wrap(async(req,res)=>res.json(await service.configuration())));
+users.post('/pairing',wrap(async(req,res)=>res.json(await service.pairing(req.accessUser))));
+users.put('/printers/:id',wrap(async(req,res)=>res.json(await service.configure(req.accessUser,req.params.id,req.body))));
+users.post('/stations/:id/revoke',wrap(async(req,res)=>res.json(await service.revoke(req.accessUser,req.params.id))));
+users.post('/jobs',wrap(async(req,res)=>res.json(await service.createJob(req.accessUser,req.body))));
+users.get('/jobs/:id',wrap(async(req,res)=>res.json(await service.getJob(req.accessUser,req.params.id))));
+users.post('/jobs/:id/cancel',wrap(async(req,res)=>res.json(await service.cancel(req.accessUser,req.params.id))));
+users.post('/jobs/:id/reprint',wrap(async(req,res)=>res.json(await service.reprint(req.accessUser,req.params.id,req.body.idempotencyKey))));
+module.exports={agent,users};

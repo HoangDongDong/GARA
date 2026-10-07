@@ -98,7 +98,8 @@ async function buildSalesPayload(orderId, user) {
      WHERE CT.TDONHANGID=? AND CT.STATUS=1
      ORDER BY CT.TIMECREATED`, [orderId]);
 
-  const table0 = details.map((row) => {
+  const lineDiscounts = require('./salesLineDiscountPrint').prepare(header, details);
+  const table0 = lineDiscounts.rows.map((row) => {
     const { M_NAME, M_CODE, DV_NAME, ...rest } = clean(row);
     return {
       ...rest,
@@ -117,6 +118,8 @@ async function buildSalesPayload(orderId, user) {
     ...prefixed('DKHACHHANG', customer),
     ...prefixed('DKHOHANG', warehouse),
     ...header,
+    SalesAfterLineDiscount: lineDiscounts.afterLineDiscount,
+    SalesBillDiscount: lineDiscounts.billDiscount,
     DKHACHHANG_NAME: customer?.NAME || 'Khách lẻ',
     DKHACHHANG_DIACHI: customer?.DIACHI || '',
     DKHACHHANG_DIENTHOAI: customer?.DIENTHOAI || '',

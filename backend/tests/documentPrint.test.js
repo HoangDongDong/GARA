@@ -20,6 +20,26 @@ test('cash receipts and payroll map persisted values into GARA rows',async()=>{
 test('quote total includes taxes, discounts, and shipping when total is null',async()=>{
  await mockQuery(async sql=>sql.includes('FROM TBAOGIACHITIET')?[{SOLUONG:2,DONGIA:100000,THANHTIEN:200000,PART_NAME:'Phụ tùng'}]:sql.includes('FROM TBAOGIA WHERE')?[{ID:id,STATUS:0,TONGCONG:null,TIENTHUE:20000,TIENGIAMGIA:10000,PHIVANCHUYEN:5000}]:[],async()=>{const d=await p.payload(p.typeByKey('MauBaoGia'),id,{},'test');assert.equal(d.parameters.TONGCONG,215000);assert.equal(d.tables.Table0[0].QuantityText,'2');});
 });
+test('legacy cash voucher templates receive the saved amount, partner, address and reason',async()=>{
+ const {mapLegacyMoneyWords,toVndWords}=require('../src/services/legacyPrintExpressions');
+ for(const [key,loai,field] of [['MauPhieuThu',0,'THU'],['MauPhieuChi',1,'CHI']]){
+  await mockQuery(async sql=>sql.includes('FROM TTHUCHI WHERE')?[{ID:id,NAME:'TEST',STATUS:1,LOAI:loai,SOTIEN:3211000,DKHACHHANGID:'customer',TENDOITUONG:null,DIACHIDOITUONG:null,NOTE:'Thanh toán công nợ',CHUNGTUGOC:null}]:sql.includes('FROM DKHACHHANG WHERE')?[{NAME:'Khách kiểm thử',DIACHI:'Địa chỉ đã lưu'}]:[],async()=>{
+   const d=await p.payload(p.typeByKey(key),id,{},'test');
+   assert.equal(d.parameters[field],3211000);assert.equal(d.parameters[loai?'THU':'CHI'],0);
+   assert.equal(d.parameters.TENDOITUONG,'Khách kiểm thử');assert.equal(d.parameters.DIACHI,'Địa chỉ đã lưu');assert.equal(d.parameters.DIENGIAI,'Thanh toán công nợ');assert.equal(d.parameters.CHUNGTUGOC,'');
+   const xml=mapLegacyMoneyWords(`<Text Text="[${field}] [ToVndWords([${field}])] [TENDOITUONG] [DIACHI] [DIENGIAI] [CHUNGTUGOC]"/>`,d);
+   assert.doesNotThrow(()=>p.validateBindings(xml,d));assert.equal(d.parameters['VndWords_'+field],toVndWords(3211000));
+  });
+ }
+});
+test('legacy quote aliases use saved customer contact and company fax, while the 54mm receipt validates',async()=>{
+ await mockQuery(async sql=>sql.includes('FROM TBAOGIA WHERE')?[{ID:id,STATUS:0,DKHACHHANGID:'customer',DIACHI:null,DIENTHOAI:null}]:sql.includes('FROM DKHACHHANG WHERE')?[{NAME:'Khách báo giá',DIACHI:'Địa chỉ khách',DIENTHOAI:'0901234567'}]:sql.includes("NAME='CompanyFax'")?[{TEXTVALUE:'0281234567'}]:[],async()=>{
+  const d=await p.payload(p.typeByKey('MauBaoGia'),id,{},'test');
+  assert.equal(d.parameters.TENKHACH,'Khách báo giá');assert.equal(d.parameters.DIACHI,'Địa chỉ khách');assert.equal(d.parameters.DIENTHOAI,'0901234567');assert.equal(d.parameters.CompanyFax,'0281234567');
+  assert.doesNotThrow(()=>p.validateBindings('<Text Text="[TENKHACH] [DIACHI] [DIENTHOAI] [CompanyFax]"/>',d));
+  assert.doesNotThrow(()=>p.validateBindings(require('../src/services/quoteReceipt54').template(),d));
+ });
+});
 test('customer debt uses saved balance before incomplete payment fields',async()=>{
  await mockQuery(async sql=>sql.includes('FROM DKHACHHANG WHERE')?[{ID:id,STATUS:1,NAME:'Khách kiểm thử'}]:sql.includes('FROM TDONHANG WHERE')?[{NAME:'SALE',TONGCONG:1000000,TIENTHANHTOAN:0,CONLAI:0,DATHANHTOAN:1}]:sql.includes('FROM THOADONSUACHUA WHERE')?[{NAME:'REPAIR',TONGCONG:500000,CONLAI:150000}]:[],async()=>{const d=await p.payload(p.typeByKey('MauCongNoKhachHang'),id,{},'test');assert.equal(d.parameters.TONGCONG,150000);});
 });

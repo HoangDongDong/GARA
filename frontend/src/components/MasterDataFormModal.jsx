@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import RatePolicyField from './RatePolicyField';
+import CommissionConfig from './CommissionConfig';
 import { X } from 'lucide-react';
 import './MasterDataFormModal.css';
 
@@ -23,6 +24,8 @@ export default function MasterDataFormModal({ definition, mode, form, setForm, o
     <header><h2 id="master-form-title">{mode === 'add' ? 'Thêm' : 'Sửa'} {definition.name.toLowerCase()}</h2><button type="button" aria-label="Đóng form" disabled={saving} onClick={onClose}><X size={19}/></button></header>
     <div className="master-form-fields">{unavailable && <p className="master-form-unavailable">Danh mục chưa có bảng trong database. Form đã được chuẩn bị; chưa thể lưu.</p>}
       {definition.fields.map((field, index) => {
+        if (field.type === 'hidden') return null;
+        if (field.type === 'commission') return <CommissionConfig key={field.key} form={form} setForm={setForm} disabled={saving} />;
         if(field.type === 'ratePolicy') {
           const group = options.service_categories?.find(row => row.ID === form.DLOAIDICHVUID);
           return <RatePolicyField key={field.key} label={field.label} value={form[field.key]} disabled={saving} onChange={value => setForm(current => ({...current,[field.key]:value}))}
