@@ -4,3 +4,4 @@ helper/obj/
 dist/
 dist-manifest.csv
 installer-output/
+.build-stage/

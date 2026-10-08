@@ -80,7 +80,7 @@ async function decide(query, execute, uuid, repairId, id, body, actor) {
   const policy = require('./pricingPolicy');
   const chargeRates = require('./defaultChargeRates');
   const currentRates = await chargeRates.loadForRepairs(query);
-  const [policyOrder] = await query('SELECT CHARGEVERSION, TILEGIAMGIA, TILETHUE, TILEPHIDICHVU FROM TLENHSUACHUA WHERE ID=?', [repairId]);
+  const [policyOrder] = await query('SELECT CHARGEVERSION, TILEGIAMGIA, TIENGIAMGIAPHIEU, TILETHUE, TILEPHIDICHVU FROM TLENHSUACHUA WHERE ID=?', [repairId]);
   for (const it of items) {
     const accepted = approved.includes(it.ID);
     await execute('UPDATE TPHATSINHSUACHUACT SET TRANGTHAI=? WHERE ID=?', [accepted ? 'approved' : 'rejected', it.ID]);
@@ -106,11 +106,14 @@ async function decide(query, execute, uuid, repairId, id, body, actor) {
   const rates = chargeRates.resolve(orderRates || {}, await chargeRates.load(query));
   const amounts = chargeRates.calculate(Number(totals[0].PT) + Number(totals[0].CONG), rates);
   if (Number(policyOrder?.CHARGEVERSION) === 1) {
-    const details = await query('SELECT ID, THANHTIEN, TILETHUE FROM TLENHSUACHUACHITIET WHERE TLENHSUACHUAID=? AND COALESCE(STATUS,1)=1 ORDER BY ID', [repairId]);
-    const calculated = policy.calculate(details.map(row => ({id:row.ID,amount:Number(row.THANHTIEN),taxRate:Number(row.TILETHUE ?? rates.taxRate)})), rates, Number(policyOrder.TILEGIAMGIA || 0));
+    const details = await query('SELECT ID, THANHTIEN, TILETHUE, TILECHIETKHAU FROM TLENHSUACHUACHITIET WHERE TLENHSUACHUAID=? AND COALESCE(STATUS,1)=1 ORDER BY ID', [repairId]);
+    const lines = details.map(row => ({id:row.ID,amount:Number(row.THANHTIEN),discountRate:Number(row.TILECHIETKHAU || 0),taxRate:Number(row.TILETHUE ?? rates.taxRate)}));
+    const billReduction = policy.billDiscount(lines, Number(policyOrder.TILEGIAMGIA || 0), policyOrder.TIENGIAMGIAPHIEU);
+    const calculated = policy.calculate(lines, rates, billReduction.percent, billReduction.fixed);
     Object.assign(amounts, calculated);
-    for (const line of calculated.details) await execute('UPDATE TLENHSUACHUACHITIET SET TILEGIAMGIA=?, TIENGIAMGIA=?, TIENTHUE=? WHERE ID=?', [line.discountRate, line.discount, line.tax, line.id]);
+    for (const line of calculated.details) await execute('UPDATE TLENHSUACHUACHITIET SET TILEGIAMGIA=?, TIENGIAMGIA=?, TIENTHUE=?, TIENCHIETKHAU=? WHERE ID=?', [billReduction.percent, line.discount, line.tax, line.lineDiscount, line.id]);
     await execute('UPDATE TLENHSUACHUA SET TIENGIAMGIA=?, TAXSUMMARY=? WHERE ID=?', [calculated.discount, JSON.stringify(calculated.taxGroups), repairId]);
+    if (billReduction.fixed != null) await execute('UPDATE TLENHSUACHUA SET TILEGIAMGIA=? WHERE ID=?', [billReduction.percent, repairId]);
   }
   await execute(`UPDATE TLENHSUACHUA SET TONGTIENPHUTUNG=?, TONGTIENCONG=?, TONGCONG=?,
     TILETHUE=?, TIENTHUE=?, TILEPHIDICHVU=?, PHIDICHVU=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,

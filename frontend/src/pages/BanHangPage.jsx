@@ -1,3 +1,5 @@
+import DiscountFields from '../components/DiscountFields';
+import { billDiscount } from '../utils/billDiscount';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import api from '../api';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -105,6 +107,7 @@ export default function BanHangPage() {
 
   // Thanh toán
   const [discountPercent, setDiscountPercent] = useState(null);
+  const [discountMoney, setDiscountMoney] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(0); // 0: Tiền mặt
   const [processing, setProcessing] = useState(false);
   const [showCheckoutConfirm,setShowCheckoutConfirm]=useState(false);
@@ -259,7 +262,8 @@ export default function BanHangPage() {
   const pricedCart = cart.map(item => ({...item, amount: Number(item.GIABAN || 0) * (item.quantity || 1),
     discountRate: chargeConfig.rates.allowDiscount === false ? null : item.TILEGIAMGIA,
     ...taxPolicy(item, chargeRates, item.TILETHUE)}));
-  const chargeTotals = savedSale || calculate(pricedCart, chargeRates, appliedDiscount.discountRate);
+  const billReduction = billDiscount(pricedCart, appliedDiscount.discountRate, chargeConfig.rates.allowDiscount === false ? null : discountMoney);
+  const chargeTotals = savedSale || calculate(pricedCart, chargeRates, billReduction.percent, billReduction.fixed);
   const discountAmount = chargeTotals.discount;
   const otherFees = chargeTotals.serviceFee;
   const taxAmount = chargeTotals.tax;
@@ -267,7 +271,7 @@ export default function BanHangPage() {
   const checkoutCash=Number(checkoutAmounts.cashGiven || 0),checkoutCard=Number(checkoutAmounts.card || 0),checkoutTransfer=checkoutTransferEnabled?Number(checkoutAmounts.transfer || 0):0;
   const checkoutChange=Math.max(0,checkoutCash+checkoutCard+checkoutTransfer-total);
   const checkoutDebt=Math.max(0,total-checkoutCash-checkoutCard-checkoutTransfer);
-  useEffect(() => { setDiscountPercent(null); }, [customerId]);
+  useEffect(() => { setDiscountPercent(null); setDiscountMoney(null); }, [customerId]);
 
   // Thêm vào giỏ
   const addProductToCart = (p) => {
@@ -336,7 +340,7 @@ export default function BanHangPage() {
   const resetSale = () => {
     chargeConfig.reload();
     setCart([]);
-    setDiscountPercent(null);
+    setDiscountPercent(null); setDiscountMoney(null);
     setNote('');
     setSaleCode(defaultTicketCode());
     setSavedSale(null);
@@ -490,7 +494,8 @@ export default function BanHangPage() {
         DKHACHHANGID: customerId || null,
         DKHOXUATID: warehouseId || null,
         NOTE: note,
-        TILEGIAMGIA: chargeConfig.rates.allowDiscount===false || discountPercent == null ? null : Number(discountPercent || 0),
+        TILEGIAMGIA: chargeConfig.rates.allowDiscount===false || (discountPercent == null && discountMoney == null) ? null : discountMoney != null ? billReduction.percent : Number(discountPercent || 0),
+        TIENGIAMGIAPHIEU: billReduction.fixed,
         LOAITHANHTOAN: paymentMethod,
         payments:{...checkoutAmounts,allowDebt:chargeConfig.rates.allowDebt!==false && checkoutAmounts.allowDebt,transfer:checkoutTransferEnabled?checkoutAmounts.transfer:'0'},
         DTAIKHOANNGANHANGID:checkoutTransferEnabled?checkoutAccount || null:null,
@@ -543,7 +548,7 @@ export default function BanHangPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, processing, showCheckoutConfirm, showInvoiceModal, customerId, warehouseId, note, discountPercent, paymentMethod, chargeRates.taxRate, chargeRates.serviceRate, chargeConfig.rates, chargeConfig.loading, chargeConfig.error,checkoutAmounts,checkoutAccount,checkoutTransferEnabled,total,saleCode]);
+  }, [cart, processing, showCheckoutConfirm, showInvoiceModal, customerId, warehouseId, note, discountPercent, discountMoney, paymentMethod, chargeRates.taxRate, chargeRates.serviceRate, chargeConfig.rates, chargeConfig.loading, chargeConfig.error,checkoutAmounts,checkoutAccount,checkoutTransferEnabled,total,saleCode]);
 
   const selectedCustObj = customerList.find((c) => c.ID === customerId);
   const currentSeller = (() => {
@@ -826,6 +831,7 @@ export default function BanHangPage() {
                       <td style={{ textAlign: 'center' }}>
                           <input
                             type="number"
+                            onFocus={event => event.currentTarget.select()}
                             min="1"
                             step="1"
                             inputMode="numeric"
@@ -843,6 +849,7 @@ export default function BanHangPage() {
                       <td style={{ textAlign: 'right' }} title="Chiết khấu riêng cho món này, trừ trước giảm giá toàn bill">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
                           <input type="number" min="0" max="100" step="0.01"
+                            onFocus={event => event.currentTarget.select()}
                             aria-label={`Chiết khấu ${item.NAME} (%)`}
                             style={{ width: 50, border: '1px solid #cbd5e1', borderRadius: 4, padding: 3 }}
                             disabled={processing || !!savedSale || !canEditPolicy || chargeConfig.rates.allowDiscount === false}
@@ -977,31 +984,16 @@ export default function BanHangPage() {
                 <span>Tổng tiền hàng</span>
                 <span>{money(subtotal)} đ</span>
               </div>
-              <div className="pos-sum-row">
-                <span>Giảm giá</span>
-                <div className="pos-discount-input-wrap">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="pos-discount-input"
-                    disabled={!!savedSale || !canEditPolicy || chargeConfig.rates.allowDiscount===false}
-                    value={chargeConfig.rates.allowDiscount===false ? appliedDiscount.discountRate : discountPercent ?? appliedDiscount.discountRate}
-                    onChange={(e) => setDiscountPercent(e.target.value)}
-                  />
-                  <select className="pos-discount-select">
-                    <option value="%">%</option>
-                  </select>
-                </div>
-              </div>
+              <DiscountFields name="bán hàng"
+                percent={savedSale ? savedSale.discountRate : billReduction.percent}
+                amount={chargeTotals.billDiscount ?? discountAmount} base={billReduction.base}
+                disabled={processing || !!savedSale || !canEditPolicy || chargeConfig.rates.allowDiscount===false}
+                onPercent={value => { setDiscountPercent(value); setDiscountMoney(null); }}
+                onAmount={value => setDiscountMoney(value)} />
               {chargeTotals.lineDiscount > 0 && <div className="pos-sum-row">
                 <span style={{ color: '#6b7280' }}>Chiết khấu mặt hàng</span>
                 <span style={{ color: '#6b7280' }}>{money(chargeTotals.lineDiscount)} đ</span>
               </div>}
-              <div className="pos-sum-row">
-                <span style={{ color: '#6b7280' }}>Giảm giá toàn bill</span>
-                <span style={{ color: '#6b7280' }}>{money(chargeTotals.billDiscount ?? discountAmount)} đ</span>
-              </div>
               {chargeRates.serviceEnabled !== false && <div className="pos-sum-row">
                 <span style={{ color: '#6b7280' }}>Phí dịch vụ ({chargeRates.serviceRate}%)</span>
                 <span style={{ color: '#6b7280' }}>{money(otherFees)} đ</span>

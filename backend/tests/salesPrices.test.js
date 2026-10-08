@@ -54,6 +54,24 @@ test('saves individual edited prices and calculates discount from those prices',
   ]);
 });
 
+test('POS money discount is exact after line discounts and rejects excess or disabled reductions', async () => {
+  const items = [{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 300000, TILEGIAMGIA: 10 }];
+  const result = await save(items, 0, { taxRate: 10, serviceRate: 0 }, { TIENGIAMGIAPHIEU: 10001 });
+  assert.equal(result.status, 200, result.body?.error);
+  assert.equal(result.body.billDiscount, 10001);
+  assert.equal(result.body.discount, 40001);
+  assert.equal(result.body.discountRate, 3.7);
+  assert.equal(result.body.total, 285999);
+  for (const value of [-1, 270001, 'bad', true]) {
+    const invalid = await save(items, 0, {}, { TIENGIAMGIAPHIEU: value });
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.inserts.length, 0);
+  }
+  const disabled = await save([{ DMATHANGID: 'part', SOLUONG: 1, DONGIA: 100 }], null, { allowDiscount: false }, { TIENGIAMGIAPHIEU: 10 });
+  assert.equal(disabled.status, 400);
+  assert.equal(disabled.inserts.length, 0);
+});
+
 test('line discounts and additional bill discount persist and reduce the VAT base', async () => {
   const result = await save([
     { DMATHANGID: 'part-a', SOLUONG: 1, DONGIA: 120000, TILEGIAMGIA: 10 },

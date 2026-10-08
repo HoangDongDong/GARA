@@ -33,8 +33,14 @@ function applyTaxBreakdown(xml, parameters) {
     if (changed || !row.includes('[TIENTHUE]')) return row;
     changed = true;
     return groups.map((group, index) => row.replace(/\bName="([^"]+)"/g, (_, name) => `Name="TaxGroup${index}_${name}"`)
-      .replace(/\[TILETHUE\]/g, `[TaxGroupRate${index}]`).replace(/\[TIENTHUE\]/g, `[TaxGroupAmountText${index}]`)
-      .replace(/<TableCell\b[^>]*>/g, tag => tag.includes(`[TaxGroupAmountText${index}]`) ? tag.replace(/\sFormat(?:\.[\w]+)?="[^"]*"/g, '') : tag)).join('');
+      .replace(/\[TILETHUE\]/g, `[TaxGroupRate${index}]`).replace(/\[TIENTHUE\]/g, `[TaxGroupAmount${index}]`)
+      .replace(/<TableCell\b[^>]*>/g, tag => {
+        // Conditions must keep the numeric amount; only displayed text is formatted.
+        const amount = `[TaxGroupAmount${index}]`;
+        if (!/\bText="[^"]*"/.test(tag) || !tag.match(/\bText="[^"]*"/)[0].includes(amount)) return tag;
+        return tag.replace(/\bText="[^"]*"/, text => text.split(amount).join(`[TaxGroupAmountText${index}]`))
+          .replace(/\sFormat(?:\.[\w]+)?="[^"]*"/g, '');
+      })).join('');
   });
   if (!changed) {
     xml = xml.replace(/<(?:TextObject|TableCell)\b[^>]*>/g, tag => {

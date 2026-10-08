@@ -13,7 +13,7 @@ function build(source, variant) {
   const make = (name, detail) => {
     const opening = source.match(new RegExp(`<TableObject Name="${name}"[^>]*>`))?.[0];
     if (!opening) throw new Error('Thiếu bảng ' + name);
-    const texts = detail ? variant.fields : variant.labels;
+    const texts = detail ? variant.fields : variant.labels.map(label => variant.key !== 'two-lines' && label === 'Thành tiền' ? 'T Tiền' : label);
     const columns = variant.widths.map((width, index) => `<TableColumn Name="${name}VariantColumn${index}" Width="${width}"/>`).join('');
     const title = detail && variant.key === 'two-lines'
       ? `<TableRow Name="VariantItemTitleRow" MinHeight="18.9" AutoSize="true"><TableCell Name="VariantItemTitle" Text="[Table0.DMATHANG_NAME]" ColSpan="4" Padding="1, 1, 1, 1" Font="Tahoma, 8pt, style=Bold"/>${[1,2,3].map(i => `<TableCell Name="VariantItemTitleEmpty${i}"/>`).join('')}</TableRow>` : '';

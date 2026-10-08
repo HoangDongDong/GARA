@@ -58,6 +58,7 @@ const CONFIGS = [
   ['CompanyFacebook','Facebook',             'kazukovietnam',                             1, 5, 0, 7],
   ['CompanyTaxCode', 'Mã số thuế',           '',                                          1, 5, 0, 8],
   ['LoiCamOn',       'Lời cảm ơn trên hóa đơn', 'Cảm ơn quý khách và hẹn gặp lại!',     1, 6, 0, 9],
+  ['PaymentBankAccountId', 'Tài khoản nhận thanh toán', '', 1, 8, 0, 11],
 
   /* ---- In ấn & Mẫu (1) ---- */
   ['MauHoaDonBanHang',    'Mẫu in hóa đơn bán hàng (ID)',   '190263eb-bc79-4ad2-9cee-ecd5d0470426', 1, 5, 1, 1],

@@ -4,7 +4,11 @@ const {execFile}=require('node:child_process');
 const {recoverLedger}=require('./ledger');
 const ROOT=__dirname,DATA=process.env.GARA_AGENT_DATA||path.join(ROOT,'data');fs.mkdirSync(DATA,{recursive:true});
 const PORT=Number(process.env.GARA_AGENT_PORT||3790),VERSION='0.1.0';
-const HELPER=process.env.GARA_PRINT_HELPER||path.join(ROOT,'helper','bin','Release','net8.0-windows10.0.19041.0','Garage.PrintHelper.exe');
+const HELPER=process.env.GARA_PRINT_HELPER||[
+ path.join(ROOT,'runtime','Garage.PrintHelper.exe'),
+ path.join(ROOT,'dist','runtime','Garage.PrintHelper.exe'),
+ path.join(ROOT,'helper','bin','Release','net8.0-windows10.0.19041.0','Garage.PrintHelper.exe'),
+].find(file=>fs.existsSync(file));
 const atomic=(file,value)=>{const temp=file+'.tmp';const fd=fs.openSync(temp,'w');try{fs.writeFileSync(fd,JSON.stringify(value));fs.fsyncSync(fd);}finally{fs.closeSync(fd);}fs.renameSync(temp,file);};
 const read=(name,fallback)=>{try{return JSON.parse(fs.readFileSync(path.join(DATA,name),'utf8'));}catch(e){if(e.code==='ENOENT')return fallback;throw e;}};
 const run=(exe,args,timeout=120000)=>new Promise((resolve,reject)=>execFile(exe,args,{windowsHide:true,timeout,maxBuffer:4*1024*1024},(e,out,err)=>e?reject(new Error(String(err||e.message).slice(0,1000))):resolve(out)));

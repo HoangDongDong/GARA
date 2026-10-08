@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Report ReportInfo.Created="09/26/2010 13:06:26" ReportInfo.Modified="10/03/2026 19:17:57" ReportInfo.CreatorVersion="1.2.47.0" DoublePass="true" ReportInfo.Description="PHIẾU TẠM TÍNH GARA - mẫu người dùng">
+  <Dictionary>
+    <TableDataSource Name="Table0" ReferenceName="Data.Table0" DataType="System.Int32" Enabled="true">
+      <Column Name="Index" DataType="System.String" />
+      <Column Name="ItemName" DataType="System.String" />
+      <Column Name="Unit" DataType="System.String" />
+      <Column Name="QuantityText" DataType="System.String" />
+      <Column Name="UnitPriceText" DataType="System.String" />
+      <Column Name="AmountText" DataType="System.String" />
+      <Column Name="Note" DataType="System.String" />
+      <Column Name="ValueText" DataType="System.String" />
+    </TableDataSource>
+    <Parameter Name="CompanyName" DataType="System.String" />
+    <Parameter Name="CompanyAddress" DataType="System.String" />
+    <Parameter Name="CompanyPhone" DataType="System.String" />
+    <Parameter Name="CompanyEmail" DataType="System.String" />
+    <Parameter Name="DocTitle" DataType="System.String" />
+    <Parameter Name="DocNumber" DataType="System.String" />
+    <Parameter Name="DocDate" DataType="System.String" />
+    <Parameter Name="CustomerName" DataType="System.String" />
+    <Parameter Name="Contact" DataType="System.String" />
+    <Parameter Name="VehiclePlate" DataType="System.String" />
+    <Parameter Name="Description" DataType="System.String" />
+    <Parameter Name="SummaryText" DataType="System.String" />
+    <Parameter Name="Extra" DataType="System.String" />
+  </Dictionary>
+  <ReportPage Name="Page1" PaperWidth="80" LeftMargin="0" TopMargin="0" RightMargin="6" BottomMargin="0" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="279.72" Height="148" CanGrow="true">
+      <TextObject Name="Text3" Left="5.29" Top="52.0" Width="264.6" Height="13.45" CanGrow="true" Text="[CompanyName]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 7pt, style=Bold" />
+      <TextObject Name="Text6" Left="5.29" Top="65.9" Width="264.6" Height="10.45" CanGrow="true" Text="Địa chỉ: [CompanyAddress]" HorzAlign="Center" Font="Tahoma, 7pt" />
+      <TextObject Name="Text4" Left="5.29" Top="95.8" Width="264.6" Height="18.9" CanGrow="true" Text="[DocTitle]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 9pt, style=Bold" />
+      <TextObject Name="Text39" Left="5.29" Top="77.35" Width="264.6" Height="12.45" Border.Lines="Bottom" Border.Style="Dot" CanGrow="true" Text="Điện thoại: [CompanyPhone], Email: [CompanyEmail]" HorzAlign="Center" Font="Tahoma, 7pt" />
+      <TextObject Name="Text41" Left="5.29" Top="116.15" Width="264.6" Height="18.9" CanGrow="true" Text="Số: [DocNumber] | [DocDate]" HorzAlign="Center" VertAlign="Center" Font="Tahoma, 8pt" />
+      <PictureObject Name="CompanyLogo" Left="90" Width="100" Height="48" SizeMode="Zoom" />
+    </ReportTitleBand>
+    <DataBand Name="BusinessRows" Width="279.72" Height="78" DataSource="Table0" CanGrow="true" CanBreak="true">
+      <DataHeaderBand Name="BusinessHeader" Width="279.72" Height="110" CanGrow="true" RepeatOnEveryPage="true">
+        <TextObject Name="BusinessText1" Left="5" Top="0" Width="261.72" Height="24" Text="Khách hàng: [CustomerName]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="BusinessText2" Left="5" Top="24" Width="261.72" Height="24" Text="Điện thoại: [Contact]  |  Biển số: [VehiclePlate]" Font="Tahoma, 8pt" CanGrow="true" />
+        <TextObject Name="BusinessText3" Left="5" Top="48" Width="261.72" Height="24" Text="[Description]" Font="Tahoma, 8pt" CanGrow="true" />
+      </DataHeaderBand>
+      <TextObject Name="BusinessText4" Left="5" Top="0" Width="265" Height="24" Text="[Table0.Index]. [Table0.ItemName]" Font="Tahoma, 8pt, style=Bold" CanGrow="true" />
+      <TextObject Name="BusinessText5" Left="5" Top="25" Width="265" Height="20" Text="[Table0.QuantityText] [Table0.Unit] × [Table0.UnitPriceText]" Font="Tahoma, 8pt" CanGrow="true" />
+      <TextObject Name="BusinessText6" Left="5" Top="45" Width="265" Height="20" Text="Thành tiền: [Table0.AmountText]" Font="Tahoma, 8pt" CanGrow="true" />
+      <TextObject Name="BusinessText7" Left="5" Top="66" Width="265" Height="16" Text="[Table0.Note]" Font="Tahoma, 7pt" CanGrow="true" />
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="89.22" Width="279.72" Height="208.4" CanGrow="true">
+      <TextObject Name="Text33" Left="155.2" Top="104.45" Width="113.4" Height="18.9" Text="Nhân viên GARA" HorzAlign="Center" Font="Tahoma, 8pt, style=Bold" />
+      <TextObject Name="Text34" Left="155.2" Top="123.35" Width="113.4" Height="85.05" Border.Lines="Bottom" Text="(Ký, họ tên)" HorzAlign="Center" Font="Tahoma, 8pt" />
+      <TextObject Name="Text35" Left="4" Top="104.45" Width="122.85" Height="18.9" Text="Khách hàng" HorzAlign="Center" Font="Tahoma, 8pt, style=Bold" />
+      <TextObject Name="Text36" Left="4" Top="123.35" Width="122.85" Height="85.05" Border.Lines="Bottom" Text="(Ký, họ tên)" HorzAlign="Center" Font="Tahoma, 8pt" />
+      <TextObject Name="BusinessText8" Left="5" Top="4" Width="261.72" Height="42" Text="[SummaryText]" Font="Tahoma, 8pt, style=Bold" CanGrow="true" HorzAlign="Right" />
+      <TextObject Name="BusinessText9" Left="5" Top="48" Width="261.72" Height="42" Text="[Extra]" Font="Tahoma, 8pt" CanGrow="true" />
+    </ReportSummaryBand>
+  </ReportPage>
+</Report>

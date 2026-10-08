@@ -84,7 +84,7 @@ function fitMoneyColumns(xml, rows) {
     const columns = [...table.matchAll(/<TableColumn\b[^>]*\/>/g)].map(match => match[0]);
     for (const match of table.matchAll(/<TableRow\b[^>]*>[\s\S]*?<\/TableRow>/g)) {
       const cells = [...match[0].matchAll(/<TableCell\b[^>]*\/>/g)].map(cell => cell[0]);
-      const nameIndex = cells.findIndex(cell => /Text="\[Table0.DMATHANG_NAME\]"/.test(cell) && !/ColSpan=/.test(cell));
+      const nameIndex = cells.findIndex(cell => /Text="\[Table0.(?:DMATHANG_NAME|ItemName)\]"/.test(cell) && !/ColSpan=/.test(cell));
       const priceIndex = cells.findIndex(cell => /Text="\[Table0.(?:DONGIA|LineNetPrice)\]"/.test(cell));
       const amountIndex = cells.findIndex(cell => /Text="\[Table0.(?:LineNetAmount|THANHTIEN)\]"/.test(cell));
       if (nameIndex < 0 || priceIndex < 0 || amountIndex < 0 || cells.length !== columns.length) continue;
@@ -108,7 +108,7 @@ function fitMoneyColumns(xml, rows) {
   // The quantity total must follow the resized SL column.
   const detail = xml.match(/<TableObject\b[^>]*Name="detail"[^>]*>[\s\S]*?<\/TableObject>/)?.[0] || '';
   const cells = [...detail.matchAll(/<TableCell\b[^>]*\/>/g)].map(match => match[0]);
-  const sl = cells.findIndex(cell => cell.includes('[Table0.SLXUATCHUAQUYDOI]'));
+  const sl = cells.findIndex(cell => /\[Table0\.(?:SLXUATCHUAQUYDOI|SOLUONG)\]/.test(cell));
   if (sl >= 0) {
     const left = Number(detail.match(/\bLeft="([^"]+)"/)?.[1] || 0);
     const offset = layout.widths.slice(0, sl).reduce((sum, width) => sum + width, 0);

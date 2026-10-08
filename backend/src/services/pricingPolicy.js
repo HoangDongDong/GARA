@@ -10,7 +10,7 @@ function validateMaster(body) {
   return body;
 }
 function assertOverride(req, code) {
-  const override = req.body.TILEGIAMGIA != null || req.body.TIENGIAMGIA != null
+  const override = req.body.TILEGIAMGIA != null || req.body.TIENGIAMGIA != null || req.body.TIENGIAMGIAPHIEU != null
     || req.body.items?.some(line => line.TILETHUE != null || line.TILEGIAMGIA != null);
   if (override && req.accessUser && Number(req.accessUser.ISADMIN) !== 1
     && (Number(req.accessUser.permissions?.[code] || 0) & 4) !== 4) {
@@ -93,4 +93,14 @@ function summary(value) {
   if (!value) return [];
   try { return JSON.parse(value); } catch { return []; }
 }
-module.exports = { round, rate, validateMaster, assertOverride, taxPolicy, discountPolicy, customer, item, calculate, summary };
+function billDiscount(lines, percent, fixed) {
+  const base = round(lines.reduce((sum, line) => sum + round(Number(line.amount)) - round(Number(line.amount) * Number(line.discountRate || 0) / 100), 0));
+  if (fixed == null) return { base, fixed: null, percent };
+  const amount = Number(fixed);
+  if (!['number', 'string'].includes(typeof fixed) || String(fixed).trim() === '' || !Number.isFinite(amount)
+    || amount < 0 || amount > base || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.00001) {
+    throw Object.assign(new Error('Tiền giảm phải từ 0 đến tiền hàng sau giảm giá từng dòng, tối đa 2 chữ số thập phân.'), { status: 400 });
+  }
+  return { base, fixed: amount, percent: base ? round(amount / base * 100) : 0 };
+}
+module.exports = { round, rate, validateMaster, assertOverride, taxPolicy, discountPolicy, customer, item, calculate, summary, billDiscount };

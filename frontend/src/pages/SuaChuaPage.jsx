@@ -16,10 +16,14 @@ import EmployeeFormModal from '../components/EmployeeFormModal';
 import RepairAssignmentPanel from '../components/RepairAssignmentPanel';
 import RepairSupplements from '../components/RepairSupplements';
 import LineTaxField from '../components/LineTaxField';
+import EditableSalePrice from '../components/EditableSalePrice';
+import DiscountFields from '../components/DiscountFields';
+import { billDiscount } from '../utils/billDiscount';
 import ChargeSummary from '../components/ChargeSummary';
 import useChargeRates from '../hooks/useChargeRates';
 import canEditPricing from '../utils/canEditPricing';
 import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy';
+import { lastDraftVehicle, readRepairDraft, saveRepairDraft, removeRepairDraft, restoreDraftItems } from '../utils/repairDraft';
 import './SuaChuaPage.css';
 
 const MAX_WORKFLOW_IMAGES = 12;
@@ -59,10 +63,13 @@ export default function SuaChuaPage() {
   const requestedPayment = searchParams.get('payment') === '1';
   // Toast thông báo
   const [toastMessage, setToastMessage] = useState('');
+  const toastTimer = useRef(null);
   const showToast = (msg) => {
+    clearTimeout(toastTimer.current);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 2500);
+    toastTimer.current = setTimeout(() => setToastMessage(''), 5000);
   };
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   // Thông tin phiếu tiếp nhận sửa chữa
   const [vehicleInfo, setVehicleInfo] = useState({
@@ -92,6 +99,9 @@ export default function SuaChuaPage() {
   const canEditPolicy = canEditPricing('REPAIR');
   const chargeConfig = useChargeRates('repair-orders');
   const [discountOverride, setDiscountOverride] = useState(null);
+  const [discountMoney, setDiscountMoney] = useState(null);
+  const [draftSavedAt, setDraftSavedAt] = useState('');
+  const restoredDraftCustomer = useRef(null);
   const [showSupplements, setShowSupplements] = useState(false);
   const draftNumber=useDocumentNumber('LenhSuaChua',!repairFlow.repairId,vehicleInfo.plate);
   const [vehicleFlowOptions, setVehicleFlowOptions] = useState([]);
@@ -150,6 +160,7 @@ export default function SuaChuaPage() {
 
   useEffect(() => {
     const loadDatabase = async () => {
+      setDraftSavedAt('');
       try {
         const [vehicleRows, serviceRows, partRows, employeeRows, customerRows, vehicleMeta, customerGroupRows] = await Promise.all([
           vehicles.list(), masterData.services(), partsApi.list(), employees.list(),
@@ -184,7 +195,8 @@ export default function SuaChuaPage() {
           showToast('Không tìm thấy xe được chọn. Vui lòng tải lại Hồ sơ xe.');
           return;
         }
-        const first = availableVehicles.find((vehicle) => String(vehicle.ID) === requestedVehicleId) || availableVehicles[0];
+        const initialVehicleId = requestedVehicleId || (!requestedRepairId ? lastDraftVehicle(localStorage) : '');
+        const first = availableVehicles.find((vehicle) => String(vehicle.ID) === initialVehicleId) || availableVehicles[0];
         if (first) {
           setRepairFlow({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
           setSavedOrder(null); setSavedDetails([]); setRepairNotes(''); setShowRepairConfirmation(false); setShowPayment(false);
@@ -204,6 +216,8 @@ export default function SuaChuaPage() {
             return;
           }
           const activeFlow = flowOptions.find(flow => String(flow.TLENHSUACHUAID) === requestedRepairId) || flowOptions[0] || null;
+          if (!requestedRepairId && (!activeFlow?.TLENHSUACHUAID || Number(activeFlow.TRANGTHAI) === 4)
+            && restoreReceptionDraft(first, catalog, Number(activeFlow?.TRANGTHAI) === 4 ? null : activeFlow)) return;
           if (activeFlow) {
             setRepairFlow({
               repairId: activeFlow.TLENHSUACHUAID || null,
@@ -298,38 +312,38 @@ export default function SuaChuaPage() {
   const currentCustomer = customerOptions.find(customer => customer.ID === vehicleInfo.customerId);
   const appliedDiscount = discountPolicy(currentCustomer, discountOverride);
   const pricedServices = selectedServices.map(item => ({...item,amount:item.amount ?? item.price * (item.quantity || 1),
+    discountRate: item.TILEGIAMGIA,
     ...taxPolicy(item,chargeRates,item.TILETHUE)}));
   const snapshot = savedInvoice || activeSavedOrder;
+  const billReduction = billDiscount(pricedServices, appliedDiscount.discountRate, discountMoney);
   const discountAmount = snapshot ? Number(snapshot.TIENGIAMGIA || 0) : subtotalAmount * appliedDiscount.discountRate / 100;
   const chargeTotals = snapshot
     ? { subtotal: savedInvoice ? Number(savedInvoice.TIENPHUTUNG || 0) + Number(savedInvoice.TIENCONG || 0) : subtotalAmount, discount: discountAmount,
         tax: Number(snapshot.TIENTHUE || 0), serviceFee: Number(snapshot.PHIDICHVU || 0), total: Number(snapshot.TONGCONG || 0), taxGroups:snapshot.taxGroups || [] }
-    : calculate(pricedServices, chargeRates, appliedDiscount.discountRate);
+    : calculate(pricedServices, chargeRates, billReduction.percent, billReduction.fixed);
   const totalAmount = chargeTotals.total;
   const chargeSummary = <>
     <ChargeSummary subtotal={chargeTotals.subtotal} discount={chargeTotals.discount} totals={chargeTotals}
       discountControl={<>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,padding:'4px 0'}}>
-          <span>Giảm giá</span>
-          <div style={{display:'flex',gap:5}}>
-            <input aria-label="Giảm giá sửa chữa (%)" type="number" min="0" max="100" step="0.01"
-              disabled={!!activeSavedOrder || !canEditPolicy}
-              value={snapshot ? Number(snapshot.TILEGIAMGIA || 0) : discountOverride ?? appliedDiscount.discountRate}
-              onChange={event => setDiscountOverride(event.target.value === '' ? null : event.target.value)}
-              style={{width:60,height:30,padding:'4px 6px',textAlign:'center',border:'1px solid #CBD5E1',borderRadius:4,fontSize:12,color:'#334155'}} />
-            <select aria-label="Đơn vị giảm giá sửa chữa" value="%" disabled={!!activeSavedOrder || !canEditPolicy}
-              style={{width:45,height:30,border:'1px solid #CBD5E1',borderRadius:4,color:'#334155'}}>
-              <option value="%">%</option>
-            </select>
+        <DiscountFields name="sửa chữa"
+          percent={snapshot ? Number(snapshot.TILEGIAMGIA || 0) : billReduction.percent}
+          amount={snapshot ? Math.max(0, Number(snapshot.TIENGIAMGIA || 0) - savedDetails.reduce((sum, line) => sum + Number(line.TIENCHIETKHAU || 0), 0)) : chargeTotals.billDiscount}
+          base={billReduction.base} disabled={savingProcess || !!activeSavedOrder || !canEditPolicy}
+          onPercent={value => { setDiscountOverride(value); setDiscountMoney(null); }}
+          onAmount={value => setDiscountMoney(value)} />
+        {(chargeTotals.lineDiscount || savedDetails.reduce((sum, line) => sum + Number(line.TIENCHIETKHAU || 0), 0)) > 0 && (
+          <div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',color:'#64748B'}}>
+            <span>Giảm giá hạng mục</span><span>{Number(chargeTotals.lineDiscount ?? savedDetails.reduce((sum, line) => sum + Number(line.TIENCHIETKHAU || 0), 0)).toLocaleString('vi-VN')} đ</span>
           </div>
-        </div>
-        <div style={{display:'flex',justifyContent:'space-between',gap:12,padding:'4px 0',color:'#64748B'}}>
-          <span>Tiền giảm</span><span>{Number(chargeTotals.discount || 0).toLocaleString('vi-VN')} đ</span>
-        </div>
+        )}
       </>}
       rates={{...chargeRates,taxEnabled:showRepairTax,serviceEnabled:showRepairService}} loading={!savedInvoice && chargeConfig.loading} error={!savedInvoice && chargeConfig.error} onRetry={chargeConfig.reload} />
   </>;
-  useEffect(() => { setDiscountOverride(null); }, [vehicleInfo.customerId]);
+  useEffect(() => {
+    if (String(restoredDraftCustomer.current) === String(vehicleInfo.customerId)) {
+      restoredDraftCustomer.current = null;
+    } else { setDiscountOverride(null); setDiscountMoney(null); }
+  }, [vehicleInfo.customerId]);
 
   const businessStage = Math.max(0, Math.min(4, Number(repairFlow.workflowState ?? 0)));
   const processStage = repairFlow.repairId ? Math.max(1, businessStage) : businessStage;
@@ -431,7 +445,11 @@ export default function SuaChuaPage() {
       receiptCode: flow.SOPHIEU || flow.SOPHIEUTIEPNHAN || current.receiptCode,
     }));
     setServices((current) => (catalog || current).map((item) => ({ ...item, checked: false })));
-    if (!flow.TLENHSUACHUAID) return;
+    if (!flow.TLENHSUACHUAID) {
+      const vehicle = vehicleOptions.find(item => item.ID === vehicleInfo.vehicleId);
+      if (vehicle) restoreReceptionDraft(vehicle, catalog || services, flow);
+      return;
+    }
     const order = await repairOrders.get(flow.TLENHSUACHUAID).catch((error) => {
       showToast(error?.response?.data?.error || 'Không thể tải lại các hạng mục của số phiếu đã chọn.');
       return null;
@@ -447,6 +465,7 @@ export default function SuaChuaPage() {
     const flow = vehicleFlowOptions.find((item) => String(item.ID) === String(workflowId));
     if (!flow || String(flow.ID) === String(repairFlow.workflowId)) return;
     const requestId = ++vehicleSelectionRequest.current;
+    setDraftSavedAt('');
     setWorkflowImages([]);
     setDraftWorkflowImages([]);
     setSelectedImageState(Math.max(0, Math.min(4, Number(flow.TRANGTHAI || 0))));
@@ -473,7 +492,10 @@ export default function SuaChuaPage() {
     setWorkflowImages([]);
     setDraftWorkflowImages([]);
     setSelectedImageState(0);
-    setServices((current) => current.map((item) => ({ ...item, checked: false, quantity: 1, note: '' })));
+    setDraftSavedAt('');
+    setDiscountOverride(null);
+    setDiscountMoney(null);
+    setServices((current) => current.map((item) => ({ ...item, checked: false, quantity: 1, note: '', TILEGIAMGIA: null })));
     setVehicleInfo((current) => ({
       ...current, vehicleId: selected.ID, customerId: selected.DKHACHHANGID || '',
       plate: selected.BIENSO || '', customer: selected.TEN_KH || '',
@@ -486,8 +508,51 @@ export default function SuaChuaPage() {
     const flowOptions = Array.isArray(flowRows) ? flowRows : [];
     setVehicleFlowOptions(flowOptions);
     const activeFlow = flowOptions[0] || null;
+    if ((!activeFlow?.TLENHSUACHUAID || Number(activeFlow.TRANGTHAI) === 4)
+      && restoreReceptionDraft(selected, services, Number(activeFlow?.TRANGTHAI) === 4 ? null : activeFlow)) return;
     if (activeFlow) {
       await loadRepairFlow(activeFlow, requestId);
+    }
+  };
+
+  const restoreReceptionDraft = (vehicle, catalog, flow = null) => {
+    try {
+      const draft = readRepairDraft(localStorage, vehicle.ID, vehicle.DKHACHHANGID || '', flow?.ID);
+      if (!draft) return false;
+      setRepairFlow({ repairId: null, workflowId: flow?.ID || null,
+        receptionId: flow?.TTIEPNHANXEID || null, workflowState: flow ? Number(flow.TRANGTHAI) : null });
+      setSavedOrder(null); setSavedDetails([]);
+      setServices(restoreDraftItems(catalog, draft));
+      setVehicleInfo(current => ({ ...current, ...draft.fields, receiptCode: flow?.SOPHIEUTIEPNHAN || '' }));
+      setRepairNotes(draft.repairNotes || '');
+      restoredDraftCustomer.current = vehicle.DKHACHHANGID || '';
+      setDiscountOverride(draft.discountOverride ?? null);
+      setDiscountMoney(draft.discountMoney ?? null);
+      setDraftWorkflowImages(draft.images || []);
+      setDraftSavedAt(draft.savedAt);
+      showToast('Đã khôi phục bản lưu tạm của xe.');
+      return true;
+    } catch {
+      showToast('Không thể đọc bản lưu tạm trên trình duyệt này.');
+      return false;
+    }
+  };
+
+  const handleSaveDraft = () => {
+    if (repairFlow.repairId || savingProcess) return;
+    if (!vehicleInfo.vehicleId) return showToast('Vui lòng chọn xe trước khi lưu tạm.');
+    try {
+      const { date, staff, status, currentKm, note } = vehicleInfo;
+      const draft = saveRepairDraft(localStorage, {
+        vehicleId: vehicleInfo.vehicleId, customerId: vehicleInfo.customerId,
+        workflowId: repairFlow.workflowId, fields: { date, staff, status, currentKm, note },
+        repairNotes, discountOverride, discountMoney, images: draftWorkflowImages,
+        items: selectedServices.map(({ id, quantity, price, note, TILETHUE, TILEGIAMGIA }) => ({ id, quantity, price, note, TILETHUE, TILEGIAMGIA })),
+      });
+      setDraftSavedAt(draft.savedAt);
+      showToast('Đã lưu tạm. Tải lại trang sẽ khôi phục các hạng mục đã chọn.');
+    } catch {
+      showToast('Không thể lưu tạm trên trình duyệt. Bộ nhớ có thể đã đầy hoặc bị chặn; hãy giảm số ảnh rồi thử lại.');
     }
   };
 
@@ -751,15 +816,18 @@ export default function SuaChuaPage() {
           DXEID: vehicleInfo.vehicleId, DKHACHHANGID: vehicleInfo.customerId,
           TTIEPNHANXEID: receptionId, NGAY: vehicleInfo.date, NOTE: repairNotes,
           TILETHUE: chargeRates.taxRate, TILEPHIDICHVU: chargeRates.serviceRate,
-          TILEGIAMGIA: discountOverride == null ? null : Number(discountOverride),
+          TILEGIAMGIA: discountMoney != null ? billReduction.percent : discountOverride == null ? null : Number(discountOverride),
+          TIENGIAMGIAPHIEU: billReduction.fixed,
           items: selectedServices.map((item) => ({
             LOAI: item.sourceType, DMATHANGID: item.sourceType === 0 ? item.sourceId : null,
             DDICHVUID: item.sourceType === 1 ? item.sourceId : null,
             DDONVITINHID: item.unitId, SOLUONG: item.quantity || 1,
-            DONGIA: item.price, NOTE: item.note, TILETHUE:item.TILETHUE,
+            DONGIA: item.price, NOTE: item.note, TILETHUE:item.TILETHUE, TILEGIAMGIA:item.TILEGIAMGIA,
           })),
         });
         const savedWorkflowState = Number(result.workflowState ?? 1);
+        try { removeRepairDraft(localStorage, vehicleInfo.vehicleId); } catch {}
+        setDraftSavedAt('');
         setRepairFlow({ repairId: result.id, workflowId: result.workflowId || repairFlow.workflowId, receptionId, workflowState: savedWorkflowState });
         const order = await repairOrders.get(result.id);
         setSavedDetails(order.details || []);
@@ -917,6 +985,7 @@ export default function SuaChuaPage() {
     setSavedOrder(null);
     setSavedDetails([]);
     setDiscountOverride(null);
+    setDiscountMoney(null);
     chargeConfig.reload();
     // Giữ nguyên hồ sơ xe/khách hàng, chỉ tách khỏi lượt sửa chữa đã hoàn thành.
     // Lượt mới sẽ được ghi thành phiếu tiếp nhận, lệnh sửa chữa và workflow mới
@@ -926,7 +995,7 @@ export default function SuaChuaPage() {
     setWorkflowImages([]);
     setDraftWorkflowImages([]);
     setSelectedImageState(0);
-    setServices((current) => current.map((item) => ({ ...item, checked: false, quantity: 1, note: '' })));
+    setServices((current) => current.map((item) => ({ ...item, checked: false, quantity: 1, note: '', TILEGIAMGIA: null })));
     setSearchTerm('');
     setShowPayment(false);
     setShowRepairConfirmation(false);
@@ -939,6 +1008,9 @@ export default function SuaChuaPage() {
       note: '',
     }));
     setRepairNotes('');
+    setDraftSavedAt('');
+    const selected = vehicleOptions.find(vehicle => vehicle.ID === vehicleInfo.vehicleId);
+    if (selected && restoreReceptionDraft(selected, services)) return;
     showToast(`Đã mở lượt sửa chữa mới cho xe ${vehicleInfo.plate}.`);
   };
 
@@ -1015,9 +1087,9 @@ export default function SuaChuaPage() {
     }}>
       {/* Toast thông báo */}
       {toastMessage && (
-        <div style={{
+        <div role="status" aria-live="polite" style={{
           position: 'fixed',
-          top: 15,
+          top: 115,
           right: 20,
           background: '#2E7D32',
           color: '#fff',
@@ -1079,8 +1151,10 @@ export default function SuaChuaPage() {
         })}
       </div>
 
-      {/* Card Thông tin phiếu xe phía trên */}
-      <div style={{
+      {/* Thông tin xe và bảng kê bên trái; danh sách đã chọn bên phải */}
+      <div className="suachua-main-split">
+      {/* Card Thông tin phiếu xe */}
+      <div className="suachua-reception-info" style={{
         background: '#FFFFFF',
         borderRadius: 6,
         border: '1px solid #E0E0E0',
@@ -1091,8 +1165,8 @@ export default function SuaChuaPage() {
         flexShrink: 0,
         boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        {/* Lưới thông tin phiếu xe (3 cột trên desktop như cũ, 1 cột thẳng hàng tăm tắp trên mobile) */}
-        <div className="responsive-grid-3" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Hai cột thông tin; ngày tiếp nhận và ghi chú ở hàng cuối */}
+        <div className="suachua-reception-grid" style={{ alignItems: 'center', gap: 8 }}>
           {/* 1. Biển số xe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -1157,29 +1231,6 @@ export default function SuaChuaPage() {
             )}
           </div>
 
-          {/* 2. Ngày tiếp nhận */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              Ngày tiếp nhận
-            </label>
-            <input
-              type="date"
-              value={vehicleInfo.date}
-              onChange={(e) => setVehicleInfo({ ...vehicleInfo, date: e.target.value })}
-              style={{
-                flex: 1, minWidth: 0,
-                height: 'clamp(28px, 3.2vh, 31px)',
-                padding: '0 8px',
-                border: '1px solid #CBD5E1',
-                borderRadius: 4,
-                fontSize: 'inherit',
-                outline: 'none',
-                background: '#FFFFFF',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
           {/* 5. NV tiếp nhận */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -1239,6 +1290,29 @@ export default function SuaChuaPage() {
             </div>
           </div>
 
+          {/* 2. Ngày tiếp nhận */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
+              Ngày tiếp nhận
+            </label>
+            <input
+              type="date"
+              value={vehicleInfo.date}
+              onChange={(e) => setVehicleInfo({ ...vehicleInfo, date: e.target.value })}
+              style={{
+                flex: 1, minWidth: 0,
+                height: 'clamp(28px, 3.2vh, 31px)',
+                padding: '0 8px',
+                border: '1px solid #CBD5E1',
+                borderRadius: 4,
+                fontSize: 'inherit',
+                outline: 'none',
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
           {/* 9. Ghi chú */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <label style={{ width: 95, minWidth: 95, flexShrink: 0, color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -1264,13 +1338,6 @@ export default function SuaChuaPage() {
         </div>
       </div>
 
-      {/* Vùng thân trang: 2 cột (Trái ~71% Bảng kê, Phải ~29% Đã chọn & Ghi chú) */}
-      <div className="responsive-2col suachua-main-split" style={{
-        flex: 1,
-        minHeight: 0,
-        display: 'flex',
-        gap: 'clamp(6px, 0.8vw, 10px)'
-      }}>
         {/* CỘT TRÁI (~71%): Toolbar + Bảng danh sách dịch vụ */}
         <div className="suachua-left-col" style={{
           flex: '1 1 71%',
@@ -1564,14 +1631,16 @@ export default function SuaChuaPage() {
 
             {/* Bảng các mục đã chọn */}
             <div style={{ flex: 1, minHeight: 56, overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
+              <table className="suachua-selected-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr style={{ background: '#F8FAFC', color: '#475569', fontWeight: 600, borderBottom: '1px solid #E2E8F0' }}>
                     <th style={{ padding: '4px', textAlign: 'center', width: 28 }}>STT</th>
                     <th style={{ padding: '4px 6px', textAlign: 'left' }}>Dịch vụ / Hạng mục</th>
                     <th style={{ padding: '4px 6px', textAlign: 'right', width: 68 }}>Đơn giá</th>
+                    <th style={{ padding: 4, textAlign: 'right', width: 56 }}>Giảm %</th>
                     {showRepairTax && <th style={{padding:4,textAlign:"right",width:60}}>Thuế</th>}
                     <th style={{ padding: '4px 6px', textAlign: 'right', width: 72 }}>Thành tiền</th>
+                    <th scope="col" style={{ padding: 4, width: 32, textAlign: 'center' }}>Xóa</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1579,18 +1648,48 @@ export default function SuaChuaPage() {
                     <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '4px', textAlign: 'center', color: '#64748B' }}>{idx + 1}</td>
                       <td style={{ padding: '4px 6px', fontWeight: 500, color: '#1E293B' }}>{it.name}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'right', color: '#475569' }}>{formatNumber(it.price)}</td>
+                      <td style={{ padding: '4px 6px', textAlign: 'right', color: '#475569' }}>
+                        <EditableSalePrice value={it.price} name={it.name}
+                          disabled={savingProcess || !!repairFlow.repairId || !canEditPolicy}
+                          onChange={price => setServices(current => current.map(row => row.id === it.id ? { ...row, price } : row))} />
+                      </td>
+                      <td style={{ padding: 4, textAlign: 'right' }} title="Giảm giá riêng cho hạng mục, trừ trước giảm giá toàn phiếu">
+                        <input type="number" min="0" max="100" step="0.01" inputMode="decimal"
+                          onFocus={event => event.currentTarget.select()}
+                          className="suachua-line-discount" aria-label={`Giảm giá ${it.name} (%)`}
+                          value={repairFlow.repairId ? it.TILECHIETKHAU ?? 0 : it.TILEGIAMGIA ?? ''} placeholder="0"
+                          disabled={savingProcess || !!repairFlow.repairId || !canEditPolicy}
+                          onChange={event => {
+                            const value = event.target.value;
+                            if (value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) return;
+                            setServices(current => current.map(row => row.id === it.id ? { ...row, TILEGIAMGIA: value === '' ? null : value } : row));
+                          }} />
+                      </td>
                       {showRepairTax && <td style={{padding:4,textAlign:'right'}}>
                         <LineTaxField name={it.name} value={repairFlow.repairId ? null : it.TILETHUE}
                           policy={repairFlow.repairId ? {taxRate:it.TILETHUE ?? chargeRates.taxRate,taxSource:it.NGUONTHUE || 'Theo cấu hình'} : pricedServices[idx]}
                           disabled={!!repairFlow.repairId || !canEditPolicy} onChange={value => setServices(current => current.map(row => row.id === it.id ? {...row,TILETHUE:value} : row))} />
                       </td>}
-                      <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: '#1E293B' }}>{formatNumber(it.amount ?? it.price * (it.quantity || 1))}</td>
+                      <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600, color: '#1E293B' }}>{formatNumber(repairFlow.repairId
+                        ? Number(it.amount) - Number(it.TIENCHIETKHAU || 0)
+                        : chargeTotals.details[idx]?.lineNet ?? it.price * (it.quantity || 1))}</td>
+                      <td style={{ padding: 4, textAlign: 'center' }}>
+                        <button type="button" className="suachua-remove-item"
+                          aria-label={`Xóa ${it.name} khỏi danh sách đã chọn`}
+                          title={isServiceSelectionLocked ? 'Hạng mục đã khóa trên phiếu đã lưu' : `Xóa ${it.name}`}
+                          disabled={savingProcess || isServiceSelectionLocked}
+                          onClick={() => {
+                            if (savingProcess || isServiceSelectionLocked) return;
+                            setServices(current => current.map(row => row.id === it.id ? { ...row, checked: false } : row));
+                          }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {selectedServices.length === 0 && (
                     <tr>
-                      <td colSpan={showRepairTax ? 5 : 4} style={{ padding: '20px', textAlign: 'center', color: '#94A3B8' }}>
+                      <td colSpan={showRepairTax ? 7 : 6} style={{ padding: '20px', textAlign: 'center', color: '#94A3B8' }}>
                         Chưa chọn dịch vụ nào
                       </td>
                     </tr>
@@ -1731,13 +1830,18 @@ export default function SuaChuaPage() {
           </div>
 
           {/* Cụm 3 nút hành động: 1 hàng duy nhất (Nửa trái: In phiếu + Lưu tạm, Nửa phải: Lưu Tiếp nhận & Báo giá) */}
+          {draftSavedAt && !repairFlow.repairId && (
+            <div role="status" style={{ padding: '6px 8px', background: '#FFF3E0', color: '#9A3412', fontSize: 12, borderRadius: 5 }}>
+              Bản nháp đã lưu lúc {new Date(draftSavedAt).toLocaleString('vi-VN')} trên trình duyệt này.
+            </div>
+          )}
           <div className="suachua-action-buttons-row" style={{ display: 'flex', alignItems: 'stretch', gap: 6, width: '100%', flexShrink: 0 }}>
-            {/* Nửa bên trái (50%): 2 nút In phiếu & Lưu tạm */}
+            {/* Nửa bên trái (50%): chỉ in khi đã có phiếu lưu chính thức */}
             <div style={{ display: 'flex', flex: '1 1 50%', minWidth: 0, gap: 5 }}>
-              <button
+              {repairFlow.repairId && Number(repairFlow.workflowState) !== 2 && <button
                 type="button"
                 onClick={() => {
-                  openDocumentPrint({ type: 'MauPhieuSuaChua', id: repairFlow.repairId });
+                  openDocumentPrint({ type: Number(repairFlow.workflowState) === 3 ? 'MauPhieuTamTinh' : 'MauPhieuSuaChua', id: repairFlow.repairId });
                 }}
                 style={{
                   flex: 1,
@@ -1760,11 +1864,13 @@ export default function SuaChuaPage() {
               >
                 <Printer size={13} color="#E65100" style={{ flexShrink: 0 }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>In phiếu</span>
-              </button>
+              </button>}
 
               <button
                 type="button"
-                onClick={() => showToast('Đã lưu tạm bảng kê dịch vụ')}
+                onClick={handleSaveDraft}
+                disabled={savingProcess || !!repairFlow.repairId}
+                title={repairFlow.repairId ? 'Phiếu đã được lưu chính thức' : 'Lưu bản nháp trên trình duyệt này'}
                 style={{
                   flex: 1,
                   minWidth: 0,

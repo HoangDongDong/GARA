@@ -5,7 +5,8 @@ Windows 10 2004 trở lên, x64. Nhận PDF FastReport qua API GARA; in bằng W
 ## Cài đặt
 
 1. Cài driver, bật và cắm USB máy in; kiểm tra tên/cổng trong Windows.
-2. Máy phát triển: chạy `powershell -NoProfile -File build.ps1` để tạo `dist/` gồm runtime Node/.NET. Cần .NET SDK và truy cập NuGet khi build, không cần SDK khi sử dụng gói đã build.
+2. Máy phát triển: chạy `powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1` để tạo bản **Lite** trong `dist/`, kèm Node và các assembly ứng dụng; máy cài cần **.NET Desktop Runtime 8 x64**. Installer kiểm tra runtime trước khi dừng service. Cần .NET SDK và NuGet khi build, không cần SDK trên máy sử dụng.
+   Dùng `build.ps1 -BundleRuntime` khi cần gói độc lập không yêu cầu cài .NET; helper và service dùng chung một bản runtime. Inno Setup chỉ đóng từ gói BundleRuntime.
 3. Chạy `install-service.ps1` bằng PowerShell Administrator. Dịch vụ `GaraPrintAgent` dùng LocalService, tự khởi động và phụ thuộc Print Spooler. Thư mục chương trình nằm trong Program Files, dữ liệu/log nằm trong ProgramData/GARA Print Agent và được giới hạn quyền.
 4. Mở `http://127.0.0.1:3790` trên PC máy in. Trong GARA → In chứng từ → Máy in & Agent, Admin tạo mã ghép 5 phút; nhập địa chỉ API và mã trong Agent.
 5. GARA → Máy in & Agent: bật đúng máy, chọn khổ giấy và đặt mặc định theo từng loại chứng từ. Bấm In để gửi ngay; Xem bản in/Tải PDF riêng.
@@ -21,6 +22,8 @@ API phát triển cục bộ là `http://localhost:4000`. Sử dụng từ mạn
 - Máy bị tắt hoặc trạm offline không nhận job mới; job chờ tối đa 5 phút. Thu hồi trạm hủy các job chưa gửi và vô hiệu token.
 - Gỡ: thu hồi trạm trong GARA; Administrator chạy `sc.exe stop GaraPrintAgent`, `sc.exe delete GaraPrintAgent`. Giữ ProgramData để đối chiếu; chỉ xóa có chủ ý sau khi xử lý các lệnh chưa rõ.
 - Cập nhật: dừng service, thay đúng gói đã kiểm tra hash, giữ dữ liệu, khởi động lại. Không chạy hai Agent trên cùng cổng/dữ liệu.
+- Output build `helper/bin`, `helper/obj`, `service/bin`, `service/obj` có thể xóa sau khi kiểm tra `dist/`; lần build tiếp theo tạo lại. Không xóa `data/` hoặc ProgramData để giảm dung lượng.
+- Bản Lite tối ưu kích thước bộ cài; bộ đã cài trước đó trong Program Files vẫn hoạt động bình thường. Đổi sang Lite phải qua installer để cập nhật đường dẫn service. Máy có Node riêng vẫn dùng Node đóng gói để tránh phụ thuộc PATH/tài khoản Windows.
 
 ## Giới hạn bản đầu
 

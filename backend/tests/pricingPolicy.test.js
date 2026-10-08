@@ -88,6 +88,19 @@ test('VAT receipt expands each nonzero group without changing grand total or sav
   assert.equal(parameters.TaxGroupAmount1,95000);
   assert.equal(applyTaxBreakdown(xml,{...parameters,PrintShow_tax:false}),xml);
 });
+test('VAT visibility retains numeric amounts while display cells use formatted text', () => {
+  const xml='<TableRow Name="Row26" VisibleExpression="[TIENTHUE] != 0"><TableCell Name="VAT" Text="[TIENTHUE]" VisibleExpression="[TIENTHUE] != 0" Format="Number" Format.DecimalDigits="0"/></TableRow>';
+  const parameters={TAXSUMMARY:JSON.stringify([{rate:8,amount:80000},{rate:10,amount:110000}])};
+  const changed=applyTaxBreakdown(xml,parameters);
+  for (const index of [0,1]) {
+    assert.equal((changed.match(new RegExp(`VisibleExpression="\\[TaxGroupAmount${index}\\] != 0"`,'g'))||[]).length,2);
+    assert.ok(changed.includes(`Text="[TaxGroupAmountText${index}]"`));
+    assert.equal(typeof parameters[`TaxGroupAmount${index}`],'number');
+  }
+  assert.ok(!changed.includes('Format='));
+  assert.equal(parameters.TaxGroupAmountText1,'110,000');
+});
+
 test('document overrides require the existing edit permission', () => {
   const req={body:{items:[{TILETHUE:0}]},accessUser:{ISADMIN:0,permissions:{SALES:3}}};
   assert.throws(()=>policy.assertOverride(req,'SALES'),error=>error.status===403);

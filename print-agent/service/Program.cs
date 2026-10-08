@@ -1,6 +1,12 @@
 using System.Diagnostics;
 using System.ServiceProcess;
 
+if(args.Contains("--check")) {
+    var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,".."));
+    if(!File.Exists(Path.Combine(root,"node.exe"))||!File.Exists(Path.Combine(root,"runtime","Garage.PrintHelper.exe")))throw new Exception("Gói Agent thiếu runtime hoặc helper.");
+    Console.WriteLine("Service package OK");
+    return;
+}
 ServiceBase.Run(new AgentService());
 
 sealed class AgentService : ServiceBase
@@ -17,7 +23,7 @@ sealed class AgentService : ServiceBase
         var psi = new ProcessStartInfo(Path.Combine(root,"node.exe")) { WorkingDirectory=root, UseShellExecute=false, CreateNoWindow=true, RedirectStandardOutput=true, RedirectStandardError=true };
         psi.ArgumentList.Add(Path.Combine(root,"agent.js"));
         psi.Environment["GARA_AGENT_DATA"] = data;
-        psi.Environment["GARA_PRINT_HELPER"] = Path.Combine(root,"helper","Garage.PrintHelper.exe");
+        psi.Environment["GARA_PRINT_HELPER"] = Path.Combine(root,"runtime","Garage.PrintHelper.exe");
         child = new Process { StartInfo=psi, EnableRaisingEvents=true };
         child.OutputDataReceived += (_,e) => Log(e.Data);
         child.ErrorDataReceived += (_,e) => Log(e.Data);

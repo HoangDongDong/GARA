@@ -1,11 +1,23 @@
 const test=require('node:test');const assert=require('node:assert/strict');const db=require('../src/db');const p=require('../src/services/documentPrint');
 const id='190263eb-bc79-4ad2-9cee-ecd5d0470426';
 async function mockQuery(query,fn){const original=db.query;db.query=query;try{return await fn();}finally{db.query=original;}}
-test('18 document types require view and print within the same business permission',()=>{
- assert.equal(p.types.length,18);for(const t of p.types){assert.ok(t.codes.length);for(const bit of [0,1,16])assert.equal(p.permitted({permissions:{[t.codes[0]]:bit}},t),false);assert.equal(p.permitted({permissions:{[t.codes[0]]:17}},t),true);assert.equal(p.permitted({ISADMIN:1},t),true);}assert.throws(()=>p.typeByKey('TDONHANG; DELETE'),/không hợp lệ/);
+test('19 document types require view and print within the same business permission',()=>{
+ assert.equal(p.types.length,19);for(const t of p.types){assert.ok(t.codes.length);for(const bit of [0,1,16])assert.equal(p.permitted({permissions:{[t.codes[0]]:bit}},t),false);assert.equal(p.permitted({permissions:{[t.codes[0]]:17}},t),true);assert.equal(p.permitted({ISADMIN:1},t),true);}assert.throws(()=>p.typeByKey('TDONHANG; DELETE'),/không hợp lệ/);
 });
 test('date range rejects impossible dates and reversed ranges',()=>{
  assert.throws(()=>p.range('2026-02-30','2026-03-01'));assert.throws(()=>p.range('2026-03-03','2026-03-01'));assert.deepEqual(p.range('2024-02-29','2024-03-01'),['2024-02-29','2024-03-01']);
+});
+
+test('provisional receipt uses the saved repair lines and charge snapshot with its own title',async()=>{
+ await mockQuery(async sql=>sql.includes('FROM TLENHSUACHUA WHERE')?[{ID:id,NAME:'LSC26/00020',STATUS:1,CHARGEVERSION:1,TONGCONG:6655000,TIENGIAMGIA:0,TIENTHUE:605000,PHIDICHVU:550000,TILETHUE:10,TILEPHIDICHVU:10}]:sql.includes('FROM TLENHSUACHUACHITIET ct')?[{PART_NAME:'Lọc dầu',SOLUONG:1,DONGIA:5500000,THANHTIEN:5500000}]:[],async()=>{
+  const data=await p.payload(p.typeByKey('MauPhieuTamTinh'),id,{},'test');
+  assert.equal(data.parameters.DocTitle,'PHIẾU TẠM TÍNH');
+  assert.equal(data.parameters.DocNumber,'LSC26/00020');
+  assert.equal(data.parameters.TONGCONG,6655000);
+  assert.equal(data.parameters.PHIDICHVU,550000);
+  assert.equal(data.tables.Table0[0].ItemName,'Lọc dầu');
+  assert.match(data.parameters.Extra,/Phiếu tạm tính/);
+ });
 });
 test('saved records are required, cash types cannot be swapped, and handover requires completion',async()=>{
  await mockQuery(async()=>[],()=>assert.rejects(p.payload(p.typeByKey('MauPhieuThu'),id,{},'test'),/Không tìm thấy/));
@@ -50,8 +62,9 @@ test('incompatible imported template bindings fail instead of printing fabricate
 });
 test('warehouse export uses saved export rows for staff, warehouse, date and amounts',async()=>{
  const xp={STAFF_NAME:'Kỹ thuật viên A',WAREHOUSE_NAME:'Kho phụ tùng',PART_NAME:'Lọc dầu',PART_CODE:'LD01',UNIT_NAME:'Cái',SOLUONG:2,DONGIA:100000,THANHTIEN:200000,NGAYXUAT:'2026-10-03',NOTE:'Xuất cho lệnh sửa chữa'};
- await mockQuery(async sql=>sql.includes('FROM TLENHSUACHUA WHERE')?[{ID:id,NAME:'LSC-TEST',STATUS:1,NOTE:'Nội dung lệnh',TONGCONG:999999}]:sql.includes('FROM TXUATPHUTUNG xp')?[xp]:sql.includes("NAME='CompanyEmail'")?[{TEXTVALUE:'gara@example.test'}]:[],async()=>{
+ await mockQuery(async sql=>sql.includes('FROM TLENHSUACHUA WHERE')?[{ID:id,NAME:'LSC-TEST',STATUS:1,NOTE:'Nội dung lệnh',TONGCONG:999999,TAXSUMMARY:'[{"rate":10,"amount":110000}]',PHIDICHVU:10000,TILEPHIDICHVU:1}]:sql.includes('FROM TXUATPHUTUNG xp')?[xp]:sql.includes("NAME='CompanyEmail'")?[{TEXTVALUE:'gara@example.test'}]:[],async()=>{
   const d=await p.payload(p.typeByKey('MauPhieuXuatKho'),id,{},'test');
   assert.equal(d.parameters.DNHANVIEN_NAME,xp.STAFF_NAME);assert.equal(d.parameters.DKHOHANG_NAME,xp.WAREHOUSE_NAME);assert.equal(d.parameters.CompanyEmail,'gara@example.test');assert.equal(d.parameters.DIENGIAI,xp.NOTE);assert.equal(d.parameters.TONGCONG,200000);assert.equal(d.parameters.TILEGIAMGIA,0);assert.equal(d.parameters.TILETHUE,0);assert.equal(d.tables.Table0[0].SLXUATCHUAQUYDOI,2);
+  assert.equal(d.parameters.TAXSUMMARY,'[]');assert.equal(d.parameters.PHIDICHVU,0);assert.equal(d.parameters.TaxBreakdownText,'');
  });
 });

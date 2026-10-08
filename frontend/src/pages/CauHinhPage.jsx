@@ -117,14 +117,15 @@ export default function CauHinhPage() {
     const type = Number(item.DATATYPE || 1);
     const control = Number(item.CONTROLTYPE);
     const value = values[item.ID] ?? '';
+    const isPaymentAccount = item.NAME === 'PaymentBankAccountId';
     const props = { id: `config-${item.ID}`, disabled: busy, value, onChange: event => change(item.ID, event.target.value) };
     if (item.NAME.startsWith('SoPhieu')) return <DocumentNumberControl {...props}/>;
     const options = String(item.OTHERCONFIG || '').split(/\r?\n/).map(option => option.trim()).filter(Boolean);
     if (isCheckbox(item)) return <label className="config-checkbox"><input type="checkbox" disabled={busy} checked={[1, 30].includes(Number(value))} onChange={event => change(item.ID, event.target.checked ? 30 : 0)} /><span>{item.CAPTION || item.NAME}</span></label>;
     if (type === 5) return <div className="config-image-control">{item.NAME==='CompanyLogo' && <small>{compressingLogo?'Đang nén logo…':'PNG/JPG tối đa 20 MB; tự nén còn tối đa 256 KB, cạnh dài tối đa 800 px. PNG giữ nền trong suốt.'}</small>}{value && <img src={`data:image/${String(value).startsWith('/9j/')?'jpeg':'png'};base64,${value}`} alt={item.CAPTION || item.NAME} />}<input id={props.id} type="file" accept={item.NAME==='CompanyLogo'?'image/png,image/jpeg':'image/png,image/jpeg,image/webp,image/gif'} disabled={busy} onChange={event => upload(item, event)} /><button type="button" disabled={busy || !value} onClick={() => change(item.ID, '')}>Xóa ảnh</button></div>;
     if (Array.isArray(item.OPTIONS)) return <div><select {...props}>
-      <option value="">{item.OPTIONS.length ? 'Chưa chọn mẫu in' : 'Chưa có mẫu in phù hợp'}</option>
-      {value && !item.OPTIONS.some(option => option.value === value) && <option value={value} disabled>Mẫu đã lưu không còn trong danh sách</option>}
+      <option value="">{isPaymentAccount ? (item.OPTIONS.length ? '— Chọn tài khoản nhận thanh toán —' : 'Chưa có tài khoản ngân hàng đang hoạt động') : (item.OPTIONS.length ? 'Chưa chọn mẫu in' : 'Chưa có mẫu in phù hợp')}</option>
+      {value && !item.OPTIONS.some(option => option.value === value) && <option value={value} disabled>{isPaymentAccount ? 'Tài khoản đã lưu không còn hoạt động' : 'Mẫu đã lưu không còn trong danh sách'}</option>}
       {item.OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
     </select></div>;
     if ((control === 10 || control === 8) && options.length) {

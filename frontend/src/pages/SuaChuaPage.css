@@ -1,13 +1,30 @@
 /* ===== SỬA CHỮA PAGE STYLES & RESPONSIVE ===== */
 
 .suachua-main-split {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 60fr) minmax(0, 40fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "reception selected"
+    "catalog selected";
   flex: 1;
   min-height: 0;
   gap: clamp(6px, 0.8vw, 10px);
 }
 
+.suachua-reception-info {
+  grid-area: reception;
+  min-width: 0;
+}
+
+.suachua-reception-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .suachua-left-col {
+  grid-area: catalog;
+  min-height: 0;
   flex: 1 1 71%;
   min-width: 0;
   background: #FFFFFF;
@@ -20,6 +37,8 @@
 }
 
 .suachua-right-col {
+  grid-area: selected;
+  min-height: 0;
   flex: 0 0 29%;
   min-width: 0;
   display: flex;
@@ -33,6 +52,67 @@
   flex-direction: column;
   gap: 5px;
   flex-shrink: 0;
+}
+
+.suachua-selected-table {
+  min-width: 452px;
+}
+
+.suachua-remove-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #FECACA;
+  border-radius: 4px;
+  background: #FFF7F7;
+  color: #DC2626;
+  cursor: pointer;
+}
+
+.suachua-remove-item:hover:not(:disabled) {
+  background: #FEE2E2;
+}
+
+.suachua-remove-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.suachua-selected-table .pos-price-display,
+.suachua-selected-table .pos-price-input,
+.suachua-line-discount {
+  box-sizing: border-box;
+  width: 76px;
+  height: 28px;
+  padding: 3px 4px;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #334155;
+  font: inherit;
+  text-align: right;
+}
+
+.suachua-selected-table .pos-price-display {
+  cursor: pointer;
+}
+
+.suachua-selected-table .pos-price-display:disabled {
+  cursor: default;
+  border-color: transparent;
+  background: transparent;
+}
+
+.suachua-line-discount {
+  width: 50px;
+}
+
+.suachua-selected-table input:focus {
+  outline: 2px solid #FDBA74;
+  outline-offset: 1px;
 }
 
 .suachua-action-buttons-row button {
@@ -61,6 +141,15 @@
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
+  }
+
+  .suachua-reception-info {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .suachua-reception-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .suachua-left-col {

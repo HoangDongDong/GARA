@@ -129,6 +129,7 @@ router.get('/:id', async (req, res) => {
     const details = await db.query(
       `SELECT CT.ID, CT.LOAI, CT.SOLUONG, CT.DONGIA, CT.THANHTIEN, CT.PHATSINHCTID, CT.NOTE,
               CT.TILETHUE, CT.TIENTHUE, CT.TILEGIAMGIA, CT.TIENGIAMGIA, CT.NGUONTHUE,
+              CT.TILECHIETKHAU, CT.TIENCHIETKHAU,
               CT.DMATHANGID, MH.NAME  AS TEN_PT, MH.CODE AS MA_PT,
               CT.DDICHVUID,   DV.NAME  AS TEN_DV, DV.CODE AS MA_DV
          FROM TLENHSUACHUACHITIET CT
@@ -194,9 +195,12 @@ router.post('/', async (req, res) => {
         if (Number(it.LOAI || 0) === 0) tongPT += amount;
         else tongCong += amount;
         const product = await policy.item(query, it.LOAI, Number(it.LOAI || 0) === 0 ? it.DMATHANGID : it.DDICHVUID);
-        normalized.push({ ...it, quantity, price, amount, ...policy.taxPolicy(product, rates, it.TILETHUE) });
+        normalized.push({ ...it, quantity, price, amount, discountRate: policy.rate(it.TILEGIAMGIA), ...policy.taxPolicy(product, rates, it.TILETHUE) });
       }
-      const totals = policy.calculate(normalized, rates, discountPolicy.discountRate);
+      const billReduction = policy.billDiscount(normalized, discountPolicy.discountRate, req.body.TIENGIAMGIAPHIEU);
+      discountPolicy.discountRate = billReduction.percent;
+      if (billReduction.fixed != null) discountPolicy.discountSource = 'Giảm giá bằng tiền trên phiếu';
+      const totals = policy.calculate(normalized, rates, billReduction.percent, billReduction.fixed);
       const tongCongAll = totals.total;
 
       await execute(
@@ -210,6 +214,7 @@ router.post('/', async (req, res) => {
       );
       await execute('UPDATE TLENHSUACHUA SET CHARGEVERSION=1, TILEGIAMGIA=?, TIENGIAMGIA=?, NGUONGIAMGIA=?, TAXSUMMARY=? WHERE ID=?',
         [discountPolicy.discountRate, totals.discount, discountPolicy.discountSource, JSON.stringify(totals.taxGroups), id]);
+      await execute('UPDATE TLENHSUACHUA SET TIENGIAMGIAPHIEU=? WHERE ID=?', [billReduction.fixed, id]);
 
       for (const it of totals.details) {
         const type = Number(it.LOAI || 0);
@@ -219,12 +224,14 @@ router.post('/', async (req, res) => {
           `INSERT INTO TLENHSUACHUACHITIET
              (ID, TLENHSUACHUAID, DMATHANGID, DDICHVUID, DDONVITINHID,
               SOLUONG, DONGIA, THANHTIEN, LOAI, TRANGTHAI, NOTE,
-              STATUS, USERCREATEDID, TIMECREATED, TILETHUE, TIENTHUE, TILEGIAMGIA, TIENGIAMGIA, NGUONTHUE)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)`,
+              STATUS, USERCREATEDID, TIMECREATED, TILETHUE, TIENTHUE, TILEGIAMGIA, TIENGIAMGIA, NGUONTHUE,
+              TILECHIETKHAU, TIENCHIETKHAU)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?)`,
           [uuidv4(), id, type === 0 ? it.DMATHANGID || null : null,
             type === 1 ? it.DDICHVUID || null : null, it.DDONVITINHID || null,
             quantity, price, quantity * price, type, it.NOTE || null, actor,
-            it.taxRate, it.tax, discountPolicy.discountRate, it.discount, it.taxSource]
+            it.taxRate, it.tax, discountPolicy.discountRate, it.discount, it.taxSource,
+            it.lineDiscountRate, it.lineDiscount]
         );
       }
 

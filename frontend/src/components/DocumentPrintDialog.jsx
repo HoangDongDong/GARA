@@ -6,8 +6,8 @@ import './DocumentPrintDialog.css';
 import PrintAgentControls from './PrintAgentControls';
 export const openDocumentPrint = options => window.dispatchEvent(new CustomEvent('garage:print', { detail: options }));
 const contexts = {
- '/tiep-nhan':['MauPhieuTiepNhan','MauBaoGia'], '/sua-chua':['MauPhieuSuaChua','MauBaoGia','MauPhieuTiepNhan','MauHoaDonSuaChua','MauPhieuBanGiao','MauPhieuXuatKho'],
- '/ho-so-cho-duyet':['MauPhieuSuaChua','MauBaoGia','MauHoaDonSuaChua','MauPhieuBanGiao'], '/ban-hang':['MauHoaDonBanHang'],
+ '/tiep-nhan':['MauPhieuTiepNhan','MauBaoGia'], '/sua-chua':['MauPhieuSuaChua','MauPhieuTamTinh','MauBaoGia','MauPhieuTiepNhan','MauHoaDonSuaChua','MauPhieuBanGiao','MauPhieuXuatKho'],
+ '/ho-so-cho-duyet':['MauPhieuSuaChua','MauPhieuTamTinh','MauBaoGia','MauHoaDonSuaChua','MauPhieuBanGiao'], '/ban-hang':['MauHoaDonBanHang'],
  '/nhap-kho':['MauPhieuNhapKho','MauPhieuXuatKho','MauMaVachPhuTung'], '/mua-linh-kien':['MauPhieuNhapKho','MauMaVachPhuTung'],
  '/bao-hanh':['MauPhieuBaoHanh'], '/ho-so-xe':['MauHoSoXe','MauLichSuSuaChua','MauPhieuSuaChua','MauPhieuBaoHanh'],
  '/thu-chi':['MauPhieuThu','MauPhieuChi','MauCongNoKhachHang','MauCongNoNhaCungCap'], '/khach-hang':['MauCongNoKhachHang'],

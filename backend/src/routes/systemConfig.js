@@ -16,6 +16,7 @@ const config = require('../config');
 const { validateLogo } = require('../services/companyLogo');
 const { decodeConfigImage, encodeConfigImage } = require('../services/configImageStorage');
 const { templateFilter, templateOptions } = require('../services/systemConfigOptions');
+const paymentAccountConfig = require('../services/paymentAccountConfig');
 
 
 // ---- helpers ----
@@ -106,7 +107,9 @@ router.get('/grouped', async (req, res) => {
       const blob = row.HAS_BLOB ? await db.queryBlob('SELECT BLOBVALUE FROM SCONFIG WHERE ID=?', [row.ID], 'BLOBVALUE') : null;
       const filter = templateFilter(row.OTHERCONFIG);
       let options;
-      if (filter) {
+      if (row.NAME === paymentAccountConfig.configName) {
+        options = await paymentAccountConfig.accountOptions(db.query);
+      } else if (filter) {
         const key = JSON.stringify(filter.ids);
         if (!optionCache.has(key)) optionCache.set(key, await templateOptions(db.query, filter));
         options = optionCache.get(key);
@@ -164,6 +167,7 @@ async function updateItems(items, userId) {
       if (seen.has(row.ID)) throw inputError(`Cấu hình bị trùng: ${row.NAME}`);
       seen.add(row.ID);
       const [column, value] = typedValue(row, item.value);
+      if (row.NAME === paymentAccountConfig.configName) await paymentAccountConfig.validateAccount(query, value);
       const filter = templateFilter(row.OTHERCONFIG);
       if (filter && value) {
         if (!filter.ids.includes(String(value).toLowerCase())) throw inputError(`Mẫu in không thuộc danh sách của ${row.NAME}.`);

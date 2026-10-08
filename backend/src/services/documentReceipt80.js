@@ -1,5 +1,5 @@
 // Adapt the selected sales receipt, preserving its company header and bill styling.
-const keys = ['MauPhieuTiepNhan','MauPhieuSuaChua','MauBaoGia','MauPhieuBanGiao','MauHoaDonSuaChua','MauPhieuXuatKho'];
+const keys = ['MauPhieuTiepNhan','MauPhieuSuaChua','MauPhieuTamTinh','MauBaoGia','MauPhieuBanGiao','MauHoaDonSuaChua','MauPhieuXuatKho'];
 const columns = { ItemName:'String', SOLUONG:'Decimal', Unit:'String', DONGIA:'Decimal', THANHTIEN:'Decimal', ValueText:'String', Note:'String' };
 const parameters = ['CompanyName','CompanyAddress','CompanyPhone','DocTitle','DocDate','DocNumber','CustomerName','Contact','VehiclePlate','Description','Extra','FooterNote','In bởi','LoiCamOn','TIENHANG','TIENGIAMGIA','TILEGIAMGIA','TIENTHUE','TILETHUE','TONGCONG'];
 function descriptiveTable(name, top, detail) {

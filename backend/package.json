@@ -23,7 +23,10 @@
     "migrate:business-templates": "node migrate_business_templates.js",
     "migrate:repair-supplements": "node migrate_repair_supplements.js",
     "test:repair-supplements": "node --test tests/repairSupplements.test.js",
-    "migrate:pricing-policies": "node migrate_pricing_policies.js"
+    "migrate:pricing-policies": "node migrate_pricing_policies.js",
+    "migrate:repair-line-discounts": "node migrate_repair_line_discounts.js",
+    "migrate:bill-discount-amount": "node migrate_bill_discount_amount.js",
+    "migrate:repair-provisional-print": "node migrate_repair_provisional_print.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

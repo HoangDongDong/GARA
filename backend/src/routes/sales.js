@@ -111,7 +111,11 @@ router.post('/', async (req, res) => {
           discountRate: policy.rate(item.TILEGIAMGIA), ...policy.taxPolicy(product, rates, item.TILETHUE) });
       }
 
-      const totals = policy.calculate(normalized, rates, discountPolicy.discountRate);
+      if (!salesSettings.allowDiscount && req.body.TIENGIAMGIAPHIEU != null) throw Object.assign(new Error('Cấu hình không cho phép nhập giảm giá.'), { status: 400 });
+      const billReduction = policy.billDiscount(normalized, discountPolicy.discountRate, req.body.TIENGIAMGIAPHIEU);
+      discountPolicy.discountRate = billReduction.percent;
+      if (billReduction.fixed != null) discountPolicy.discountSource = 'Giảm giá bằng tiền trên phiếu';
+      const totals = policy.calculate(normalized, rates, billReduction.percent, billReduction.fixed);
       const { subtotal, discountRate, discount, tax, serviceFee, total } = totals;
       const payment=require('../services/salePayment').calculate(total,req.body,DKHACHHANGID);
       const paymentSettings = await require('../services/paymentSettings').load('sales', query);

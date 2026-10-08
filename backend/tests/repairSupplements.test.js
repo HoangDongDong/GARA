@@ -57,6 +57,26 @@ test('approved supplement recomputes VAT and service fee using saved order rates
   const update = f.writes.find(write => write.sql.includes('TONGCONG='));
   assert.deepEqual(update.params.slice(0, 7), [250, 0, 330, 20, 55, 10, 25]);
 });
+
+test('approving supplements preserves existing line discounts when recalculating totals', async () => {
+  const f = fixture();
+  const originalQuery = f.query;
+  f.query = async (sql, params) => {
+    if (sql.includes('FROM DMATHANG M')) return [{ ID: 'part' }];
+    if (sql.includes('SELECT CHARGEVERSION')) return [{ CHARGEVERSION: 1, TILEGIAMGIA: 5, TILETHUE: 10, TILEPHIDICHVU: 0 }];
+    if (sql.includes('SELECT ID, THANHTIEN, TILETHUE')) return [
+      { ID: 'existing-line', THANHTIEN: 200000, TILETHUE: 10, TILECHIETKHAU: 10 },
+      { ID: 'new-id', THANHTIEN: 250, TILETHUE: 10, TILECHIETKHAU: null },
+    ];
+    return originalQuery(sql, params);
+  };
+  await service.decide(f.query, f.execute, f.uuid, 'repair', 'proposal', decision(['part-line']), 'user');
+  const update = f.writes.find(write => write.sql.includes('TIENCHIETKHAU=') && write.params.at(-1) === 'existing-line');
+  assert.equal(update.params[0], 5);
+  assert.equal(update.params[1], 29000);
+  assert.equal(update.params[2], 17100);
+  assert.equal(update.params[3], 20000);
+});
 test('already processed proposals, incomplete evidence and foreign line IDs cannot be approved', async () => {
   for (const [state, body] of [['approved', decision(['part-line'])], ['pending', { ...decision([]), BANGCHUNG: '' }],
     ['pending', decision(['foreign-line'])], ['pending', decision(['part-line', 'part-line'])], ['draft', decision(['part-line'])]]) {

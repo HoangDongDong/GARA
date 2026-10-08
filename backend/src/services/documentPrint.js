@@ -9,7 +9,7 @@ const { documentTypes } = require('./garagePrintCatalog');
 const { templateFilter, templateOptions } = require('./systemConfigOptions');
 const { company, clean, prefixed, runRenderer, fillMissingVariables, buildSalesPayload } = require('./salesPrint');
 const permissionCodes = {
-  MauPhieuTiepNhan:['REPAIR'], MauPhieuSuaChua:['REPAIR'], MauBaoGia:['REPAIR'], MauPhieuBanGiao:['REPAIR'],
+  MauPhieuTiepNhan:['REPAIR'], MauPhieuSuaChua:['REPAIR'], MauPhieuTamTinh:['REPAIR'], MauBaoGia:['REPAIR'], MauPhieuBanGiao:['REPAIR'],
   MauHoaDonSuaChua:['REPAIR','FINANCE'], MauPhieuBaoHanh:['WARRANTY'], MauHoaDonBanHang:['SALES'],
   MauPhieuNhapKho:['INVENTORY'], MauPhieuXuatKho:['INVENTORY','REPAIR'], MauPhieuThu:['FINANCE'], MauPhieuChi:['FINANCE'],
   MauMaVachPhuTung:['INVENTORY'], MauBangLuong:['EMPLOYEES'], MauBaoCao:['REPORTS'],
@@ -84,9 +84,9 @@ async function payload(type,id,filters,user) {
      ReceptionTime:header.NGAY?new Date(header.NGAY).toLocaleString('vi-VN',{timeZone:'Asia/Bangkok'}):''};
     rows=[{ItemName:'Tình trạng xe',ValueText:header.TINHTRANGXE||''},{ItemName:'Yêu cầu khách hàng',ValueText:header.YEUCAUKHACH||''},{ItemName:'Phụ kiện trên xe',ValueText:header.PHUKIENDETRENKXE||''},{ItemName:'Số km / nhiên liệu',ValueText:`${reception.VehicleOdo} / ${reception.VehicleFuel}`},{ItemName:'Cố vấn / kỹ thuật viên',ValueText:[advisor?.NAME,technician?.NAME].filter(Boolean).join(' / ')}];break;
    }
-   case 'MauPhieuSuaChua':case 'MauPhieuBanGiao':
+   case 'MauPhieuSuaChua':case 'MauPhieuTamTinh':case 'MauPhieuBanGiao':
     rows=await details('TLENHSUACHUACHITIET','TLENHSUACHUAID',id);
-    if(type.key==='MauPhieuSuaChua'){
+    if(type.key==='MauPhieuSuaChua'||type.key==='MauPhieuTamTinh'){
      const [invoice]=await db.query('SELECT FIRST 1 TILETHUE,TIENTHUE,TILEPHIDICHVU,PHIDICHVU,TILEGIAMGIA,TIENGIAMGIA,TONGCONG,TAXSUMMARY,CHARGEVERSION FROM THOADONSUACHUA WHERE TLENHSUACHUAID=? AND STATUS=1 ORDER BY NGAY DESC,TIMECREATED DESC',[id]);
      if(invoice)header={...header,...invoice};
      else if(Number(header.CHARGEVERSION)!==1 && (header.TILETHUE!=null||header.TILEPHIDICHVU!=null||Number(header.TRANGTHAI)!==3)){
@@ -97,6 +97,7 @@ async function payload(type,id,filters,user) {
       header={...header,TILETHUE:rates.taxRate,TILEPHIDICHVU:rates.serviceRate,TIENTHUE:totals.tax,PHIDICHVU:totals.serviceFee,TONGCONG:totals.total};
      }
     }
+    if(type.key==='MauPhieuTamTinh')extra='Phiếu tạm tính - chưa xác nhận thanh toán.';
     if(type.key==='MauPhieuBanGiao'){
      if(![3,4,5].includes(Number(header.TRANGTHAI)))throw fail('Lệnh sửa chữa chưa hoàn thành để in biên bản bàn giao.',409);
      rows=rows.map(row=>({...row,ValueText:`${row.Quantity} ${row.Unit}`,Note:row.Note}));extra=`Ngày hoàn thành: ${date(header.KETTHUC)}; QC: ${header.NGUOIQC||''}`;
@@ -118,7 +119,7 @@ async function payload(type,id,filters,user) {
     rows=items.map(row=>({...clean(row),ItemName:row.PART_NAME||'',ItemCode:row.PART_CODE||'',Unit:row.UNIT_NAME||'',Quantity:Number(row.SOLUONG||0),UnitPrice:Number(row.DONGIA||0),Amount:Number(row.THANHTIEN||0)}));
     const names=key=>[...new Set(items.map(row=>row[key]).filter(Boolean))].join(', ');
     employee={NAME:names('STAFF_NAME')};warehouse={NAME:names('WAREHOUSE_NAME')};
-    header={...header,NGAY:items[0]?.NGAYXUAT||header.NGAY,DIENGIAI:items.map(row=>row.NOTE).filter(Boolean).join('; ')||header.NOTE||'',TILEGIAMGIA:0,TILETHUE:0,TIENGIAMGIA:0,TIENTHUE:0,TONGCONG:rows.reduce((sum,row)=>sum+row.Amount,0)};break;
+    header={...header,NGAY:items[0]?.NGAYXUAT||header.NGAY,DIENGIAI:items.map(row=>row.NOTE).filter(Boolean).join('; ')||header.NOTE||'',TILEGIAMGIA:0,TILETHUE:0,TIENGIAMGIA:0,TIENTHUE:0,TAXSUMMARY:'[]',PHIDICHVU:0,TILEPHIDICHVU:0,TONGCONG:rows.reduce((sum,row)=>sum+row.Amount,0)};break;
    }
    case 'MauPhieuBaoHanh': {
     const part=await related('DMATHANG',header.DMATHANGID);const service=await related('DDICHVU',header.DDICHVUID);
@@ -232,6 +233,11 @@ async function render(type,id,filters,user) {
   xml=require('./chargePrint').formatSalesTotal(xml);
  }
  xml=require('./chargePrint').applyTaxBreakdown(xml,data.parameters);
+ if(xml.includes('Name="DocumentReceiptVariants"')){
+  require('./documentReceiptVariants').prepare(data);
+  xml=require('./salesLineDiscountPrint').hideUnusedDiscountColumns(xml,data.tables.Table0);
+  xml=require('./salesLineDiscountPrint').fitMoneyColumns(xml,data.tables.Table0);
+ }
  let notice='';
  if(type.key==='MauMaVachPhuTung'){
   const barcode=require('./barcodePrint');

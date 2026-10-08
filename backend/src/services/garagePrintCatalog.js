@@ -2,6 +2,7 @@
 const documentTypes = [
   { key: 'MauPhieuTiepNhan', label: 'Tiếp nhận xe', table: 'TTIEPNHANXE', forms: [] },
   { key: 'MauPhieuSuaChua', label: 'Lệnh sửa chữa', table: 'TLENHSUACHUA', forms: [] },
+  { key: 'MauPhieuTamTinh', label: 'Phiếu tạm tính', table: 'TLENHSUACHUA', forms: [] },
   { key: 'MauBaoGia', label: 'Báo giá sửa chữa', table: 'TBAOGIA', dataset: 'TBAOGIA', forms: [] },
   { key: 'MauPhieuBanGiao', label: 'Bàn giao xe', table: 'TLENHSUACHUA', forms: [] },
   { key: 'MauHoaDonSuaChua', label: 'Hóa đơn sửa chữa', table: 'THOADONSUACHUA', forms: [] },
