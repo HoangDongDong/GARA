@@ -1,6 +1,6 @@
 # Kế hoạch triển khai báo cáo Garage — 11 nhóm
 
-Ngày lập: 08/10/2026. Trạng thái: kế hoạch; chưa triển khai.
+Ngày lập: 08/10/2026. Trạng thái: đã triển khai nền tảng và 68 báo cáo nối nguồn trong 11 nhóm; còn 13 mục thiếu nguồn cùng các phần nghiệm thu/tích hợp. Chi tiết tại `REPORTS-IMPLEMENTATION-PROGRESS.md`.
 
 ## Mục tiêu
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+router.use('/center', require('./reportCenter'));
 
 /**
  * Bao cao tong quan.
