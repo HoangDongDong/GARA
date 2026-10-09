@@ -1,0 +1,16 @@
+{$GARAGE_DOMAIN} {
+    encode gzip
+    header {
+        Referrer-Policy no-referrer
+        X-Content-Type-Options nosniff
+        -Server
+    }
+    handle /api/* {
+        reverse_proxy 127.0.0.1:4000
+    }
+    handle {
+        root * {$GARAGE_WEB_ROOT}
+        try_files {path} /index.html
+        file_server
+    }
+}

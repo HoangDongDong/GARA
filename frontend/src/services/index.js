@@ -5,12 +5,7 @@
  * Backend Express dang chay o http://localhost:4000
  * Vite proxy /api -> :4000, nen chi can goi /api/...
  */
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 20000,
-});
+import api from '../api';
 
 export const protectedMediaUrl = (path) => {
   if (!path || !String(path).startsWith('/api/')) return path;
@@ -25,32 +20,6 @@ const protectedApiUrl = (path) => {
   const separator = String(path).includes('?') ? '&' : '?';
   return token ? `${path}${separator}access_token=${encodeURIComponent(token)}` : path;
 };
-
-/* Auto attach user info (neu co) de backend log */
-api.interceptors.request.use((config) => {
-  try {
-    const u = JSON.parse(localStorage.getItem('garage_user') || '{}');
-    if (u?.USERNAME) {
-      config.headers['X-User'] = u.USERNAME;
-    }
-    const token = localStorage.getItem('garage_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  } catch {}
-  return config;
-});
-
-/* Auto redirect to login neu token bi het han (401) */
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
-      localStorage.removeItem('garage_token');
-      localStorage.removeItem('garage_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 /* Wrapper: GET list */
 const list = async (resource, params = {}) => {
@@ -130,6 +99,10 @@ export const catalog = {
 
 /* ===== PRINT TEMPLATES (STEMPLATE in the main GARAGE.FDB database) ===== */
 export const printTemplates = {
+  webContent: (id) => api.get(`/print-templates/${encodeURIComponent(id)}/web-content`).then(r => r.data),
+  saveWebContent: (id, content, version) => api.put(`/print-templates/${encodeURIComponent(id)}/web-content`, { content, version }).then(r => r.data),
+  webBackup: (id, backupId) => api.get(`/print-templates/${encodeURIComponent(id)}/web-backups/${encodeURIComponent(backupId)}`).then(r => r.data),
+  previewWeb: (id, content, payload) => api.post(`/print-templates/${encodeURIComponent(id)}/web-preview`, { content, payload }, { responseType: 'blob', timeout: 70000 }).then(r => r.data),
   create: (name, content, configName) => api.post('/print-templates', { name, content, configName }).then(response => response.data),
   list: () => api.get('/print-templates').then((response) => response.data),
   openDesigner: (id) => api.post(`/print-templates/${encodeURIComponent(id)}/designer`).then((response) => response.data?.data),
@@ -168,6 +141,7 @@ export const vehicles = {
 
 /* ===== EMPLOYEES (DNHANVIEN) ===== */
 export const employees = {
+  lookup: () => list('employees/lookup'),
   imageUrl: (row) => protectedMediaUrl(`/api/employees/${encodeURIComponent(row.ID)}/image?v=${encodeURIComponent(row.SIMAGEID || '')}`),
   meta: () => api.get('/employees/meta').then(response => response.data.data),
   commissions: (params) => api.get('/employees/commissions', { params }).then(response => response.data),
@@ -190,13 +164,7 @@ export const parts = {
 
 /* ===== POINT OF SALE (TDONHANG + TDONHANGCHITIET) ===== */
 export const sales = {
-  list: async () => {
-    try {
-      return await list('sales');
-    } catch {
-      return [];
-    }
-  },
+  list: (params={}) => list('sales',params),
   get: (id) => get('sales', id),
   create: (payload) => create('sales', payload),
   printPdf: (id, templateId) => api.get(`/sales/${encodeURIComponent(id)}/print`, {
@@ -208,13 +176,7 @@ export const sales = {
 
 /* ===== INVENTORY RECEIPTS (TNHAPKHO + TNHAPKHOCHITIET) ===== */
 export const inventoryReceipts = {
-  list: async () => {
-    try {
-      return await list('inventory-receipts');
-    } catch {
-      return [];
-    }
-  },
+  list: (params={}) => list('inventory-receipts',params),
   get: (id) => get('inventory-receipts', id),
   create: (payload) => create('inventory-receipts', payload),
   pay: (id, payment) => api.patch(`/inventory-receipts/${id}/pay`, {TIENTHANHTOAN:payment}).then((response) => response.data),
@@ -300,9 +262,9 @@ export const workflow = {
 
 /* ===== AUTH ===== */
 export const auth = {
-  login: (username, password) => api.post('/auth/login', { username, password }).then(r => r.data),
+  login: (username, password, tenantCode) => api.post('/auth/login', { username, password, tenantCode }).then(r => r.data),
   me: () => api.get('/auth/me').then(r => r.data?.data),
-  logout: () => Promise.resolve(),
+  logout: () => api.post('/auth/logout'),
 };
 
 /* ===== USER ACCOUNTS & ROLE-BASED ACCESS ===== */

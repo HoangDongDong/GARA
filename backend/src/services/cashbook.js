@@ -7,7 +7,7 @@ function build(cash,documents,details,receipts) {
     if (!amount) return;
     rows.push({id:`${source}-${row.ID}-${method}`,code:row.NAME || '',date:row.NGAY || row.TIMECREATED,
       description:row.NOTE || (source==='receipt'?'Thanh toán nhập kho':source==='sale'?'Thanh toán bán hàng':source==='repair'?'Thanh toán sửa chữa':'Thu/chi'),
-      partner:row.PARTNER_NAME || '',method,accountId:row.DTAIKHOANNGANHANGID || '',account:row.ACCOUNT_NAME || '',
+      partner:row.PARTNER_NAME || '',category:row.CATEGORY_NAME || (source==='receipt'?'Nhập kho':source.includes('sale')?'Bán hàng':source.includes('repair')?'Sửa chữa':'Thu/chi'),method,accountId:row.DTAIKHOANNGANHANGID || '',account:row.ACCOUNT_NAME || '',
       income:expense?0:amount,expense:expense?amount:0});
   };
   for(const row of cash)push(row,'cash',row.DTAIKHOANNGANHANGID?'transfer':'cash',row.SOTIEN,Number(row.LOAI)===1);
@@ -25,7 +25,8 @@ function build(cash,documents,details,receipts) {
 async function load(query=db.query) {
   const [cash,documents,details,receipts]=await Promise.all([
     query(`SELECT C.ID,C.NAME,C.NGAY,C.TIMECREATED,C.NOTE,C.SOTIEN,C.LOAI,C.DTAIKHOANNGANHANGID,
-      B.NAME AS ACCOUNT_NAME,COALESCE(C.TENDOITUONG,N.NAME,K.NAME) AS PARTNER_NAME FROM TTHUCHI C
+      B.NAME AS ACCOUNT_NAME,L.NAME AS CATEGORY_NAME,COALESCE(C.TENDOITUONG,N.NAME,K.NAME) AS PARTNER_NAME FROM TTHUCHI C
+      LEFT JOIN DLYDOTHUCHI L ON L.ID=C.DLYDOTHUCHID
       LEFT JOIN DTAIKHOANNGANHANG B ON B.ID=C.DTAIKHOANNGANHANGID
       LEFT JOIN DNHACUNGCAP N ON N.ID=C.DNHACUNGCAPID LEFT JOIN DKHACHHANG K ON K.ID=C.DKHACHHANGID WHERE C.STATUS=1`),
     query(`SELECT S.ID,S.NAME,S.NGAY,S.TIMECREATED,S.NOTE,S.TIENMAT,S.CHUYENKHOAN,S.THE,S.DTAIKHOANNGANHANGID,

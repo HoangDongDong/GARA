@@ -25,10 +25,7 @@ router.get('/dashboard', async (req, res) => {
               COALESCE(SUM(TON_KHO * COALESCE(GIANHAP,0)),0) AS GIA_TRI
          FROM (
            SELECT M.ID, M.GIANHAP,
-                  COALESCE((SELECT SUM(NCT.SOLUONG) FROM TNHAPKHOCHITIET NCT WHERE NCT.DMATHANGID=M.ID),0)
-                - COALESCE((SELECT SUM(XP.SOLUONG) FROM TXUATPHUTUNG XP WHERE XP.DMATHANGID=M.ID),0)
-                - COALESCE((SELECT SUM(DH.SLXUAT) FROM TDONHANGCHITIET DH WHERE DH.DMATHANGID=M.ID),0)
-                  AS TON_KHO
+                  ${require('../services/stock').expression('M.ID')} AS TON_KHO
              FROM DMATHANG M
             WHERE M.STATUS=1 AND M.TAMKHOA=0
          )`

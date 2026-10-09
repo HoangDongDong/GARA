@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Edit3, KeyRound, Plus, Save, Shield, Trash2, UserCog, Users, X } from 'lucide-react';
 import { accessControl } from '../services';
 import './QuanTriPage.css';
+import { functionMasks } from '../utils/permissions';
 
 const BITS = [
   ['Xem', 1], ['Thêm', 2], ['Sửa', 4], ['Xóa', 8], ['In', 16],
@@ -52,27 +53,25 @@ export default function QuanTriPage() {
   }, [selectedGroupId, notify]);
 
   const selectedGroup = data.groups.find((item) => item.ID === selectedGroupId);
-  const isAdminGroup = selectedGroup?.NAME?.toLocaleLowerCase('vi') === 'admin';
+  // Special access belongs to ISADMIN accounts, never to a group's name.
   const availableEmployees = useMemo(() => data.employees.filter((employee) => !employee.USERID), [data.employees]);
 
   const togglePermission = (functionId, bit) => {
-    if (isAdminGroup) return;
     if (isAdminOnlyFunction(permissions.find((item) => item.FUNCTIONID === functionId)?.CODE)) return;
     setPermissions((current) => current.map((item) => item.FUNCTIONID !== functionId ? item : {
-      ...item, MODE: (Number(item.MODE) & bit) ? Number(item.MODE) & ~bit : Number(item.MODE) | bit,
+      ...item, MODE: ((Number(item.MODE) & bit) ? Number(item.MODE) & ~bit : Number(item.MODE) | bit) & (functionMasks[item.CODE] ?? 31),
     }));
   };
 
   const toggleAll = (functionId) => {
-    if (isAdminGroup) return;
     if (isAdminOnlyFunction(permissions.find((item) => item.FUNCTIONID === functionId)?.CODE)) return;
-    setPermissions((current) => current.map((item) => item.FUNCTIONID === functionId ? { ...item, MODE: Number(item.MODE) === 31 ? 0 : 31 } : item));
+    setPermissions((current) => current.map((item) => item.FUNCTIONID === functionId ? { ...item, MODE: (Number(item.MODE) & (functionMasks[item.CODE] ?? 31)) === (functionMasks[item.CODE] ?? 31) ? 0 : (functionMasks[item.CODE] ?? 31) } : item));
   };
 
   const savePermissions = async () => {
     setSaving(true);
     try {
-      await accessControl.savePermissions(selectedGroupId, permissions.map((item) => ({ functionId: item.FUNCTIONID, mode: !isAdminGroup && isAdminOnlyFunction(item.CODE) ? 0 : Number(item.MODE) })));
+      await accessControl.savePermissions(selectedGroupId, permissions.map((item) => ({ functionId: item.FUNCTIONID, mode: isAdminOnlyFunction(item.CODE) ? 0 : Number(item.MODE) })));
       notify(`Đã lưu quyền cho chức vụ ${selectedGroup?.NAME}.`);
     } catch (error) { notify(errorText(error), 'error'); }
     finally { setSaving(false); }
@@ -127,24 +126,24 @@ export default function QuanTriPage() {
 
     <section className="qt-card qt-accounts">
       <div className="qt-card-head"><div><b>Danh sách tài khoản</b><small>SUSER liên kết trực tiếp với DNHANVIEN và SGROUPUSER</small></div><button onClick={openCreateUser} disabled={!availableEmployees.length}><Plus size={15}/> Cấp tài khoản</button></div>
-      <div className="qt-table-wrap"><table><thead><tr><th>Tài khoản</th><th>Nhân viên</th><th>Email</th><th>Chức vụ</th><th>Trạng thái</th><th></th></tr></thead>
-        <tbody>{data.users.map((user) => <tr key={user.ID}><td><b>{user.USERNAME}</b>{Number(user.ISADMIN) === 1 && <em>Hệ thống</em>}</td><td>{user.EMPLOYEENAME || user.NAME || '—'}</td><td>{user.EMAIL || '—'}</td><td><span className="qt-role-badge">{user.GROUPNAME || 'Chưa gán'}</span></td><td><span className="qt-active">Đang hoạt động</span></td><td className="qt-actions"><button title="Sửa" onClick={() => openEditUser(user)}><Edit3 size={14}/></button><button title="Khóa" onClick={() => removeUser(user)} disabled={Number(user.ISADMIN) === 1}><Trash2 size={14}/></button></td></tr>)}</tbody>
+      <div className="qt-table-wrap"><table><thead><tr><th>Tài khoản</th><th>Nhân viên</th><th>Email</th><th>Chức vụ</th><th>Trạng thái</th><th style={{ textAlign: 'center', width: 140 }}>Thao tác</th></tr></thead>
+        <tbody>{data.users.map((user) => <tr key={user.ID}><td><b>{user.USERNAME}</b>{Number(user.ISADMIN) === 1 && <em>Hệ thống</em>}</td><td>{user.EMPLOYEENAME || user.NAME || '—'}</td><td>{user.EMAIL || '—'}</td><td><span className="qt-role-badge">{user.GROUPNAME || 'Chưa gán'}</span></td><td><span className="qt-active">Đang hoạt động</span></td><td className="qt-actions"><button type="button" className="qt-action-btn qt-btn-edit" title="Sửa thông tin hoặc đặt lại mật khẩu" onClick={() => openEditUser(user)}><Edit3 size={13}/> Sửa</button><button type="button" className="qt-action-btn qt-btn-danger" title={Number(user.ISADMIN) === 1 ? 'Không thể khóa tài khoản hệ thống' : 'Khóa tài khoản'} onClick={() => removeUser(user)} disabled={Number(user.ISADMIN) === 1}><Trash2 size={13}/> Khóa</button></td></tr>)}</tbody>
       </table>{!loading && !data.users.length && <div className="qt-empty">Chưa có tài khoản.</div>}</div>
     </section>
 
     <div className="qt-permission-layout">
       <section className="qt-card qt-groups">
-        <div className="qt-card-head"><div><b>Chức vụ / Nhóm người dùng</b><small>SGROUPUSER</small></div><button onClick={() => setGroupForm({ NAME: '', NOTE: '' })}><Plus size={15}/> Thêm</button></div>
+        <div className="qt-card-head"><div><b>Chức vụ / Nhóm người dùng</b><small>SGROUPUSER</small></div><button onClick={() => setGroupForm({ NAME: '', NOTE: '' })}><Plus size={15}/> Thêm chức vụ</button></div>
         <div className="qt-group-list">{data.groups.map((group) => <div key={group.ID} className={`qt-group ${selectedGroupId === group.ID ? 'selected' : ''}`} onClick={() => setSelectedGroupId(group.ID)}>
           <div className="qt-group-icon"><Users size={17}/></div><div className="qt-group-text"><b>{group.NAME}</b><small>{group.NOTE || 'Chưa có mô tả'} · {group.USERCOUNT} tài khoản</small></div>
-          <div className="qt-actions"><button onClick={(event) => { event.stopPropagation(); setGroupForm(group); }}><Edit3 size={13}/></button><button disabled={group.NAME.toLocaleLowerCase('vi') === 'admin'} onClick={(event) => { event.stopPropagation(); removeGroup(group); }}><Trash2 size={13}/></button></div>
+          <div className="qt-actions"><button type="button" className="qt-action-btn qt-btn-edit" title="Sửa tên chức vụ và mô tả" onClick={(event) => { event.stopPropagation(); setGroupForm(group); }}><Edit3 size={12}/> Sửa</button><button type="button" className="qt-action-btn qt-btn-danger" title={group.NAME.toLocaleLowerCase('vi') === 'admin' ? 'Không thể xóa nhóm Admin' : 'Xóa chức vụ này'} disabled={group.NAME.toLocaleLowerCase('vi') === 'admin'} onClick={(event) => { event.stopPropagation(); removeGroup(group); }}><Trash2 size={12}/> Xóa</button></div>
         </div>)}</div>
       </section>
 
       <section className="qt-card qt-matrix">
-        <div className="qt-card-head"><div><b>Quyền chức năng — {selectedGroup?.NAME || 'Chọn chức vụ'}</b><small>{isAdminGroup ? 'Admin luôn có toàn quyền hệ thống.' : 'Tích từng thao tác được phép.'}</small></div><button className="qt-primary" onClick={savePermissions} disabled={!selectedGroupId || saving || isAdminGroup}><Save size={15}/> {saving ? 'Đang lưu' : 'Lưu quyền'}</button></div>
+        <div className="qt-card-head"><div><b>Quyền chức năng — {selectedGroup?.NAME || 'Chọn chức vụ'}</b><small>{'Quyền đặc biệt dùng cột Sửa để cho phép thao tác; Xem để cho phép đọc/xuất. Tài khoản hệ thống Admin luôn có toàn quyền.'}</small></div><button className="qt-primary" onClick={savePermissions} disabled={!selectedGroupId || saving}><Save size={15}/> {saving ? 'Đang lưu' : 'Lưu quyền'}</button></div>
         <div className="qt-table-wrap"><table className="qt-permission-table"><thead><tr><th>Nhóm</th><th>Chức năng</th>{BITS.map(([name]) => <th key={name}>{name}</th>)}<th>Tất cả</th></tr></thead>
-          <tbody>{permissions.map((item) => { const locked = !isAdminGroup && isAdminOnlyFunction(item.CODE); return <tr key={item.FUNCTIONID} className={locked ? 'qt-locked-row' : ''}><td>{item.GROUPNAME}</td><td><b>{item.NAME}</b>{locked && <small className="qt-admin-only">Chỉ Admin</small>}</td>{BITS.map(([name, bit]) => <td key={name}><input type="checkbox" checked={isAdminGroup || (!locked && (Number(item.MODE) & bit) === bit)} disabled={isAdminGroup || locked} onChange={() => togglePermission(item.FUNCTIONID, bit)}/></td>)}<td><input type="checkbox" checked={isAdminGroup || (!locked && Number(item.MODE) === 31)} disabled={isAdminGroup || locked} onChange={() => toggleAll(item.FUNCTIONID)}/></td></tr>; })}</tbody>
+          <tbody>{permissions.map((item) => { const locked = isAdminOnlyFunction(item.CODE); const mask = functionMasks[item.CODE] ?? 31; return <tr key={item.FUNCTIONID} className={locked ? 'qt-locked-row' : ''}><td>{item.GROUPNAME}</td><td><b>{item.NAME}</b>{locked && <small className="qt-admin-only">Chỉ Admin</small>}</td>{BITS.map(([name, bit]) => <td key={name}><input type="checkbox" checked={(!locked && !!(mask & bit) && (Number(item.MODE) & bit) === bit)} disabled={locked || !(mask & bit)} title={!(mask & bit) ? 'Thao tác không áp dụng' : name} onChange={() => togglePermission(item.FUNCTIONID, bit)}/></td>)}<td><input type="checkbox" checked={(!locked && (Number(item.MODE) & mask) === mask)} disabled={locked} onChange={() => toggleAll(item.FUNCTIONID)}/></td></tr>; })}</tbody>
         </table></div>
       </section>
     </div>

@@ -68,7 +68,7 @@ export default function TiepNhanXePage() {
   // Load danh sách khách hàng từ backend nếu có
   const draftNumber=useDocumentNumber('TiepNhan');
   useEffect(() => {
-    axios.get('http://localhost:4000/api/customers')
+    axios.get('/api/customers')
       .then(res => {
         if (res.data?.data && res.data.data.length > 0) {
           setCustomerList(res.data.data);
@@ -111,7 +111,7 @@ export default function TiepNhanXePage() {
     if (!vehicleId) return;
     setWarrantyLoading(true);
     try {
-      const res = await axios.get(`http://localhost:4000/api/vehicles/${vehicleId}/warranties`);
+      const res = await axios.get(`/api/vehicles/${vehicleId}/warranties`);
       setWarrantyData(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (e) {
       console.log('Warranty load error', e);
@@ -128,7 +128,7 @@ export default function TiepNhanXePage() {
       return;
     }
     try {
-      const res = await axios.get('http://localhost:4000/api/vehicles');
+      const res = await axios.get('/api/vehicles');
       const found = res.data.data?.find(v => 
         v.BIENSO?.toLowerCase().replace(/[-. ]/g, '') === vehicle.plate.toLowerCase().replace(/[-. ]/g, '')
       );

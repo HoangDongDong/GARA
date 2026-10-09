@@ -2,7 +2,7 @@ const VERSION = 1;
 
 function prefix(storage) {
   const user = JSON.parse(storage.getItem('garage_user') || '{}');
-  return `garage_repair_draft:${encodeURIComponent(user.ID || user.USERNAME || 'anonymous')}:`;
+  return `garage_repair_draft:${user.TENANT ? encodeURIComponent(user.TENANT.id)+':' : ''}${encodeURIComponent(user.ID || user.USERNAME || 'anonymous')}:`;
 }
 
 export function lastDraftVehicle(storage) {

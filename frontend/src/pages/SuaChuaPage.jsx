@@ -1,3 +1,5 @@
+import { compressImage, imagePolicies } from '../utils/compressImage';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import useDocumentNumber from '../hooks/useDocumentNumber';
 import DocumentNumberField from '../components/DocumentNumberField';
@@ -28,32 +30,7 @@ import './SuaChuaPage.css';
 
 const MAX_WORKFLOW_IMAGES = 12;
 
-const compressWorkflowImage = (file) => new Promise((resolve, reject) => {
-  if (!file?.type?.startsWith('image/')) return reject(new Error('Tệp đã chọn không phải hình ảnh.'));
-  const objectUrl = URL.createObjectURL(file);
-  const image = new Image();
-  image.onload = () => {
-    try {
-      const maxSide = 1600;
-      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-      const data = canvas.toDataURL('image/jpeg', 0.82);
-      URL.revokeObjectURL(objectUrl);
-      resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', data });
-    } catch (error) {
-      URL.revokeObjectURL(objectUrl);
-      reject(error);
-    }
-  };
-  image.onerror = () => {
-    URL.revokeObjectURL(objectUrl);
-    reject(new Error(`Không đọc được ảnh ${file.name}.`));
-  };
-  image.src = objectUrl;
-});
+const compressWorkflowImage = async file => {const result=await compressImage(file,imagePolicies.workflow);return {name:file.name.replace(/\.[^.]+$/, '')+'.jpg',type:result.type,data:result.data};};
 
 export default function SuaChuaPage() {
   const [searchParams] = useSearchParams();
@@ -163,7 +140,7 @@ export default function SuaChuaPage() {
       setDraftSavedAt('');
       try {
         const [vehicleRows, serviceRows, partRows, employeeRows, customerRows, vehicleMeta, customerGroupRows] = await Promise.all([
-          vehicles.list(), masterData.services(), partsApi.list(), employees.list(),
+          vehicles.list(), masterData.services(), partsApi.list(), employees.lookup(),
           customers.list(), vehicles.meta(), masterData.customerGroups(),
         ]);
         const availableVehicles = Array.isArray(vehicleRows) ? vehicleRows : [];
@@ -557,6 +534,7 @@ export default function SuaChuaPage() {
   };
 
   const openAddVehicle = () => {
+    if (!can('REPAIR',2) && !can('VEHICLES',2)) return;
     setNewVehicle({
       BIENSO: '', DKHACHHANGID: '', DHANGXEID: '', DDONGXEID: '', PHIENBAN: '',
       NAMSANXUAT: '', MAUXE: '', SOKHUNG: '', SOMAY: '', ODO: '0',
@@ -570,6 +548,7 @@ export default function SuaChuaPage() {
   };
 
   const openAddCustomer = () => {
+    if (!can('REPAIR',2) && !can('CUSTOMERS',2)) return;
     const retailGroup = customerGroups.find((group) => String(group.NAME || '').toLocaleLowerCase('vi').replace(/\s/g, '').includes('kháchlẻ'));
     setNewCustomer({
       NAME: '', DNHOMKHACHHANGID: retailGroup?.ID || '', MAKHACH: '',
@@ -606,6 +585,7 @@ export default function SuaChuaPage() {
   };
 
   const openAddCustomerGroup = () => {
+    if (!canQuickCreate('customer_groups')) return;
     setNewCustomerGroupName('');
     setShowAddCustomerGroup(true);
   };
@@ -637,11 +617,13 @@ export default function SuaChuaPage() {
   };
 
   const openAddBrand = () => {
+    if (!canQuickCreate('brands')) return;
     setNewBrandName('');
     setShowAddBrand(true);
   };
 
   const openAddModel = () => {
+    if (!canQuickCreate('models')) return;
     if (!newVehicle.DHANGXEID) return showToast('Vui lòng chọn hãng xe trước khi thêm dòng xe.');
     setNewModelName('');
     setShowAddModel(true);
@@ -794,7 +776,10 @@ export default function SuaChuaPage() {
     showToast(`Đã thêm ${employeeOptionType === 'role' ? 'chức vụ' : 'phòng ban'} ${name}.`);
   };
 
+  const canProcess = !repairFlow.repairId ? can('REPAIR',2) : (repairFlow.workflowState === 3 ? can('PAYMENTS',4) : can('REPAIR',4) && can(repairFlow.workflowState <= 1 ? 'ASSIGN_REPAIR' : workflowPermission(repairFlow.workflowState + 1),4));
   const handleProcessAction = async () => {
+    const allowed = canProcess;
+    if (!allowed) return showToast('Bạn chưa được cấp quyền thao tác ở bước này.');
     if (!repairFlow.repairId && (chargeConfig.loading || chargeConfig.error)) return showToast(chargeConfig.error || 'Đang tải cấu hình thuế và phí dịch vụ.');
     if (!vehicleInfo.vehicleId || !vehicleInfo.customerId) return showToast('Vui lòng chọn xe có khách hàng/chủ xe.');
     if (!repairFlow.repairId && !selectedServices.length) return showToast('Vui lòng chọn ít nhất 1 dịch vụ hoặc phụ tùng.');
@@ -852,7 +837,7 @@ export default function SuaChuaPage() {
             showToast(imageError?.response?.data?.error || 'Phiếu đã lưu nhưng chưa thể lưu ảnh trạng thái.');
           }
         } else {
-          showToast('Đã lưu Tiếp nhận & Báo giá. Hồ sơ chuyển sang Xác nhận sửa chữa.');
+          showToast('Đã lưu Tiếp nhận & Báo giá. Hồ sơ đang chờ duyệt / xác nhận sửa chữa.');
         }
       } else if (repairFlow.workflowState === 0 || repairFlow.workflowState === 1) {
         setShowRepairConfirmation(true);
@@ -883,6 +868,7 @@ export default function SuaChuaPage() {
   };
 
   const handleConfirmRepair = async () => {
+    if (!can('REPAIR',4) || !can('ASSIGN_REPAIR',4) || (Number(repairFlow.workflowState) === 0 && !can('APPROVE_QUOTE',4))) return showToast('Bạn chưa có quyền duyệt báo giá hoặc phân công.');
     if (!repairAssignment.valid) return showToast('Chọn nhân viên, người phụ trách chính và chia đủ 100% trước khi xác nhận.');
     if (!repairFlow.repairId || ![0, 1].includes(Number(repairFlow.workflowState))) return showToast('Phiếu cần ở bước Tiếp nhận & Báo giá hoặc Xác nhận sửa chữa.');
     setSavingProcess(true);
@@ -917,6 +903,7 @@ export default function SuaChuaPage() {
   };
 
   const handlePayment = async () => {
+    if (!can('PAYMENTS',4)) return showToast('Bạn chưa có quyền thanh toán.');
     if (chargeConfig.loading || chargeConfig.error) return showToast(chargeConfig.error || 'Đang tải cấu hình thanh toán.');
     if (!repairFlow.repairId) return showToast('Không tìm thấy lệnh sửa chữa để thanh toán.');
     if (totalAmount <= 0) return showToast('Tổng tiền thanh toán phải lớn hơn 0.');
@@ -2367,7 +2354,7 @@ export default function SuaChuaPage() {
               <button type="button" disabled={savingProcess} onClick={() => setShowPayment(false)} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
                 Hủy
               </button>
-              <button type="button" disabled={savingProcess} onClick={handlePayment} style={{ height: 34, padding: '0 16px', background: savingProcess ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button type="button" disabled={savingProcess || !can('PAYMENTS',4)} onClick={handlePayment} style={{ height: 34, padding: '0 16px', background: savingProcess ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CheckCircle size={14} /> {savingProcess ? 'Đang thanh toán...' : chargeConfig.rates.requireBill!==false ? 'Xác nhận và in bill' : 'Xác nhận thanh toán'}
               </button>
             </div>
@@ -2446,10 +2433,10 @@ export default function SuaChuaPage() {
               <button type="button" disabled={savingProcess} onClick={() => setShowRepairConfirmation(false)} style={{ marginRight: 'auto', height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
                 {Number(repairFlow.workflowState) >= 2 ? 'Đóng' : 'Chưa xác nhận'}
               </button>
-              <button type="button" disabled={savingProcess || !repairFlow.repairId} title="In lệnh sửa chữa đã lưu" onClick={() => openDocumentPrint({ type: 'MauPhieuSuaChua', types: ['MauPhieuSuaChua'], id: repairFlow.repairId, autoPreview: true })} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#E65100', fontWeight: 600, cursor: savingProcess || !repairFlow.repairId ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button type="button" disabled={savingProcess || !repairFlow.repairId || !can('REPAIR',17)} title="In lệnh sửa chữa đã lưu" onClick={() => openDocumentPrint({ type: 'MauPhieuSuaChua', types: ['MauPhieuSuaChua'], id: repairFlow.repairId, autoPreview: true })} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#E65100', fontWeight: 600, cursor: savingProcess || !repairFlow.repairId ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Printer size={14} /> In lệnh sửa chữa
               </button>
-              {Number(repairFlow.workflowState) < 2 && <button type="button" disabled={savingProcess || !repairAssignment.valid} onClick={handleConfirmRepair} style={{ height: 34, padding: '0 16px', background: savingProcess || !repairAssignment.valid ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {Number(repairFlow.workflowState) < 2 && <button type="button" disabled={savingProcess || !repairAssignment.valid || !can('ASSIGN_REPAIR',4) || (Number(repairFlow.workflowState) === 0 && !can('APPROVE_QUOTE',4))} onClick={handleConfirmRepair} style={{ height: 34, padding: '0 16px', background: savingProcess || !repairAssignment.valid ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CheckCircle size={14} /> {savingProcess ? 'Đang xác nhận...' : 'Xác nhận sửa chữa'}
               </button>}
             </div>

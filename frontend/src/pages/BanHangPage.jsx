@@ -1,7 +1,10 @@
+import SaleHistory from '../components/SaleHistory';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import DiscountFields from '../components/DiscountFields';
 import { billDiscount } from '../utils/billDiscount';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import api from '../api';
+import useSecondaryPayment from '../hooks/useSecondaryPayment';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {createPortal} from 'react-dom';
 import {
@@ -18,6 +21,7 @@ import {
   Droplets,
   Sparkles,
   Layers,
+  MoreHorizontal,
   FileText,
   Calendar,
   User,
@@ -59,14 +63,6 @@ const defaultDateStr = () => {
   return `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 
-// Danh sách phiếu bán gần đây mặc định theo mockup
-const DEFAULT_RECENT_SALES = [
-  { ID: 'S01', NAME: 'BH20250930-001', NGAY: '2025-09-30 14:28:00', TEN_KH: 'Khách lẻ', TONGCONG: 5340000, DATHANHTOAN: 1 },
-  { ID: 'S02', NAME: 'BH20250930-002', NGAY: '2025-09-30 11:15:00', TEN_KH: 'Công ty TNHH ABC', TONGCONG: 2850000, DATHANHTOAN: 1 },
-  { ID: 'S03', NAME: 'BH20250929-015', NGAY: '2025-09-29 16:40:00', TEN_KH: 'Khách lẻ', TONGCONG: 1200000, DATHANHTOAN: 1 },
-  { ID: 'S04', NAME: 'BH20250928-012', NGAY: '2025-09-28 10:20:00', TEN_KH: 'Công ty TNHH XYZ', TONGCONG: 3760000, DATHANHTOAN: 1 },
-];
-
 // Map tên nhóm -> icon phù hợp (dùng cho tabs động từ DB)
 const getCategoryIcon = (name = '', size = 20) => {
   const n = name.toLowerCase()
@@ -88,7 +84,7 @@ export default function BanHangPage() {
   const [customerGroups, setCustomerGroups] = useState([]);
   const [warehouseList, setWarehouseList] = useState([]);
   const [partCategories, setPartCategories] = useState([]);  // nhóm mặt hàng từ DB
-  const [recentSales, setRecentSales] = useState(DEFAULT_RECENT_SALES);
+  const [recentSales, setRecentSales] = useState([]);
 
   // Bộ lọc & tìm kiếm
   const [search, setSearch] = useState('');
@@ -194,7 +190,7 @@ export default function BanHangPage() {
 
       // Phiếu bán hàng gần đây
       if (Array.isArray(saleRows) && saleRows.length) {
-        setRecentSales([...saleRows, ...DEFAULT_RECENT_SALES].slice(0, 10));
+        setRecentSales(saleRows);
       }
     } catch (err) {
       console.error('POS loadData error:', err);
@@ -268,6 +264,8 @@ export default function BanHangPage() {
   const otherFees = chargeTotals.serviceFee;
   const taxAmount = chargeTotals.tax;
   const total = chargeTotals.total;
+  const customerDisplay = useSecondaryPayment(cart.length > 0, { NAME:saleCode, TONGCONG:total, TIENGIAMGIA:discountAmount, PHIDICHVU:otherFees, TIENTHUE:taxAmount,
+    details:cart.map((item,index)=>({ TEN_PT:item.NAME, SOLUONG:item.quantity || 1, DONGIA:item.GIABAN, THANHTIEN:chargeTotals.details?.[index]?.lineNet ?? item.GIABAN*(item.quantity || 1) })) });
   const checkoutCash=Number(checkoutAmounts.cashGiven || 0),checkoutCard=Number(checkoutAmounts.card || 0),checkoutTransfer=checkoutTransferEnabled?Number(checkoutAmounts.transfer || 0):0;
   const checkoutChange=Math.max(0,checkoutCash+checkoutCard+checkoutTransfer-total);
   const checkoutDebt=Math.max(0,total-checkoutCash-checkoutCard-checkoutTransfer);
@@ -322,7 +320,7 @@ export default function BanHangPage() {
   };
 
   const updatePrice = (id, price) => {
-    if (!Number.isSafeInteger(price) || price < 0 || processing) return;
+    if (!canEditPolicy || !Number.isSafeInteger(price) || price < 0 || processing) return;
     setCart((prev) => prev.map((item) => item.ID === id ? { ...item, GIABAN: price } : item));
   };
 
@@ -469,6 +467,7 @@ export default function BanHangPage() {
 
   // Thanh toán: lưu phiếu -> backend render mẫu in mặc định -> xem/in
   const requestCheckout=()=>{
+    if (!can('SALES',2) || !can('PAYMENTS',4)) return setToastMsg('Cần quyền Thêm bán hàng và Thanh toán.');
     if(!cart.length || processing || checkoutPending.current || showInvoiceModal || showCheckoutConfirm)return;
     if(chargeConfig.rates.requireCustomer && !customerId){setToastMsg('Vui lòng chọn khách hàng trước khi bán.');return;}
     if(chargeConfig.loading || chargeConfig.error){
@@ -481,6 +480,7 @@ export default function BanHangPage() {
     api.get('/master-data/bank_accounts',{params:{status:1}}).then(response=>setCheckoutBanks(response.data.data || [])).catch(()=>setCheckoutBankError('Không tải được tài khoản ngân hàng. Hãy đóng và mở lại form để thử lại.'));
   };
   const handleCheckout = async () => {
+    if (!can('SALES',2) || !can('PAYMENTS',4)) return setCheckoutError('Cần quyền Thêm bán hàng và Thanh toán.');
     if (!showCheckoutConfirm || !cart.length || processing || checkoutPending.current) return;
     if(checkoutTransferEnabled && checkoutTransfer<=0){setCheckoutError('Vui lòng nhập số tiền chuyển khoản lớn hơn 0.');return;}
     if (chargeConfig.loading || chargeConfig.error) {
@@ -505,6 +505,7 @@ export default function BanHangPage() {
           TILEGIAMGIA: chargeConfig.rates.allowDiscount === false ? null : item.TILEGIAMGIA })),
       });
       if (!result?.id) throw new Error('Máy chủ không trả về mã phiếu bán hàng.');
+      customerDisplay.completed(result.id).catch(()=>{});
       setSavedSale({ ...result });
       setSaleCode(result.code);
       setShowCheckoutConfirm(false);
@@ -524,6 +525,7 @@ export default function BanHangPage() {
     }
   };
   const printDraft=()=>{
+    if (!can('SALES',17)) return setToastMsg('Bạn chưa có quyền in bán hàng.');
     if(chargeConfig.rates.allowDraftPrint===false || !cart.length || processing || chargeConfig.loading || chargeConfig.error)return;
     const preview=window.open('','_blank','width=760,height=800');
     if(!preview){setCheckoutError('Trình duyệt đang chặn cửa sổ in tạm tính.');return;}
@@ -843,7 +845,7 @@ export default function BanHangPage() {
                           />
                       </td>
                       <td style={{ textAlign: 'right', fontSize: '11.5px' }}>
-                        <EditableSalePrice value={item.GIABAN} name={item.NAME} disabled={processing}
+                        <EditableSalePrice value={item.GIABAN} name={item.NAME} disabled={processing || !canEditPolicy}
                           onChange={(price) => updatePrice(item.ID, price)} />
                       </td>
                       <td style={{ textAlign: 'right' }} title="Chiết khấu riêng cho món này, trừ trước giảm giá toàn bill">
@@ -1127,8 +1129,9 @@ export default function BanHangPage() {
             {chargeConfig.rates.allowDebt!==false && checkoutAmounts.allowDebt && <div className="pos-confirm-debt-amount">Còn nợ: <b>{money(checkoutDebt)} đ</b>{!customerId && <p>Chọn khách hàng trên phiếu bán để ghi nhận công nợ.</p>}</div>}
           </fieldset>
           {checkoutError && <p className="pos-confirm-error" role="alert">{checkoutError}</p>}
+          {customerDisplay.error && <p className="pos-confirm-error" role="status">{customerDisplay.error}</p>}
         </div>
-        <div className="pos-modal-footer pos-confirm-actions"><p>{chargeConfig.rates.requireBill!==false ? 'Bill bắt buộc in khi xác nhận thanh toán, kể cả khi khách còn nợ.' : 'Xác nhận để lưu thanh toán. Có thể in bill từ In chứng từ.'}</p><button type="button" className="btn-pos-barcode" disabled={processing || chargeConfig.loading || !!chargeConfig.error} onClick={handleCheckout}><Printer size={15}/>{processing?'Đang lưu…':chargeConfig.rates.requireBill!==false?'Xác nhận và in bill (F9)':'Xác nhận thanh toán (F9)'}</button><button type="button" className="btn-pos-white" disabled={processing} onClick={()=>setShowCheckoutConfirm(false)}>Hủy bỏ</button></div>
+        <div className="pos-modal-footer pos-confirm-actions"><p>{chargeConfig.rates.requireBill!==false ? 'Bill bắt buộc in khi xác nhận thanh toán, kể cả khi khách còn nợ.' : 'Xác nhận để lưu thanh toán. Có thể in bill từ In chứng từ.'}</p><button type="button" className="btn-pos-barcode" disabled={processing || chargeConfig.loading || !!chargeConfig.error || !can('SALES',2) || !can('PAYMENTS',4)} onClick={handleCheckout}><Printer size={15}/>{processing?'Đang lưu…':chargeConfig.rates.requireBill!==false?'Xác nhận và in bill (F9)':'Xác nhận thanh toán (F9)'}</button><button type="button" className="btn-pos-white" disabled={processing} onClick={()=>setShowCheckoutConfirm(false)}>Hủy bỏ</button></div>
       </dialog>,document.body)}
 
       {/* ===== POPUP: QUÉT MÃ VẠCH ===== */}
@@ -1249,32 +1252,7 @@ export default function BanHangPage() {
                 &times;
               </button>
             </div>
-            <div className="pos-modal-body" style={{ maxHeight: 380 }}>
-              <table className="pos-recent-table">
-                <thead>
-                  <tr>
-                    <th>Số phiếu</th>
-                    <th>Ngày bán</th>
-                    <th>Khách hàng</th>
-                    <th style={{ textAlign: 'right' }}>Tổng tiền</th>
-                    <th style={{ textAlign: 'center' }}>Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSales.map((r, i) => (
-                    <tr key={r.ID || i}>
-                      <td style={{ fontWeight: 600 }}>{r.NAME}</td>
-                      <td>{r.NGAY ? (r.NGAY.includes('/') ? r.NGAY : dateTime(r.NGAY)) : '30/09/2025'}</td>
-                      <td>{r.TEN_KH || 'Khách lẻ'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(r.TONGCONG)}đ</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className="badge-tag-success">Hoàn thành</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <div className="pos-modal-body" style={{ maxHeight: 380 }}><SaleHistory/></div>
             <div className="pos-modal-footer">
               <button className="btn-pos-white" onClick={() => setShowSaleListModal(false)}>
                 Đóng

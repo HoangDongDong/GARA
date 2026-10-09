@@ -1,3 +1,4 @@
+import { can } from '../utils/permissions';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { catalog, customers, suppliers, parts } from '../services';
 import { catalogDefinitions, masterFormDefinitions, displayCatalogValue } from '../pages/catalogDefinitions';
@@ -76,10 +77,12 @@ export default function useCatalogController() {
     setOptions(values);
   }
   async function openEditor(mode) {
+    if (!can('CATALOG', mode.startsWith('edit') ? 4 : 2)) return;
     if (loading || saving || error) return;
     setFormError('');
     const isGroup = mode.includes('group');
-    const formDefinition = isGroup ? masterFormDefinitions[definition.groupResource] : catalogDefinitions[type];
+    const originalDefinition = isGroup ? masterFormDefinitions[definition.groupResource] : catalogDefinitions[type];
+    const formDefinition = originalDefinition && { ...originalDefinition, fields: originalDefinition.fields.filter(field => (!['GIANHAP','GIAVON'].includes(field.key) || can('COST')) && (!['HHKIEU','HHGIATRI'].includes(field.key) || can('COMMISSIONS',4))) };
     if (!formDefinition) return;
     const source = isGroup ? definition.groups.find((row) => String(row.ID) === group) : selected?.raw;
     const record = formatForm(formDefinition, mode.startsWith('edit') ? source : {});
@@ -103,6 +106,8 @@ export default function useCatalogController() {
     if (editor.definition.fields.some((field) => field.required && !String(payload[field.key] ?? '').trim())) { setFormError('Vui lòng điền các trường bắt buộc.'); return; }
     if (type === 'parts' && !editor.isGroup && editor.record.ANH !== undefined) payload.ANH = editor.record.ANH;
     const service = !editor.isGroup ? { customers, suppliers, parts }[type] || catalog : catalog;
+    if (!can('COST')) { delete payload.GIANHAP; delete payload.GIAVON; }
+    if (!can('COMMISSIONS',4)) { delete payload.HHKIEU; delete payload.HHGIATRI; }
     setSaving(true); setFormError('');
     try {
       const result = service === catalog
@@ -115,6 +120,7 @@ export default function useCatalogController() {
     finally { setSaving(false); }
   }
   async function toggleActive() {
+    if (!can('CATALOG',4)) return;
     if (!selected || loading || saving) return;
     setSaving(true); setNotice(''); setError('');
     try { await catalog.setStatus(definition.resource, selected.id, selected.active ? 0 : 1); setNotice(selected.active ? 'Đã ngừng sử dụng bản ghi.' : 'Đã khôi phục bản ghi.'); await load(type); }
@@ -122,6 +128,7 @@ export default function useCatalogController() {
     finally { setSaving(false); }
   }
   async function openQuickMaster(resource, targetField, nameText) {
+    if (!can('CATALOG',2)) return;
     const formDefinition = masterFormDefinitions[resource];
     if (!formDefinition) return;
     setSubError('');

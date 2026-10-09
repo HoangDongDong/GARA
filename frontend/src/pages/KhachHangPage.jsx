@@ -1,3 +1,4 @@
+import { can, canQuickCreate } from '../utils/permissions';
 import CustomerFormModal from '../components/CustomerFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useEffect, useState, useMemo } from 'react';
@@ -71,12 +72,14 @@ export default function KhachHangPage() {
   useEffect(() => { load(); }, []);
 
   const openAddForm = () => {
+    if (!can('CUSTOMERS',2)) return;
     setForm({ NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', DIACHI: '', MASOTHUE: '', DNHOMKHACHHANGID: '', GIAMGIARIENG: '' });
     setFormError('');
     setFormMode('add');
   };
 
   const openEditForm = (customer) => {
+    if (!can('CUSTOMERS',4)) return;
     if (!customer) return;
     setForm({
       NAME: customer.NAME || customer.TENKH || customer.HOTEN || '',
@@ -140,6 +143,7 @@ export default function KhachHangPage() {
   };
 
   const handleDeleteCustomer = async (customer) => {
+    if (!can('CUSTOMERS',8)) return;
     const id = customer?.ID || customer?.DKHACHHANGID;
     if (!id || deletingId) return;
     const name = customerName(customer);
@@ -259,7 +263,7 @@ export default function KhachHangPage() {
           Khách hàng
         </h1>
         <div className="kh-actions-group">
-          <button onClick={openAddForm} className="kh-btn-add">
+          <button disabled={!can('CUSTOMERS',2)} onClick={openAddForm} className="kh-btn-add">
             <Plus size={14} /> Thêm khách hàng
           </button>
           <div className="kh-actions-row-mobile">
@@ -480,10 +484,10 @@ export default function KhachHangPage() {
                 </h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button className="btn btn-ghost btn-sm" disabled={!selected} onClick={()=>openDocumentPrint({type:'MauCongNoKhachHang',id:selected?.DKHACHHANGID||selected?.ID})}>In công nợ</button><button onClick={() => openEditForm(selected)} disabled={!selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #FF9800', color: '#E65100', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, opacity: selected ? 1 : 0.5 }}>
+                <button className="btn btn-ghost btn-sm" disabled={!selected} onClick={()=>openDocumentPrint({type:'MauCongNoKhachHang',id:selected?.DKHACHHANGID||selected?.ID})}>In công nợ</button><button onClick={() => openEditForm(selected)} disabled={!can('CUSTOMERS',4) || !selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #FF9800', color: '#E65100', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, opacity: selected ? 1 : 0.5 }}>
                   <Edit size={12} /> Sửa
                 </button>
-                <button onClick={() => handleDeleteCustomer(selected)} disabled={!selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, opacity: selected && !deletingId ? 1 : 0.5 }}>
+                <button onClick={() => handleDeleteCustomer(selected)} disabled={!can('CUSTOMERS',8) || !selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, opacity: selected && !deletingId ? 1 : 0.5 }}>
                   <Trash2 size={12} /> Xóa
                 </button>
               </div>

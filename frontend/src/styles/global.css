@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
+  zoom: var(--garage-interface-scale, 1);
   /* Brand KAZUKO */
   --primary:        #E65100;
   --primary-light:  #F57C00;
@@ -48,6 +49,10 @@
   --radius-sm:      4px;
   --radius:         8px;
   --radius-lg:      12px;
+}
+
+@media print {
+  :root { zoom: 1 !important; }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -378,49 +383,52 @@ table.table {
 /* ===== Stat Cards ===== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
 .stat-card {
   background: white;
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  padding: 7px 9px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   transition: transform .15s, box-shadow .15s;
 }
 .stat-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .stat-card .stat-icon {
-  width: 34px; height: 34px;
+  width: 32px; height: 32px;
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   flex-shrink: 0;
 }
+.stat-card .stat-icon svg { width: 18px; height: 18px; }
 .stat-card .stat-icon.orange { background: #FFF3E0; color: var(--primary); }
 .stat-card .stat-icon.green { background: var(--success-light); color: var(--success); }
 .stat-card .stat-icon.blue { background: var(--info-light); color: var(--info); }
 .stat-card .stat-icon.red { background: var(--danger-light); color: var(--danger); }
 .stat-card .stat-icon.yellow { background: #FFF8E1; color: #F9A825; }
 .stat-card .stat-icon.purple { background: #F3E5F5; color: #7B1FA2; }
-.stat-card .stat-info { flex: 1; min-width: 0; }
+.stat-card .stat-info { flex: 1; min-width: 0; overflow: hidden; }
 .stat-card .stat-label {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.25;
 }
 .stat-card .stat-value {
   font-size: 18px;
   font-weight: 800;
   color: var(--text);
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .stat-card .stat-delta {
   font-size: 9px;
@@ -428,6 +436,9 @@ table.table {
   align-items: center;
   gap: 2px;
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .stat-card .stat-delta.up { color: var(--success); }
 .stat-card .stat-delta.down { color: var(--danger); }
@@ -667,7 +678,7 @@ table.table {
 }
 .responsive-grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 8px;
 }
 .responsive-grid-2 {

@@ -12,7 +12,7 @@ const permissionCodes = {
   MauPhieuTiepNhan:['REPAIR'], MauPhieuSuaChua:['REPAIR'], MauPhieuTamTinh:['REPAIR'], MauBaoGia:['REPAIR'], MauPhieuBanGiao:['REPAIR'],
   MauHoaDonSuaChua:['REPAIR','FINANCE'], MauPhieuBaoHanh:['WARRANTY'], MauHoaDonBanHang:['SALES'],
   MauPhieuNhapKho:['INVENTORY'], MauPhieuXuatKho:['INVENTORY','REPAIR'], MauPhieuThu:['FINANCE'], MauPhieuChi:['FINANCE'],
-  MauMaVachPhuTung:['INVENTORY'], MauBangLuong:['EMPLOYEES'], MauBaoCao:['REPORTS'],
+  MauMaVachPhuTung:['INVENTORY'], MauBangLuong:['PAYROLL'], MauBaoCao:['REPORTS'],
   MauHoSoXe:['VEHICLES'], MauLichSuSuaChua:['VEHICLES','REPAIR'], MauCongNoKhachHang:['FINANCE'], MauCongNoNhaCungCap:['FINANCE'],
 };
 const textTypes = new Set(['MauPhieuTiepNhan','MauPhieuBanGiao','MauPhieuBaoHanh','MauHoSoXe','MauLichSuSuaChua']);
@@ -20,7 +20,7 @@ const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
 const date = value => value && !Number.isNaN(new Date(value).getTime()) ? new Date(value).toLocaleDateString('vi-VN',{timeZone:'Asia/Bangkok'}) : '';
 const fail = (message,status=400) => Object.assign(new Error(message),{status});
 const types = documentTypes.map(type => ({ ...type, codes: permissionCodes[type.key], layout: textTypes.has(type.key) ? 'text' : type.key==='MauMaVachPhuTung' ? 'barcode' : 'money' }));
-function permitted(user,type) { return Number(user?.ISADMIN)===1 || type.codes.some(code => (Number(user?.permissions?.[code]||0)&17)===17); }
+function permitted(user,type) { return Number(user?.ISADMIN)===1 || (type.codes.some(code => (Number(user?.permissions?.[code]||0)&17)===17) && (type.key!=='MauPhieuNhapKho' || require('../permissionPolicy').has(user,'COST')) && (type.key!=='MauBangLuong' || require('../permissionPolicy').has(user,'EMPLOYEES'))); }
 function typeByKey(key) { const type=types.find(item=>item.key===key); if(!type)throw fail('Loại bản in không hợp lệ.');return type; }
 function range(from,to) {
   for(const value of [from,to]) if(value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0,10)!==value))throw fail('Khoảng ngày không hợp lệ.');
@@ -150,14 +150,12 @@ async function payload(type,id,filters,user) {
     const items=await db.query('SELECT NAME,NGAY,KETTHUC,NOTE,TONGCONG FROM TLENHSUACHUA WHERE DXEID=? AND COALESCE(STATUS,0)>=0 AND CAST(NGAY AS DATE) BETWEEN ? AND ? ORDER BY NGAY DESC',[id,from,to]);
     rows=items.map(row=>({ItemName:row.NAME,ValueText:`${date(row.NGAY)} - ${date(row.KETTHUC)}; ${money(row.TONGCONG)}`,Note:row.NOTE||''}));break;
    }
-   case 'MauCongNoKhachHang': {
-    customer=header;const items=await db.query('SELECT NAME,NGAY,TONGCONG,CONLAI FROM THOADONSUACHUA WHERE DKHACHHANGID=? AND STATUS=1 AND CAST(NGAY AS DATE) BETWEEN ? AND ? ORDER BY NGAY',[id,from,to]);
-    const sales=await db.query('SELECT NAME,NGAY,TONGCONG,TIENTHANHTOAN,CONLAI,CONGNO,DATHANHTOAN FROM TDONHANG WHERE DKHACHHANGID=? AND STATUS=1 AND CAST(NGAY AS DATE) BETWEEN ? AND ? ORDER BY NGAY',[id,from,to]);
-    rows=[...items.map(row=>({ItemName:row.NAME,Amount:Number(row.CONLAI||0),Note:`Ngày ${date(row.NGAY)}; hóa đơn ${money(row.TONGCONG)}`})),...sales.map(row=>({ItemName:row.NAME,Amount:Math.max(0,Number(row.CONLAI??row.CONGNO??(Number(row.DATHANHTOAN)===1?0:Number(row.TONGCONG||0)-Number(row.TIENTHANHTOAN||0)))),Note:`Ngày ${date(row.NGAY)}; bán phụ tùng ${money(row.TONGCONG)}`}))];header={...header,TONGCONG:rows.reduce((sum,row)=>sum+row.Amount,0)};break;
-   }
-   case 'MauCongNoNhaCungCap': {
-    supplier=header;const items=await db.query('SELECT NAME,NGAY,TONGCONG,CONGNO FROM TNHAPKHO WHERE DNHACUNGCAPID=? AND STATUS=1 AND CAST(NGAY AS DATE) BETWEEN ? AND ? ORDER BY NGAY',[id,from,to]);
-    rows=items.map(row=>({ItemName:row.NAME,Amount:Number(row.CONGNO||0),Note:`Ngày ${date(row.NGAY)}; tổng phiếu ${money(row.TONGCONG)}`}));header={...header,TONGCONG:rows.reduce((sum,row)=>sum+row.Amount,0)};break;
+   case 'MauCongNoKhachHang':case 'MauCongNoNhaCungCap': {
+    const kind=type.key==='MauCongNoKhachHang'?'receivable':'payable';
+    if(kind==='receivable')customer=header;else supplier=header;
+    const balance=await require('./debtPrint').load(kind,id,from,to);
+    rows=balance.rows;header={...header,TONGCONG:balance.total};
+    extra='Công nợ gồm số dư đầu kỳ, chứng từ và phiếu thu/chi trong kỳ.';break;
    }
   }
  }
@@ -169,6 +167,7 @@ async function payload(type,id,filters,user) {
  CustomerName:header.TENDOITUONG||customer?.NAME||supplier?.NAME||header.DKHACHHANG_NAME||'',Contact:customer?.DIENTHOAI||supplier?.DIENTHOAI||'',VehiclePlate:vehicle?.BIENSO||'',
  Description:header.NOTE||'',Extra:extra,TotalText:money(total),TONGCONG:total,
  FooterNote:['MauHoSoXe','MauLichSuSuaChua','MauBaoCao','MauMaVachPhuTung'].includes(type.key)?'': 'Khách hàng / người giao nhận                         Nhân viên GARA',
+ DKHACHHANG_DIACHI:customer?.DIACHI||supplier?.DIACHI||header.DIACHI||header.DIACHIDOITUONG||'',PHIVANCHUYEN:Number(header.PHIVANCHUYEN||0),
  TIENTHUE:Number(header.TIENTHUE||0),TIENGIAMGIA:Number(header.TIENGIAMGIA||0),TIENHANG:header.TIENHANG??rows.reduce((sum,row)=>sum+Number(row.Amount||0),0),
  PHIDICHVU:Number(header.PHIDICHVU||0),TILEPHIDICHVU:Number(header.TILEPHIDICHVU||0),TILETHUE:Number(header.TILETHUE||0),
  SummaryText:type.layout!=='money'?'':`Tổng cộng: ${money(total)}${header.TIENGIAMGIA?`; giảm giá: ${money(header.TIENGIAMGIA)}`:''}${header.PHIDICHVU?`; phí dịch vụ (${Number(header.TILEPHIDICHVU||0)}%): ${money(header.PHIDICHVU)}`:''}${header.TIENTHUE?`; thuế (${Number(header.TILETHUE||0)}%): ${money(header.TIENTHUE)}`:''}`,
@@ -223,8 +222,8 @@ function validateBindings(xml,data) {
  }
  if(missing.size)throw fail('Mẫu này chưa được ánh xạ đủ dữ liệu GARA ('+[...missing].slice(0,5).join(', ')+'). Hãy chọn mẫu GARA hoặc chỉnh mẫu trong Quản lý mẫu in.',409);
 }
-async function render(type,id,filters,user) {
- const template=await resolve(type,filters.templateId);const data=await payload(type,id,filters,user);
+async function render(type,id,filters,user,accessUser) {
+ const template=await resolve(type,filters.templateId);let data=await payload(type,id,filters,user);if(accessUser)data=require('./printPrivacy').protect(accessUser,data);
  const logo=decodeConfigImage(await db.queryBlob("SELECT BLOBVALUE FROM SCONFIG WHERE NAME='CompanyLogo' AND STATUS=30",[],'BLOBVALUE'));
  let xml=require('./chargePrint').applyServiceFeeRow(mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data),data.parameters);
  if(type.key==='MauHoaDonBanHang'){

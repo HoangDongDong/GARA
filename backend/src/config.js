@@ -6,7 +6,7 @@ module.exports = {
   firebird: {
     host: process.env.FB_HOST || '127.0.0.1',
     port: parseInt(process.env.FB_PORT || '3050', 10),
-    database: process.env.FB_DATABASE || 'D:/Garage/GARAGE.FDB',
+    database: process.env.FB_DATABASE || path.resolve(__dirname, '../GARAGE.FDB'),
     user: process.env.FB_USER || 'SYSDBA',
     password: process.env.FB_PASSWORD || 'masterkey',
     role: process.env.FB_ROLE || undefined,

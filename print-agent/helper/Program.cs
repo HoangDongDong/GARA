@@ -19,6 +19,16 @@ class Program
                 Console.WriteLine(JsonSerializer.Serialize(PrinterSettings.InstalledPrinters.Cast<string>().Select(name => new { name })));
                 return 0;
             }
+            if (args.Length == 4 && args[0] == "paper")
+            {
+                var settings = new PrinterSettings { PrinterName = args[1] };
+                if (!settings.IsValid) throw new Exception("Máy in Windows không tồn tại: " + args[1]);
+                var size = new SizeF(float.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) * 100 / 25.4f,
+                    float.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) * 100 / 25.4f);
+                var selected = SelectPaper(settings.PaperSizes.Cast<PaperSize>(), size);
+                Console.WriteLine(JsonSerializer.Serialize(new { name=selected.paper.PaperName, rawKind=selected.paper.RawKind, landscape=selected.landscape }));
+                return 0;
+            }
             if (args.Length != 5 || args[0] != "print") throw new Exception("print <pdf> <printer> <width-mm or 0> <job-name>");
             var jobId = Print(args[1], args[2], double.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture), args[4]).GetAwaiter().GetResult();
             Console.WriteLine(JsonSerializer.Serialize(new { submitted=true,spoolId=jobId }));
@@ -63,8 +73,9 @@ class Program
             doc.QueryPageSettings += (_, e) => {
                 var size = sizes[index];
                 if (widthMm > 0 && Math.Abs(size.Width * 25.4 / 100 - widthMm) > 2) throw new Exception("Khổ PDF không khớp khổ máy in đã chọn.");
-                e.PageSettings.PaperSize = new PaperSize("GARA PDF", (int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height));
-                e.PageSettings.Landscape = false;
+                var paper = SelectPaper(doc.PrinterSettings.PaperSizes.Cast<PaperSize>(), size);
+                e.PageSettings.PaperSize = paper.paper;
+                e.PageSettings.Landscape = paper.landscape;
             };
             doc.PrintPage += (_, e) => {
                 var size = sizes[index];
@@ -76,5 +87,20 @@ class Program
             return controller.JobId;
         }
         finally { foreach (var image in images) image.Dispose(); }
+    }
+
+    // Use the driver's paper ID (A5/A4 etc.). Some drivers ignore custom forms
+    // and silently use their default A4 even when the PDF dimensions are A5.
+    internal static (PaperSize paper, bool landscape) SelectPaper(IEnumerable<PaperSize> supported, SizeF size)
+    {
+        const float tolerance = 2 * 100 / 25.4f;
+        foreach (var paper in supported)
+        {
+            if (Math.Abs(paper.Width - size.Width) <= tolerance && Math.Abs(paper.Height - size.Height) <= tolerance)
+                return (paper, false);
+            if (Math.Abs(paper.Height - size.Width) <= tolerance && Math.Abs(paper.Width - size.Height) <= tolerance)
+                return (paper, true);
+        }
+        return (new PaperSize("GARA PDF", (int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height)), false);
     }
 }

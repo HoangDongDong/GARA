@@ -1,3 +1,4 @@
+import { can, canQuickCreate } from '../utils/permissions';
 import SupplierFormModal from '../components/SupplierFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useEffect, useMemo, useState } from 'react';
@@ -55,12 +56,14 @@ export default function NhaCungCapPage() {
   useEffect(() => { loadSuppliers(); }, []);
 
   const openAddForm = () => {
+    if (!can('SUPPLIERS',2)) return;
     setForm({ ...EMPTY_FORM });
     setFormError('');
     setFormMode('add');
   };
 
   const openEditForm = (supplier) => {
+    if (!can('SUPPLIERS',4)) return;
     if (!supplier) return;
     setForm({
       NAME: supplier.NAME || '',
@@ -123,6 +126,7 @@ export default function NhaCungCapPage() {
   };
 
   const handleDelete = async (supplier) => {
+    if (!can('SUPPLIERS',8)) return;
     if (!supplier?.ID || deletingId) return;
     if (!window.confirm(`Bạn có chắc muốn xóa nhà cung cấp "${supplier.NAME}"?`)) return;
     setDeletingId(supplier.ID);
@@ -253,7 +257,7 @@ export default function NhaCungCapPage() {
           Nhà cung cấp
         </h1>
         <div className="ncc-actions-group">
-          <button onClick={openAddForm} className="ncc-btn-add">
+          <button disabled={!can('SUPPLIERS',2)} onClick={openAddForm} className="ncc-btn-add">
             <Plus size={16} /> Thêm nhà cung cấp
           </button>
           <div className="ncc-actions-row-mobile">
@@ -549,8 +553,8 @@ export default function NhaCungCapPage() {
                 <h3 style={{ margin: 0, fontSize: 13 }}><span className="icon">🏢</span> Thông tin nhà cung cấp</h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button className="btn btn-ghost btn-sm" disabled={!selected} onClick={()=>openDocumentPrint({type:'MauCongNoNhaCungCap',id:selected?.ID})}>In công nợ</button><button onClick={() => openEditForm(selected)} disabled={!selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #E65100', color: '#E65100', borderRadius: 4, opacity: selected ? 1 : 0.5 }}>✏️ Sửa</button>
-                <button onClick={() => handleDelete(selected)} disabled={!selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, opacity: selected && !deletingId ? 1 : 0.5 }}>🗑️ Xóa</button>
+                <button className="btn btn-ghost btn-sm" disabled={!selected} onClick={()=>openDocumentPrint({type:'MauCongNoNhaCungCap',id:selected?.ID})}>In công nợ</button><button onClick={() => openEditForm(selected)} disabled={!can('SUPPLIERS',4) || !selected} className="btn btn-ghost btn-sm" style={{ border: '1px solid #E65100', color: '#E65100', borderRadius: 4, opacity: selected ? 1 : 0.5 }}>✏️ Sửa</button>
+                <button onClick={() => handleDelete(selected)} disabled={!can('SUPPLIERS',8) || !selected || Boolean(deletingId)} className="btn btn-ghost btn-sm" style={{ border: '1px solid #D32F2F', color: '#D32F2F', borderRadius: 4, opacity: selected && !deletingId ? 1 : 0.5 }}>🗑️ Xóa</button>
               </div>
             </div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

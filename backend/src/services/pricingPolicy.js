@@ -13,8 +13,16 @@ function assertOverride(req, code) {
   const override = req.body.TILEGIAMGIA != null || req.body.TIENGIAMGIA != null || req.body.TIENGIAMGIAPHIEU != null
     || req.body.items?.some(line => line.TILETHUE != null || line.TILEGIAMGIA != null);
   if (override && req.accessUser && Number(req.accessUser.ISADMIN) !== 1
-    && (Number(req.accessUser.permissions?.[code] || 0) & 4) !== 4) {
-    throw Object.assign(new Error('Bạn cần quyền Sửa để đặt thuế hoặc giảm giá riêng trên phiếu.'), { status: 403 });
+    && !require('../permissionPolicy').has(req.accessUser, 'PRICING', 4)) {
+    throw Object.assign(new Error('Bạn cần quyền Điều chỉnh giá / Thuế / Giảm giá.'), { status: 403 });
+  }
+}
+function assertRates(req, defaults) {
+  if (!req.accessUser || require('../permissionPolicy').has(req.accessUser, 'PRICING', 4)) return;
+  for (const [key, field] of [['TILETHUE','taxRate'],['TILEPHIDICHVU','serviceRate']]) {
+    if (req.body[key] != null && Number(req.body[key]) !== Number(defaults[field])) {
+      throw Object.assign(new Error('Bạn chưa có quyền thay đổi thuế hoặc phí dịch vụ mặc định.'), { status: 403 });
+    }
   }
 }
 function taxPolicy(item, defaults, override) {
@@ -40,7 +48,7 @@ async function customer(query, id) {
 }
 async function item(query, type, id) {
   const service = Number(type) === 1;
-  const [row] = await query(`SELECT M.ID, M.THUESUATRIENG, G.THUESUATRIENG AS THUENHOM, G.NAME AS NHOM
+  const [row] = await query(`SELECT M.ID, M.${service ? 'GIA' : 'GIABAN'} AS UNITPRICE, M.THUESUATRIENG, G.THUESUATRIENG AS THUENHOM, G.NAME AS NHOM
     FROM ${service ? 'DDICHVU' : 'DMATHANG'} M LEFT JOIN ${service ? 'DLOAIDICHVU' : 'DNHOMMATHANG'} G
     ON G.ID=M.${service ? 'DLOAIDICHVUID' : 'DNHOMMATHANGID'} AND G.STATUS=1 WHERE M.ID=? AND M.STATUS=1`, [id]);
   if (!row) throw Object.assign(new Error('Mặt hàng / dịch vụ không tồn tại hoặc đã ngừng sử dụng.'), { status: 400 });
@@ -103,4 +111,4 @@ function billDiscount(lines, percent, fixed) {
   }
   return { base, fixed: amount, percent: base ? round(amount / base * 100) : 0 };
 }
-module.exports = { round, rate, validateMaster, assertOverride, taxPolicy, discountPolicy, customer, item, calculate, summary, billDiscount };
+module.exports = { round, rate, validateMaster, assertOverride, assertRates, taxPolicy, discountPolicy, customer, item, calculate, summary, billDiscount };

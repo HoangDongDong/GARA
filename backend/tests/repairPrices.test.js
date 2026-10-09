@@ -16,7 +16,7 @@ async function save(items, discount = 0, input = {}) {
   }, async (sql, params) => writes.push({ sql, params }), () => 'test-id');
   numbers.nextInTransaction = async () => 'LSC-TEST';
   try {
-    await createRepair({ body: { DXEID: 'xe', DKHACHHANGID: 'kh', items, TILEGIAMGIA: discount, ...input }, get: () => 'tester' }, {
+    await createRepair({ accessUser:{ISADMIN:1}, body: { DXEID: 'xe', DKHACHHANGID: 'kh', items, TILEGIAMGIA: discount, ...input }, get: () => 'tester' }, {
       status(code) { status = code; return this; }, json(value) { body = value; },
     });
     return { status, body, writes };

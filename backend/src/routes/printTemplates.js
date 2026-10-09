@@ -8,8 +8,13 @@ const db = require('../db');
 const config = require('../config');
 const { documentTypes, buildCatalog } = require('../services/garagePrintCatalog');
 const { templateFilter } = require('../services/systemConfigOptions');
+const webDesigner = require('../services/webReportDesigner');
 
 const router = express.Router();
+router.use((req,res,next)=>{
+  if(require('../tenancy').enabled() && ['POST','PUT','PATCH'].includes(req.method) && !/^\/[^/]+\/(?:default|assignment)$/.test(req.path))return res.status(403).json({error:'Bản SaaS hiện dùng mẫu in chuẩn. Chỉnh sửa/tải mẫu tùy ý sẽ mở sau khi bộ dựng báo cáo được cách ly.'});
+  next();
+});
 const MAX_TEMPLATE_BYTES = 20 * 1024 * 1024;
 const designerSessions = new Map();
 const designerExecutable = process.env.FASTREPORT_DESIGNER_EXE || path.resolve(
@@ -68,6 +73,53 @@ const templateListSql = `
    WHERE t.STATUS IN (0, 30)
    ORDER BY CATEGORY_NAME, t.SORTORDER, t.AUTOID, t.NAME`;
 
+router.get('/:id/web-content', async (req, res) => {
+  try {
+    const content = await db.queryBlob('SELECT TEMPLATE FROM STEMPLATE WHERE ID=?', [req.params.id], 'TEMPLATE');
+    if (!content) return res.status(404).json({ error: 'Không tìm thấy nội dung mẫu.' });
+    res.set('Cache-Control', 'no-store').json({ content: content.toString('utf8'), version: webDesigner.revision(content), backups: webDesigner.listBackups(req.params.id) });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
+
+router.put('/:id/web-content', async (req, res) => {
+  try {
+    webDesigner.validate(req.body?.content);
+    if (!/^[a-f0-9]{64}$/.test(req.body?.version || '')) return res.status(400).json({ error: 'Thiếu phiên bản mẫu. Đóng và mở lại trình thiết kế.' });
+    const content = Buffer.from(req.body.content, 'utf8');
+    await db.transaction(async (query, execute) => {
+      // Read and consume the BLOB inside the same row lock as the update.
+      const [row] = await query('SELECT ID,TEMPLATE FROM STEMPLATE WHERE ID=? WITH LOCK', [req.params.id]);
+      if (!row) throw webDesigner.fail('Không tìm thấy mẫu in.', 404);
+      const current = await webDesigner.readBlob(row.TEMPLATE);
+      if (!current || webDesigner.revision(current) !== req.body.version) throw webDesigner.fail('Mẫu đã được người khác thay đổi. Tải .frx để giữ bản đang sửa, sau đó đóng và mở lại mẫu mới nhất.', 409);
+      if (!current.equals(content)) {
+        webDesigner.backup(req.params.id, current);
+        await execute('UPDATE STEMPLATE SET TEMPLATE=?,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?', [content, req.accessUser?.ID || null, req.params.id]);
+      }
+    });
+    res.json({ ok: true, version: webDesigner.revision(content), backups: webDesigner.listBackups(req.params.id), message: 'Đã lưu mẫu từ trình thiết kế web.' });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
+
+router.get('/:id/web-backups/:backupId', async (req, res) => {
+  try { res.set('Cache-Control', 'no-store').json({ content: webDesigner.readBackup(req.params.id, req.params.backupId) }); }
+  catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+});
+
+// Limit simultaneous renderer processes; preview never writes to STEMPLATE.
+let activeWebPreviews = 0;
+router.post('/:id/web-preview', async (req, res) => {
+  if (activeWebPreviews >= 2) return res.status(429).json({ error: 'Đang tạo nhiều bản xem trước. Vui lòng thử lại sau.' });
+  activeWebPreviews++;
+  try {
+    const [row] = await db.query('SELECT ID FROM STEMPLATE WHERE ID=?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy mẫu in.' });
+    const pdf = await webDesigner.preview(req.body?.content, req.body?.payload);
+    res.set({ 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store' }).send(pdf);
+  } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
+  finally { activeWebPreviews--; }
+});
+
 router.post('/', async (req, res) => {
   try {
     const name = String(req.body?.name || '').trim();
@@ -98,10 +150,11 @@ router.get('/', async (req, res) => {
       data: templates,
       categories,
       meta: {
-        database: path.basename(config.firebird.database),
+        database: require('../tenancy').enabled() ? require('../tenancy').current().code : path.basename(config.firebird.database),
         total: rows.length,
         categories: categories.length,
-        designerAvailable: process.platform === 'win32' && fs.existsSync(designerExecutable),
+        designerAvailable: !require('../tenancy').enabled() && process.platform === 'win32' && fs.existsSync(designerExecutable),
+        customDesignerAvailable: !require('../tenancy').enabled(),
       },
     });
   } catch (error) {
@@ -111,6 +164,7 @@ router.get('/', async (req, res) => {
 
 router.post('/:id/designer', async (req, res) => {
   try {
+    if (require('../tenancy').enabled()) return res.status(403).json({ error: 'Hãy dùng trình thiết kế mẫu trên web cho cửa hàng trực tuyến.' });
     if (process.platform !== 'win32' || !fs.existsSync(designerExecutable)) {
       return res.status(503).json({
         error: 'FastReport Designer chưa được build trên máy chủ. Có thể dùng trình sửa XML dự phòng.',
@@ -131,6 +185,7 @@ router.post('/:id/designer', async (req, res) => {
       templateId: req.params.id,
       templateName: rows[0].NAME,
       userId: req.accessUser?.ID || null,
+      tenant: require('../tenancy').key(),
       status: 'opening',
       message: 'Đang mở FastReport Designer...',
       startedAt: new Date().toISOString(),
@@ -186,7 +241,7 @@ router.post('/:id/designer', async (req, res) => {
 
 router.get('/designer-sessions/:sessionId', (req, res) => {
   const session = designerSessions.get(req.params.sessionId);
-  if (!session) return res.status(404).json({ error: 'Phiên FastReport Designer không còn tồn tại.' });
+  if (!session || session.tenant !== require('../tenancy').key() || session.userId !== req.accessUser?.ID) return res.status(404).json({ error: 'Phiên FastReport Designer không còn tồn tại.' });
   res.json({ data: session });
 });
 

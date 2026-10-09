@@ -117,92 +117,11 @@ router.get('/:id/warranties', async (req, res) => {
 });
 
 // POST /api/vehicles/:id/warranties - tao bao hanh moi cho xe
-router.post('/:id/warranties', async (req, res) => {
-  try {
-    const vehicleId = req.params.id;
-    // Kiem tra xe ton tai
-    const vRows = await db.query(
-      `SELECT FIRST 1 V.ID, V.BIENSO, V.DKHACHHANGID FROM DXE V WHERE V.ID = ? AND V.STATUS = 1`,
-      [vehicleId]
-    );
-    if (!vRows.length) return res.status(404).json({ error: 'Xe khong ton tai' });
-    const vehicle = vRows[0];
-
-    const { NGAYBATDAU, NGAYKETTHUC, NOTE, LOAI, DMATHANGID, DDICHVUID, TLENHSUACHUAID } = req.body;
-    if (!NGAYBATDAU || !NGAYKETTHUC) return res.status(400).json({ error: 'Thieu ngay bat dau / ket thuc' });
-
-    const name = await require('../services/documentNumbers').nextNumber('BaoHanh');
-
-    const id = db.uuidv4();
-    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
-    await db.execute(
-      `INSERT INTO TBAOHANH
-         (ID, NAME, NOTE, STATUS, USERCREATEDID, TIMECREATED,
-          DXEID, DKHACHHANGID, DMATHANGID, DDICHVUID, TLENHSUACHUAID,
-          NGAYBATDAU, NGAYKETTHUC, LOAI, TRANGTHAI, CHIPHI)
-       VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)`,
-      [
-        id, name, NOTE || null, actor,
-        vehicleId, vehicle.DKHACHHANGID || null,
-        DMATHANGID || null, DDICHVUID || null, TLENHSUACHUAID || null,
-        NGAYBATDAU, NGAYKETTHUC,
-        LOAI != null ? Number(LOAI) : 0,
-      ]
-    );
-    res.json({ ok: true, id, name });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+router.post('/:id/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save({...req.body,DXEID:req.params.id},req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
 
 // POST /api/vehicles/warranties - tao bao hanh (khong can co vehicle truoc)
-router.post('/warranties', async (req, res) => {
-  try {
-    const { DXEID, BIENSO, NGAYBATDAU, NGAYKETTHUC, NOTE, LOAI, DMATHANGID } = req.body;
-
-    let vehicleId = DXEID;
-    let dkhachhangid = null;
-    let bienSo = BIENSO;
-
-    if (!vehicleId && BIENSO) {
-      const vRows = await db.query(
-        `SELECT FIRST 1 ID, BIENSO, DKHACHHANGID FROM DXE
-          WHERE STATUS = 1
-            AND UPPER(REPLACE(REPLACE(REPLACE(BIENSO,'-',''),'.',''),' ',''))
-                = UPPER(REPLACE(REPLACE(REPLACE(?  ,'-',''),'.',''),' ',''))`,
-        [BIENSO]
-      );
-      if (vRows.length) {
-        vehicleId = vRows[0].ID;
-        dkhachhangid = vRows[0].DKHACHHANGID;
-        bienSo = vRows[0].BIENSO;
-      }
-    } else if (vehicleId) {
-      const vRows = await db.query(`SELECT FIRST 1 BIENSO, DKHACHHANGID FROM DXE WHERE ID = ?`, [vehicleId]);
-      if (vRows.length) { dkhachhangid = vRows[0].DKHACHHANGID; bienSo = vRows[0].BIENSO; }
-    }
-
-    if (!NGAYBATDAU || !NGAYKETTHUC) return res.status(400).json({ error: 'Thieu ngay bat dau / ket thuc' });
-
-    const name = await require('../services/documentNumbers').nextNumber('BaoHanh');
-
-    const id = db.uuidv4();
-    const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
-    await db.execute(
-      `INSERT INTO TBAOHANH
-         (ID, NAME, NOTE, STATUS, USERCREATEDID, TIMECREATED,
-          DXEID, DKHACHHANGID, DMATHANGID,
-          NGAYBATDAU, NGAYKETTHUC, LOAI, TRANGTHAI, CHIPHI)
-       VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, 1, 0)`,
-      [
-        id, name, NOTE || null, actor,
-        vehicleId || null, dkhachhangid || null,
-        DMATHANGID || null,
-        NGAYBATDAU, NGAYKETTHUC,
-        LOAI != null ? Number(LOAI) : 0,
-      ]
-    );
-    res.json({ ok: true, id, name, bienSo });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+router.post('/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save(req.body,req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
+router.put('/warranties/:id',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save(req.body,req.accessUser.ID,req.params.id)});}catch(e){res.status(e.status||500).json({error:e.message});}});
 
 // GET /api/vehicles/:id/profile - ho so xe tong hop
 
@@ -494,9 +413,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await db.execute(
-      `UPDATE DXE SET STATUS=0, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
+      `UPDATE DXE SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
        WHERE ID=?`,
-      [req.params.id]
+      [req.accessUser.ID,req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

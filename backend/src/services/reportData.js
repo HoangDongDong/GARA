@@ -20,9 +20,26 @@ const fields={
  TBAOHANH:'ID NAME NGAYBATDAU NGAYKETTHUC DXEID DKHACHHANGID DMATHANGID DDICHVUID TRANGTHAI KETQUAXULY CHIPHI',TLICHSUBAODUONG:'ID NAME DXEID DKHACHHANGID LOAIBAODUONG NGAY_LANCUOI NGAY_DUKIEN ODO_DUKIEN',
  TCHITIETTHANHTOAN:'ID TDONHANGID THOADONSUACHUAID NGAY SOTIEN LOAI DTAIKHOANNGANHANGID',
 };
-function reader(query){const cache={};return async(t,lookup=false)=>{const key=t+lookup;if(!fields[t])throw fail('Nguồn không được phép.',500);const condition=t==='TPHATSINHSUACHUA'?'1=1':`STATUS${lookup?'>=0':'=1'}`;if(!cache[key])cache[key]=query(`SELECT FIRST 20001 ${fields[t].split(' ').join(',')} FROM ${t} WHERE ${condition} ORDER BY ID`).then(rows=>{if(rows.length>20000)throw fail('Nguồn vượt 20.000 dòng. Cần bổ sung truy vấn theo kỳ trước khi kết xuất.',413);return rows;});return cache[key];};}
+function reader(query,filters={},source=''){
+ const cache={};return async(t,lookup=false)=>{
+  const key=t+lookup;if(!fields[t])throw fail('Nguồn không được phép.',500);
+  let condition=t==='TPHATSINHSUACHUA'?'1=1':`STATUS${lookup?'>=0':'=1'}`;
+  const dateField={THOADONSUACHUA:'NGAY',TDONHANG:'NGAY',TTHUCHI:'NGAY',TLENHSUACHUA:'NGAY',TTIEPNHANXE:'NGAY',TBAOGIA:'NGAY',TPHATSINHSUACHUA:'TIMECREATED',TCHITIETTHANHTOAN:'NGAY'}[t];
+  const periodSources=['invoices','repairInvoices','saleInvoices','receipts','payments','vouchers','repairs','receptions','quotes','supplements','paymentDetails','repairServices'];
+  const params=[];
+  if(!lookup && dateField && periodSources.includes(source)){
+   if(filters.from){condition+=` AND CAST(${dateField} AS DATE)>=?`;params.push(filters.from);}
+   if(filters.to){condition+=` AND CAST(${dateField} AS DATE)<=?`;params.push(filters.to);}
+  }
+  if(!cache[key])cache[key]=(async()=>{
+   const rows=[];let offset=0;
+   while(true){const page=await query(`SELECT FIRST 2000 SKIP ${offset} ${fields[t].split(' ').join(',')} FROM ${t} WHERE ${condition} ORDER BY ID`,params);rows.push(...page);if(page.length<2000)break;offset+=page.length;if(offset>500000)throw fail('Nguồn quá lớn; cần thu hẹp phạm vi dữ liệu.',413);}
+   return rows;
+  })();return cache[key];
+ };
+}
 async function sources(source,f,query=db.query){
- const read=reader(query);const maps={};const map=async t=>maps[t]||(maps[t]=new Map((await read(t,true)).map(r=>[r.ID,r])));const label=async(t,id)=> (await map(t)).get(id)?.NAME||'';
+ const read=reader(query,f,source);const maps={};const map=async t=>maps[t]||(maps[t]=new Map((await read(t,true)).map(r=>[r.ID,r])));const label=async(t,id)=> (await map(t)).get(id)?.NAME||'';
  async function normalize(t){const rows=await read(t);const result=[];for(const r of rows){const car=r.DXEID?(await map('DXE')).get(r.DXEID):null;result.push({...r,id:r.ID,code:r.NAME||r.CODE||'',date:day(r.NGAY||r.NGAYBATDAU||r.TIMECREATED),name:r.NAME||'',plate:car?.BIENSO||r.BIENSO||'',partner:await label(r.DNHACUNGCAPID?'DNHACUNGCAP':'DKHACHHANG',r.DNHACUNGCAPID||r.DKHACHHANGID),partnerKey:r.DNHACUNGCAPID||r.DKHACHHANGID,plateKey:r.DXEID||r.BIENSO,employeeKey:r.DNHANVIENID||r.DNHANVIENKTVID||r.DNHANVIENCOOVANID,employee:await label('DNHANVIEN',r.DNHANVIENID||r.DNHANVIENKTVID||r.DNHANVIENCOOVANID),warehouse:await label('DKHOHANG',r.DKHOHANGID),status:String(r.TRANGTHAI??''),amount:round(r.TONGCONG),start:day(r.BATDAU),end:day(r.KETTHUC),odo:r.ODO});}return result;}
  const invoices=async(kind)=>{const table=kind==='repairInvoices'?'THOADONSUACHUA':'TDONHANG';return (await normalize(table)).filter(r=>table!=='TDONHANG'||Number(r.LOAI)===0).map(r=>{const amount=round(r.TONGCONG);const storedRemaining=round(r.CONLAI??r.CONGNO??(amount-(table==='TDONHANG'?Number(r.TIENTHANHTOAN||0):Number(r.TIENMAT||0)+Number(r.CHUYENKHOAN||0)+Number(r.THE||0))));const remaining=Number(r.DATHANHTOAN)===1?Math.min(0,storedRemaining):storedRemaining;return {...r,source:table==='TDONHANG'?'Bán phụ tùng':'Sửa chữa',subtotal:round(r.TIENHANG??Number(r.TIENPHUTUNG||0)+Number(r.TIENCONG||0)+Number(r.TIENDICHVU||0)),discount:round(r.TIENGIAMGIA),tax:round(r.TIENTHUE),fee:round(r.PHIDICHVU),paid:round(amount-remaining),remaining};});};
  if(source==='invoices')return [...await invoices('repairInvoices'),...await invoices('saleInvoices')];
@@ -91,5 +108,5 @@ function calculate(report,raw,f){
  const totals={};for(const c of report.columns)if(['money','number'].includes(c.type)&&!['price','minimum','odo','days','closing'].includes(c.key))totals[c.key]=round(rows.reduce((sum,r)=>sum+Number(r[c.key]||0),0));
  if(report.columns.some(c=>c.key==='jobs'))totals.jobs=uniqueJobs.size;return {rows:rows.sort((a,b)=>String(a.date||a.name||'').localeCompare(String(b.date||b.name||''))||String(a.id).localeCompare(String(b.id))),totals,meta,notes};
 }
-async function run(id,input,user,query=db.query){const report=reports.find(r=>r.id===id);if(!report)throw fail('Không tìm thấy báo cáo.',404);if(!permitted(user,report))throw fail('Không có quyền xem báo cáo này.',403);if(report.available===false)throw fail(report.reason,422);const filters=validate(input);const raw=await sources(report.source,filters,query);if(raw.length>20000)throw fail('Nguồn vượt 20.000 dòng; cần thu hẹp truy vấn nguồn.',413);const options={};for(const k of ['partner','plate','employee','warehouse','status','account','method'])options[k]=[...new Set(raw.map(r=>r[k]).filter(Boolean))].sort();const result=calculate(report,raw,filters);return {report,filters,options,...result,createdAt:new Date().toISOString()};}
+async function run(id,input,user,query=db.query){const report=reports.find(r=>r.id===id);if(!report)throw fail('Không tìm thấy báo cáo.',404);if(!permitted(user,report))throw fail('Không có quyền xem báo cáo này.',403);if(report.available===false)throw fail(report.reason,422);const filters=validate(input);const raw=await sources(report.source,filters,query);const options={};for(const k of ['partner','plate','employee','warehouse','status','account','method'])options[k]=[...new Set(raw.map(r=>r[k]).filter(Boolean))].sort();const result=calculate(report,raw,filters);if(result.rows.length>20000)throw fail('Kết quả vượt 20.000 dòng; vui lòng thu hẹp kỳ hoặc bộ lọc.',413);return {report,filters,options,...result,createdAt:new Date().toISOString()};}
 module.exports={run,sources,calculate,validate,match,aggregate,day,today,round,fail};

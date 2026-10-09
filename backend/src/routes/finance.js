@@ -3,7 +3,7 @@ router.get('/vouchers/options',async(req,res)=>{
   try{res.json({data:await require('../services/cashVoucher').options()});}catch(e){res.status(500).json({error:e.message});}
 });
 router.post('/vouchers',async(req,res)=>{
-  try{res.status(201).json({data:await require('../services/cashVoucher').create(req.body,req.accessUser.ID)});}catch(e){res.status(e.statusCode||500).json({error:e.message});}
+  try{res.status(201).json({data:await require('../services/cashVoucher').create(req.body,req.accessUser.ID,fn=>require('../services/idempotency').run(req,fn))});}catch(e){res.status(e.statusCode||500).json({error:e.message});}
 });
 router.get('/cashbook',async(req,res)=>{
   try {
@@ -26,7 +26,7 @@ router.get('/payment-options', async (req,res)=>{
 });
 router.post('/debts/payments', async (req, res) => {
   try {
-    const data = await require('../services/debtPayment').create(req.body, req.accessUser.ID);
+    const data = await require('../services/debtPayment').create(req.body, req.accessUser.ID,fn=>require('../services/idempotency').run(req,fn));
     res.status(201).json({data});
   } catch (error) { res.status(error.statusCode || 500).json({error:error.message}); }
 });

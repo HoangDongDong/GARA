@@ -30,7 +30,7 @@ async function lockRepair(query, execute, repairId) {
   return flows[0];
 }
 
-async function create(query, execute, uuid, repairId, body, actor) {
+async function create(query, execute, uuid, repairId, body, actor, user) {
   const reason = text(body.LYDO, 1000, 'Lý do phát sinh');
   const items = validateItems(body.items);
   const state = body.TRANGTHAI || 'pending';
@@ -38,8 +38,9 @@ async function create(query, execute, uuid, repairId, body, actor) {
   await lockRepair(query, execute, repairId);
   const snapshots = [];
   for (const item of items) {
-    const rows = await query(`SELECT ID, NAME${item.type === 0 ? ', DDONVITINHID' : ''} FROM ${item.type === 0 ? 'DMATHANG' : 'DDICHVU'} WHERE ID=? AND STATUS=1`, [item.source]);
+    const rows = await query(`SELECT ID, NAME, ${item.type === 0 ? 'GIABAN' : 'GIA'} AS UNITPRICE${item.type === 0 ? ', DDONVITINHID' : ''} FROM ${item.type === 0 ? 'DMATHANG' : 'DDICHVU'} WHERE ID=? AND STATUS=1`, [item.source]);
     if (!rows.length) fail('Hạng mục không tồn tại hoặc đã ngừng sử dụng.');
+    if (user && item.price !== Number(rows[0].UNITPRICE || 0)) require('../permissionPolicy').assert(user, 'PRICING', 4);
     snapshots.push({ ...item, name: rows[0].NAME, unit: rows[0].DDONVITINHID || null });
   }
   const id = uuid();

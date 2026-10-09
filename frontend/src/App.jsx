@@ -1,4 +1,8 @@
 import DocumentPrintDialog from './components/DocumentPrintDialog.jsx';
+import AccessSession from './components/AccessSession.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import PlatformPage from './pages/PlatformPage.jsx';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage         from './pages/LoginPage.jsx';
 import MainLayout        from './layouts/MainLayout.jsx';
@@ -21,12 +25,14 @@ import NhapKhoPage       from './pages/NhapKhoPage.jsx';
 import HoSoChoDuyetPage from './pages/HoSoChoDuyetPage.jsx';
 import PlaceholderPage   from './pages/PlaceholderPage.jsx';
 import GlobalNumberPreview from './components/GlobalNumberPreview.jsx';
+import GlobalInterfaceScale from './components/GlobalInterfaceScale.jsx';
+import ManHinhPhuPage, { SecondaryDisplayScreen } from './pages/ManHinhPhuPage.jsx';
 
 function RequireAuth({ children }) {
   const u = localStorage.getItem('garage_user');
   const token = localStorage.getItem('garage_token');
   if (!u || !token) return <Navigate to="/login" replace />;
-  return children;
+  return <AccessSession>{children}</AccessSession>;
 }
 
 function PermissionGate({ code, children }) {
@@ -41,12 +47,22 @@ function PermissionGate({ code, children }) {
 const secured = (code, element) => <PermissionGate code={code}>{element}</PermissionGate>;
 
 export default function App() {
+  const [accessVersion, setAccessVersion] = useState(0);
+  useEffect(() => {
+    const refresh = () => setAccessVersion(value => value + 1);
+    window.addEventListener('garage:permissions-changed', refresh);
+    return () => window.removeEventListener('garage:permissions-changed', refresh);
+  }, []);
   return (
     <>
+      <GlobalInterfaceScale />
       <GlobalNumberPreview />
       <DocumentPrintDialog />
-      <Routes>
+      <Routes key={accessVersion}>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/dang-ky" element={<RegisterPage />} />
+      <Route path="/nen-tang" element={<PlatformPage />} />
+      <Route path="/man-hinh-phu/xem/:mode" element={<RequireAuth>{secured('SETTINGS', <SecondaryDisplayScreen />)}</RequireAuth>} />
       <Route
         path="/"
         element={
@@ -73,7 +89,8 @@ export default function App() {
         <Route path="in-chung-tu"   element={<DocumentPrintDialog embedded />} />
         <Route path="quan-tri"      element={secured('ADMIN', <QuanTriPage />)} />
         <Route path="cau-hinh"      element={secured('SETTINGS', <CauHinhPage />)} />
-        <Route path="danh-muc"      element={secured('SETTINGS', <DanhMucPage />)} />
+        <Route path="man-hinh-phu" element={secured('SETTINGS', <ManHinhPhuPage />)} />
+        <Route path="danh-muc"      element={secured('CATALOG', <DanhMucPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { hashPassword } = require('../authSecurity');
+const directory=require('../services/loginDirectory');
 
 const clean = (value) => String(value ?? '').trim();
 const duplicateError = (error) => String(error?.message || '').toLowerCase().includes('unique');
@@ -21,6 +22,11 @@ router.get('/overview', async (req, res) => {
                        (SELECT FIRST 1 u.ID FROM SUSER u WHERE u.DNHANVIENID=n.ID AND u.STATUS=1) AS USERID
                   FROM DNHANVIEN n WHERE n.STATUS=1 ORDER BY n.NAME`),
     ]);
+    if(require('../tenancy').enabled()){
+      const logins=await require('../services/platform').query('SELECT USERID,LOGINNAME FROM SAAS_LOGINS WHERE TENANTID=?',[require('../tenancy').key()]);
+      const names=new Map(logins.map(row=>[row.USERID,row.LOGINNAME]));
+      for(const user of users)user.USERNAME=names.get(user.ID)||user.USERNAME;
+    }
     res.json({ data: { groups, users, functions, employees } });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -71,12 +77,14 @@ router.put('/groups/:id/permissions', async (req, res) => {
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     const groups = await db.query(`SELECT NAME FROM SGROUPUSER WHERE ID=? AND STATUS=1`, [req.params.id]);
     if (!groups.length) return res.status(404).json({ error: 'Không tìm thấy chức vụ.' });
-    const isAdminGroup = String(groups[0].NAME || '').toLocaleLowerCase('vi') === 'admin';
+    const masks = require('../permissionPolicy').masks;
     const restricted = await db.query(`SELECT ID FROM SFUNCTION WHERE CODE IN ('ADMIN','SETTINGS')`);
     const restrictedIds = new Set(restricted.map((item) => item.ID));
     await db.transaction(async (query, execute, uuid) => {
       for (const item of items) {
-        const mode = isAdminGroup ? 31 : (restrictedIds.has(item.functionId) ? 0 : Math.max(0, Math.min(31, Number(item.mode || 0))));
+        const [func] = await query('SELECT CODE FROM SFUNCTION WHERE ID=? AND STATUS=1', [item.functionId]);
+        if (!func || !Number.isInteger(Number(item.mode)) || Number(item.mode) < 0 || Number(item.mode) > 31) throw new Error('Quyền chức năng không hợp lệ.');
+        const mode = restrictedIds.has(item.functionId) ? 0 : Number(item.mode) & (masks[func.CODE] ?? 31);
         const existing = await query(`SELECT FIRST 1 ID FROM SGROUPROLE WHERE SGROUPUSERID=? AND SFUNCTIONID=?`, [req.params.id, item.functionId]);
         if (existing.length) {
           await execute(`UPDATE SGROUPROLE SET MODE=?,STATUS=1,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [mode, req.accessUser.ID, existing[0].ID]);
@@ -104,13 +112,13 @@ router.post('/users', async (req, res) => {
     const employees = employeeId ? await db.query(`SELECT NAME,EMAIL FROM DNHANVIEN WHERE ID=? AND STATUS=1`, [employeeId]) : [];
     if (employeeId && !employees.length) return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
     const id = db.uuidv4();
-    await db.execute(
+    await directory.bind(id,username,()=>db.execute(
       `INSERT INTO SUSER (ID,NAME,USERNAME,PASSWORD,EMAIL,ISADMIN,SGROUPUSERID,DNHANVIENID,STATUS,USERCREATEDID,TIMECREATED)
        VALUES (?,?,?,?,?,0,?,?,1,?,CURRENT_TIMESTAMP)`,
       [id, employees[0]?.NAME || username, username, hashPassword(password), clean(req.body.email) || employees[0]?.EMAIL || null, groupId, employeeId, req.accessUser.ID]
-    );
+    ));
     res.status(201).json({ ok: true, id });
-  } catch (error) { res.status(duplicateError(error) ? 409 : 500).json({ error: duplicateError(error) ? 'Tên đăng nhập đã tồn tại.' : error.message }); }
+  } catch (error) { res.status(error.status || (duplicateError(error) ? 409 : 500)).json({ error: duplicateError(error) ? 'Tên đăng nhập đã tồn tại.' : error.message }); }
 });
 
 router.put('/users/:id', async (req, res) => {
@@ -120,13 +128,17 @@ router.put('/users/:id', async (req, res) => {
     const password = String(req.body.password || '');
     if (!username || !groupId) return res.status(400).json({ error: 'Tài khoản và chức vụ không được để trống.' });
     if (password && password.length < 6) return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự.' });
+    const [existing]=await db.query('SELECT ID FROM SUSER WHERE ID=? AND STATUS=1',[req.params.id]);
+    if(!existing)return res.status(404).json({error:'Không tìm thấy tài khoản.'});
+    await directory.bind(req.params.id,username,async()=>{
     if (password) {
       await db.execute(`UPDATE SUSER SET USERNAME=?,EMAIL=?,SGROUPUSERID=?,PASSWORD=?,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=? AND STATUS=1`, [username, clean(req.body.email) || null, groupId, hashPassword(password), req.accessUser.ID, req.params.id]);
     } else {
       await db.execute(`UPDATE SUSER SET USERNAME=?,EMAIL=?,SGROUPUSERID=?,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=? AND STATUS=1`, [username, clean(req.body.email) || null, groupId, req.accessUser.ID, req.params.id]);
     }
+    });
     res.json({ ok: true });
-  } catch (error) { res.status(duplicateError(error) ? 409 : 500).json({ error: duplicateError(error) ? 'Tên đăng nhập đã tồn tại.' : error.message }); }
+  } catch (error) { res.status(error.status || (duplicateError(error) ? 409 : 500)).json({ error: duplicateError(error) ? 'Tên đăng nhập đã tồn tại.' : error.message }); }
 });
 
 router.delete('/users/:id', async (req, res) => {

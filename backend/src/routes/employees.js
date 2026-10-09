@@ -1,7 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const rights = require('../permissionPolicy');
 const { parsePhoto, imageMime, storePhoto } = require('../services/employeePhoto');
+
+router.get('/lookup', async (req, res) => {
+  try { res.json({ data: await db.query('SELECT ID,NAME,CODE,CHUYENMON,LOAINHANVIEN FROM DNHANVIEN WHERE STATUS=1 ORDER BY NAME') }); }
+  catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+function assertSalary(req) {
+  if (['CACHTINHLUONG', 'LUONGCA', 'LUONGTHANG'].some(key => key in req.body)) rights.assert(req.accessUser, 'PAYROLL', 4);
+}
 
 router.get('/:id/image', async (req, res) => {
   try {
@@ -17,7 +27,7 @@ router.get('/meta', async (req, res) => {
   catch (error) { res.status(500).json({ error: error.message }); }
 });
 router.get('/commissions', async (req, res) => {
-  try { res.set('Cache-Control', 'no-store').json(await require('../services/employeeCommissions').load(db.query, req.query)); }
+  try { res.set('Cache-Control', 'no-store').json(await require('../services/employeeCommissions').load(db.query, req.query, { commissions: rights.has(req.accessUser, 'COMMISSIONS'), payroll: rights.has(req.accessUser, 'PAYROLL') })); }
   catch (error) { res.status(error.statusCode || 500).json({ error: error.message }); }
 });
 
@@ -67,6 +77,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    assertSalary(req);
     const data = await profile(req.body);
     const photo = req.body.PHOTO !== undefined ? parsePhoto(req.body.PHOTO) : null;
     const id = db.uuidv4();
@@ -87,6 +98,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    assertSalary(req);
     const [current] = await db.query('SELECT * FROM DNHANVIEN WHERE ID=?', [req.params.id]);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
     const data = await profile(req.body, current);

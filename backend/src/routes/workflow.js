@@ -398,6 +398,8 @@ router.post('/transition', async (req, res) => {
     if (!DXEID || TRANGTHAI === undefined) {
       return res.status(400).json({ error: 'DXEID va TRANGTHAI la bat buoc' });
     }
+    const actor=req.accessUser.ID;
+    const employee=req.accessUser.DNHANVIENID || 'SYSTEM';
     const targetState = parseInt(TRANGTHAI, 10);
     const result = await db.transaction(async (query, execute) => {
       const currentRows = await query(
@@ -444,24 +446,25 @@ router.post('/transition', async (req, res) => {
 
       await query(
         `EXECUTE PROCEDURE SP_CHUYEN_TRANGTHAI(?, ?, ?, ?, ?, ?, ?)`,
-        [DXEID, targetState, DNHANVIENID || 'SYSTEM', LYDO || null, GHICHU || null, newTtId, newLsId]
+        [DXEID, targetState, employee, LYDO || null, GHICHU || null, newTtId, newLsId]
       );
 
+      await execute('UPDATE TLICHSUTRANGTHAI SET USERCREATEDID=? WHERE ID=?',[actor,newLsId]);
       if (current.TLENHSUACHUAID) {
         if (targetState === 2) {
           await execute('UPDATE TTRANGTHAIXE SET DNHANVIENKTVID=? WHERE TLENHSUACHUAID=? AND STATUS=1', [primaryEmployee, current.TLENHSUACHUAID]);
           if (current.TTIEPNHANXEID) await execute('UPDATE TTIEPNHANXE SET DNHANVIENKTVID=? WHERE ID=?', [primaryEmployee, current.TTIEPNHANXEID]);
           await execute(
-            `UPDATE TLENHSUACHUA SET TRANGTHAI=1, BATDAU=COALESCE(BATDAU,CURRENT_TIMESTAMP), USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
-            [current.TLENHSUACHUAID]
+            `UPDATE TLENHSUACHUA SET TRANGTHAI=1, BATDAU=COALESCE(BATDAU,CURRENT_TIMESTAMP), USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
+            [actor,current.TLENHSUACHUAID]
           );
         } else if (targetState === 3) {
           await execute(
-            `UPDATE TLENHSUACHUA SET TRANGTHAI=5, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP), USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
-            [current.TLENHSUACHUAID]
+            `UPDATE TLENHSUACHUA SET TRANGTHAI=5, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP), USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
+            [actor,current.TLENHSUACHUAID]
           );
           if (current.TTIEPNHANXEID) {
-            await execute(`UPDATE TTIEPNHANXE SET TRANGTHAI=3, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [current.TTIEPNHANXEID]);
+            await execute(`UPDATE TTIEPNHANXE SET TRANGTHAI=3, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [actor,current.TTIEPNHANXEID]);
           }
 
           // Khi giao xe, ghi nhận các phụ tùng thực tế đã dùng vào phiếu xuất.
@@ -486,6 +489,9 @@ router.post('/transition', async (req, res) => {
             [current.TLENHSUACHUAID]
           );
           const issuedPartIds = new Set(issuedRows.map((row) => row.DMATHANGID));
+          const pendingParts=partRows.filter(part=>!issuedPartIds.has(part.DMATHANGID));
+          await require('../services/stock').lock(execute,pendingParts.map(part=>part.DMATHANGID));
+          await require('../services/stock').requireAvailable(query,pendingParts);
           for (const part of partRows) {
             if (issuedPartIds.has(part.DMATHANGID)) continue;
             await execute(
@@ -497,16 +503,16 @@ router.post('/transition', async (req, res) => {
                        ?, 0, 0, 1, ?, CURRENT_TIMESTAMP)`,
               [db.uuidv4(), 'Tu dong xuat phu tung khi giao xe', current.TLENHSUACHUAID,
                 DXEID, part.DMATHANGID, part.DKHOHANGID || null,
-                DNHANVIENID || 'SYSTEM', Number(part.SOLUONG || 0),
+                employee, Number(part.SOLUONG || 0),
                 Number(part.DONGIA || 0), Number(part.THANHTIEN || 0),
                 Number(part.GIAVON || 0), part.BAOHANH == null ? null : String(part.BAOHANH),
-                DNHANVIENID || 'SYSTEM']
+                actor]
             );
           }
         } else if (targetState === 4) {
           await execute(
-            `UPDATE TLENHSUACHUA SET TRANGTHAI=3, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP), USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
-            [current.TLENHSUACHUAID]
+            `UPDATE TLENHSUACHUA SET TRANGTHAI=3, KETTHUC=COALESCE(KETTHUC,CURRENT_TIMESTAMP), USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`,
+            [actor,current.TLENHSUACHUAID]
           );
         }
       }

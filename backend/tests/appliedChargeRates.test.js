@@ -33,7 +33,7 @@ async function invoice(body = {}, orderRates = { TILETHUE: 20, TILEPHIDICHVU: 10
   }, async (sql, params) => writes.push({ sql, params }), () => 'test-id');
   numbers.nextInTransaction = async () => 'HDSC-TEST';
   try {
-    await createInvoice({ body: { TLENHSUACHUAID: 'repair', TIENMAT: 1320000, ...body }, get: () => 'TEST' }, {
+    await createInvoice({ accessUser:{ISADMIN:1}, body: { TLENHSUACHUAID: 'repair', TIENMAT: 1320000, ...body }, get: () => 'TEST' }, {
       status(code) { status = code; return this; }, json(value) { result = value; },
     });
     return { status, result, writes };

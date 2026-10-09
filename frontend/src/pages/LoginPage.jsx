@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Car, Wrench, ShoppingCart, Boxes, ShieldCheck, 
   BarChart3, User, Lock, Eye, EyeOff, LogIn, 
@@ -7,16 +7,21 @@ import {
 } from 'lucide-react';
 import './LoginPage.css';
 import { auth } from '../services';
+import api from '../api';
+import { registrationLogin, clearRegistrationLogin } from '../utils/registrationLogin';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123456');
+  const [params] = useSearchParams();
+  const [username, setUsername] = useState(()=>registrationLogin(params.get('store'))?.username || (params.get('username') || ''));
+  const [password, setPassword] = useState(()=>registrationLogin(params.get('store'))?.password || '');
+  useEffect(()=>{clearRegistrationLogin();},[]);
+  const [saas, setSaas] = useState(null);
+  useEffect(() => { let active=true; api.get('/saas/info').then(r=>{if(active)setSaas(r.data);}).catch(()=>{if(active)setSaas({error:true});});return()=>{active=false;}; },[]);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [quickLoginMsg, setQuickLoginMsg] = useState('');
-  const nav = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -28,7 +33,7 @@ export default function LoginPage() {
       localStorage.setItem('garage_token', result.token);
       const destinations = [['DASHBOARD','/'],['REPAIR','/sua-chua'],['SALES','/ban-hang'],['INVENTORY','/nhap-kho'],['SUPPLIERS','/nha-cung-cap'],['CUSTOMERS','/khach-hang'],['VEHICLES','/ho-so-xe'],['WARRANTY','/bao-hanh'],['FINANCE','/thu-chi'],['EMPLOYEES','/nhan-vien'],['REPORTS','/bao-cao'],['ADMIN','/quan-tri'],['SETTINGS','/cau-hinh']];
       const firstAllowed = destinations.find(([code]) => Number(result.data.ISADMIN) === 1 || (Number(result.data.PERMISSIONS?.[code] || 0) & 1) === 1);
-      nav(firstAllowed?.[1] || '/');
+      window.location.assign(firstAllowed?.[1] || '/');
     } catch (loginError) {
       setError(loginError?.response?.data?.error || 'Tên đăng nhập hoặc mật khẩu không đúng');
     } finally { setLoading(false); }
@@ -197,6 +202,7 @@ export default function LoginPage() {
 
           {/* Form đăng nhập */}
           <form onSubmit={handleLogin} className="login-form">
+            {saas?.enabled && <p className="login-welcome">Nhập tên đăng nhập riêng của bạn. Hệ thống tự nhận diện cửa hàng.</p>}
             {/* Input Tên đăng nhập */}
             <div className="login-input-field">
               <User size={18} className="field-icon" />
@@ -205,6 +211,8 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Tên đăng nhập"
+                aria-label="Tên đăng nhập"
+                autoComplete="username"
                 required
                 className="field-input"
               />
@@ -218,6 +226,8 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mật khẩu"
+                aria-label="Mật khẩu"
+                autoComplete="current-password"
                 required
                 className="field-input"
               />
@@ -260,26 +270,18 @@ export default function LoginPage() {
             {/* Nút Đăng nhập cam gradient */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !saas || saas.error}
               className="login-submit-button"
             >
               <LogIn size={18} />
-              <span>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</span>
+              <span>{loading ? 'Đang đăng nhập...' : !saas ? 'Đang kết nối…' : 'Đăng nhập'}</span>
             </button>
 
             {/* Đăng ký */}
             <div className="register-prompt">
               <span>Chưa có tài khoản? </span>
-              <a 
-                href="#register" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Vui lòng liên hệ Hotline: 0917 66 4444 để đăng ký tài khoản mới cho xưởng.');
-                }}
-                className="register-link"
-              >
-                Đăng ký
-              </a>
+              <Link to="/dang-ky" className="register-link">Đăng ký dùng thử</Link>
+              {saas?.error && <p role="alert">Chưa kết nối được máy chủ. Vui lòng tải lại trang.</p>}
             </div>
 
             {/* Hoặc đăng nhập nhanh (Desktop) */}

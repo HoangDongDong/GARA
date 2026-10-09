@@ -1,3 +1,4 @@
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import { useEffect, useState } from 'react';
 import { customers, repairOrders } from '../services';
 import { customerPhoneUrl } from './CustomerDetailModal';
@@ -39,7 +40,8 @@ export default function RepairSupplements({ repairId, state, customerId, catalog
   const [accepted, setAccepted] = useState([]);
   const [customer, setCustomer] = useState('');
   const [evidence, setEvidence] = useState('');
-  const editable = canEdit && Number(state) === 2;
+  const editable = canEdit && can('REPAIR',4) && can('APPROVE_SUPPLEMENT',4) && Number(state) === 2;
+  const creatable = can('REPAIR',2) && Number(state) === 2;
   const visibleRequests = selectedSupplementId ? requests.filter(head => head.ID === selectedSupplementId) : requests;
   const refresh = async () => setRequests(await repairOrders.supplements(repairId));
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function RepairSupplements({ repairId, state, customerId, catalog
     if (entry) { setItems(current => [...current, { ...entry, quantity: 1 }]); setSource(''); }
   };
   const save = (status) => run(async () => {
+    if (!creatable) throw new Error('Bạn chưa có quyền thêm đề xuất phát sinh.');
     await repairOrders.createSupplement(repairId, { LYDO: reason, TRANGTHAI: status, items: items.map(it => ({
       LOAI: it.sourceType, DMATHANGID: it.sourceType === 0 ? it.sourceId : null,
       DDICHVUID: it.sourceType === 1 ? it.sourceId : null, SOLUONG: it.quantity, DONGIA: it.price,
@@ -72,7 +75,7 @@ export default function RepairSupplements({ repairId, state, customerId, catalog
       <p>Hạng mục chưa được khách chấp thuận chưa tính vào tổng tiền và chưa được thực hiện. Khi thay đổi giá hoặc phụ tùng, hãy hủy đề xuất đang chờ và lập báo giá mới.</p>
       {error && <p role="alert" className="repair-supplement-error">{error}</p>}
       {loading ? <p>Đang tải…</p> : <>
-        {editable && allowCreate && <fieldset disabled={busy}>
+        {creatable && allowCreate && <fieldset disabled={busy}>
           <legend>Báo giá bổ sung</legend>
           <label>Lý do phát sinh<textarea maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Mô tả vấn đề và lý do cần bổ sung" /></label>
           <div className="repair-supplement-select">

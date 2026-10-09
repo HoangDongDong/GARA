@@ -1,3 +1,4 @@
+import { can } from '../utils/permissions';
 import { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import DocumentNumberField from './DocumentNumberField';
@@ -132,6 +133,7 @@ export default function CashVoucherModal({ onClose, onSaved }) {
   const addPending = useRef(false);
 
   const openAdd = async (resource) => {
+    if (!can('SETTINGS')) return;
     setAddError('');
     setAddOptions({});
     setAddForm(resource === 'cashReasons' ? { NAME: '', NOTE: '', LOAI: String(form.type) } : {});
@@ -243,6 +245,7 @@ export default function CashVoucherModal({ onClose, onSaved }) {
     });
 
   const save = async (mode) => {
+    if (!can('FINANCE',2) || !can('PAYMENTS',4)) return;
     if (pending.current || loading || !options) return;
     if (saved) {
       if (mode === 'print' || mode === 'preview') print(saved, mode === 'print');

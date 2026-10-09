@@ -4,6 +4,7 @@ import { Printer, X } from 'lucide-react';
 import api from '../api';
 import './DocumentPrintDialog.css';
 import PrintAgentControls from './PrintAgentControls';
+import { createPrintJobKey } from './printJobKey';
 export const openDocumentPrint = options => window.dispatchEvent(new CustomEvent('garage:print', { detail: options }));
 const contexts = {
  '/tiep-nhan':['MauPhieuTiepNhan','MauBaoGia'], '/sua-chua':['MauPhieuSuaChua','MauPhieuTamTinh','MauBaoGia','MauPhieuTiepNhan','MauHoaDonSuaChua','MauPhieuBanGiao','MauPhieuXuatKho'],
@@ -30,12 +31,14 @@ export default function DocumentPrintDialog({ embedded = false }) {
  const jobKey=useRef('');
  const reprintKey=useRef({id:'',key:''});
  const jobLabels={queued:'Chờ trạm in',received:'Agent đã nhận',dispatching:'Đang gửi máy in',submitted:'Đã gửi máy in',failed:'In lỗi',needs_review:'Cần kiểm tra giấy trước khi in lại',cancelled:'Đã hủy',expired:'Hết hạn chờ'};
- useEffect(()=>{setPrinterId(agentConfig.routes.find(r=>r.TYPEKEY===type)?.PRINTERID||'');},[type]);
- useEffect(()=>{setPrinterId(current=>current||agentConfig.routes.find(r=>r.TYPEKEY===type)?.PRINTERID||'');},[agentConfig,type]);
+ const availablePrinters=agentConfig.printers.filter(p=>p.ENABLED&&agentConfig.stations?.some(s=>s.ID===p.STATIONID&&!s.REVOKED));
+ const defaultPrinterId=availablePrinters.find(p=>p.ID===agentConfig.routes.find(r=>r.TYPEKEY===type)?.PRINTERID)?.ID||'';
+ useEffect(()=>{setPrinterId(defaultPrinterId);},[type]);
+ useEffect(()=>{setPrinterId(current=>availablePrinters.some(p=>p.ID===current)?current:defaultPrinterId);},[agentConfig,type]);
  useEffect(()=>{jobKey.current='';setJob(null);},[type,record,template,from,to,printerId,copies]);
  useEffect(()=>{if(!job?.ID||!['queued','received','dispatching'].includes(job.STATE))return;const timer=setInterval(async()=>{try{const r=await api.get('/print-control/jobs/'+job.ID);setJob(r.data);if(r.data.STATE==='submitted')setPrintOpened(true);}catch{}},2000);return()=>clearInterval(timer);},[job?.ID,job?.STATE]);
- const sendAgent=async()=>{if(sending)return;setSending(true);setError('');if(!jobKey.current)jobKey.current=crypto.randomUUID();try{const r=await api.post('/print-control/jobs',{type,recordId:record,templateId:template,from:from||undefined,to:to||undefined,printerId:printerId||undefined,copies,idempotencyKey:jobKey.current},{timeout:90000});setJob(r.data);if(r.data.STATE==='submitted')setPrintOpened(true);}catch(e){setError(await errorMessage(e));}finally{setSending(false);}};
- const reprintAgent=async()=>{if(sending||!window.confirm('In lại đúng bản PDF trước? Kiểm tra giấy đã ra để tránh in trùng.'))return;if(reprintKey.current.id!==job.ID)reprintKey.current={id:job.ID,key:crypto.randomUUID()};setSending(true);try{const r=await api.post('/print-control/jobs/'+job.ID+'/reprint',{idempotencyKey:reprintKey.current.key});setJob(r.data);}catch(e){setError(await errorMessage(e));}finally{setSending(false);}};
+ const sendAgent=async()=>{if(sending)return;setSending(true);setError('');try{if(!jobKey.current)jobKey.current=createPrintJobKey();const r=await api.post('/print-control/jobs',{type,recordId:record,templateId:template,from:from||undefined,to:to||undefined,printerId:printerId||undefined,copies,idempotencyKey:jobKey.current},{timeout:90000});setJob(r.data);if(r.data.STATE==='submitted')setPrintOpened(true);}catch(e){setError(await errorMessage(e));}finally{setSending(false);}};
+ const reprintAgent=async()=>{if(sending||!window.confirm('In lại đúng bản PDF trước? Kiểm tra giấy đã ra để tránh in trùng.'))return;setSending(true);setError('');try{if(reprintKey.current.id!==job.ID)reprintKey.current={id:job.ID,key:createPrintJobKey()};const r=await api.post('/print-control/jobs/'+job.ID+'/reprint',{idempotencyKey:reprintKey.current.key});setJob(r.data);}catch(e){setError(await errorMessage(e));}finally{setSending(false);}};
  const relevant=contexts[pathname]||[];
  const selected=types.find(t=>t.key===type);
  const invalidate=()=>{generation.current++;if(pdfUrl.current)URL.revokeObjectURL(pdfUrl.current);pdfUrl.current='';setUrl('');setReady(false);setError('');setPrintNotice('');setBusy(false);};
@@ -59,8 +62,12 @@ export default function DocumentPrintDialog({ embedded = false }) {
   if(version!==generation.current)return;if(!r.headers['content-type']?.includes('application/pdf'))throw new Error('Không nhận được bản PDF từ FastReport.');pdfUrl.current=URL.createObjectURL(r.data);setUrl(pdfUrl.current);setPrintNotice(decodeURIComponent(r.headers['x-print-notice']||''));
  }catch(e){const message=await errorMessage(e);if(version===generation.current)setError(message);}finally{if(version===generation.current)setBusy(false);}};
  useEffect(()=>{
-  if(request?.autoPreview && type===request.type && record===request.id && template && !busy && !url && !error)preview();
- },[request,type,record,template,busy,url,error]);
+  if(!request || request.autoPreview===false || !type || !record || !template || busy || url || error)return;
+  if(!selected?.templates.some(item=>item.value===template))return;
+  if(record!=='summary'&&!records.some(item=>item.ID===record))return;
+  const timer=setTimeout(()=>preview(),250);
+  return()=>clearTimeout(timer);
+ },[request,type,record,template,from,to,records,busy,url,error]);
  useEffect(()=>{if(request?.autoPrint&&type===request.type&&record===request.id&&template&&printerId&&!autoPrintStarted.current){autoPrintStarted.current=true;sendAgent();}},[request,type,record,template,printerId]);
  return <>
   {!embedded&&!!relevant.length&&<button className="gara-print-launcher" onClick={()=>open({type:relevant[0]})}><Printer size={15}/> In chứng từ</button>}
@@ -73,7 +80,8 @@ export default function DocumentPrintDialog({ embedded = false }) {
     {['MauBaoCao','MauLichSuSuaChua','MauCongNoKhachHang','MauCongNoNhaCungCap'].includes(type)&&<><label>Từ ngày<input type="date" value={from} onChange={e=>{invalidate();setFrom(e.target.value);}}/></label><label>Đến ngày<input type="date" value={to} onChange={e=>{invalidate();setTo(e.target.value);}}/></label></>}
    </div>
    <PrintAgentControls types={types} onChange={setAgentConfig}/>
-   <div className="gara-print-controls"><label>Máy in<select value={printerId} disabled={sending} onChange={e=>setPrinterId(e.target.value)}><option value="">Chọn máy in Agent</option>{agentConfig.printers.filter(p=>p.ENABLED).map(p=><option key={p.ID} value={p.ID}>{p.STATIONNAME} / {p.NAME}{p.ONLINE?'':' (mất kết nối)'}</option>)}</select></label><label>Số bản<input type="number" min="1" max="5" value={copies} disabled={sending} onChange={e=>setCopies(Number(e.target.value))}/></label></div>
+   <div className="gara-print-controls"><label>Máy in<select value={printerId} disabled={sending} onChange={e=>{setPrinterId(e.target.value);setError('');}}><option value="">Chọn máy in Agent</option>{availablePrinters.map(p=><option key={p.ID} value={p.ID}>{p.STATIONNAME} / {p.NAME}{p.ONLINE?'':' (mất kết nối)'}</option>)}</select></label><label>Số bản<input type="number" min="1" max="5" value={copies} disabled={sending} onChange={e=>setCopies(Number(e.target.value))}/></label></div>
+   {!printerId&&<p className="gara-print-note">{availablePrinters.length?'Chọn máy in bên trên. Máy in mặc định cũ có thể đã tắt hoặc thuộc Agent đã thu hồi.':'Chưa có máy in được bật. Mở Máy in & Agent để kiểm tra kết nối và bật máy in.'}</p>}
    <p className="gara-print-note">Nhấn In để gửi trực tiếp tới máy in qua Agent. Xem bản in và Tải PDF dùng khi cần kiểm tra hoặc lưu chứng từ.</p>
    {job&&<p role="status" className="gara-print-note">{jobLabels[job.STATE]||job.STATE}{job.DETAIL?' — '+job.DETAIL:''} {['failed','needs_review','expired','cancelled','submitted'].includes(job.STATE)&&<button disabled={sending} onClick={reprintAgent}>In lại</button>} {['queued','received'].includes(job.STATE)&&<button onClick={async()=>{try{await api.post('/print-control/jobs/'+job.ID+'/cancel');setJob({...job,STATE:'cancelled'});}catch(e){setError(await errorMessage(e));}}}>Hủy lệnh</button>}</p>}
    {error&&<p role="alert" className="gara-print-error">{error}</p>}

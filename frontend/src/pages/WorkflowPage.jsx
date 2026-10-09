@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API = 'http://localhost:4000/api/workflow';
+const API = '/api/workflow';
 
 /* Mapping icon theo ten trang thai */
 const ICONS = {

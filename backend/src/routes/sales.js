@@ -13,29 +13,28 @@ router.get('/charge-rates', async (req, res) => {
 const productSql = `
   SELECT M.ID, M.NAME, M.CODE, M.GIABAN, M.GIANHAP, M.BAOHANH, M.THUESUATRIENG,
          G.THUESUATRIENG AS THUENHOM, G.NAME AS NHOM,
-         COALESCE((SELECT SUM(NC.SOLUONG) FROM TNHAPKHOCHITIET NC WHERE NC.DMATHANGID = M.ID), 0)
-       - COALESCE((SELECT SUM(XP.SOLUONG) FROM TXUATPHUTUNG XP WHERE XP.DMATHANGID = M.ID), 0)
-       - COALESCE((SELECT SUM(CT.SLXUAT) FROM TDONHANGCHITIET CT WHERE CT.DMATHANGID = M.ID AND CT.STATUS = 1), 0) AS TON_KHO
+         ${require('../services/stock').expression('M.ID')} AS TON_KHO
     FROM DMATHANG M
     LEFT JOIN DNHOMMATHANG G ON G.ID=M.DNHOMMATHANGID AND G.STATUS=1
    WHERE M.ID = ? AND M.STATUS = 1 AND COALESCE(M.TAMKHOA, 0) = 0`;
 
 router.get('/', async (req, res) => {
   try {
+    const page=require('../services/documentList').filters(req.query,'DH');
     const rows = await db.query(`
-      SELECT FIRST 50 DH.ID, DH.NAME, DH.NGAY, DH.DKHACHHANGID,
+      SELECT ${page.select} DH.ID, DH.NAME, DH.NGAY, DH.DKHACHHANGID,
              KH.NAME AS TEN_KH, DH.TIENHANG, DH.TIENGIAMGIA,
              DH.TONGCONG, DH.TIENTHANHTOAN, DH.DATHANHTOAN,
              DH.TILETHUE, DH.TIENTHUE, DH.TILEPHIDICHVU, DH.PHIDICHVU,
              DH.LOAITHANHTOAN, DH.NOTE
         FROM TDONHANG DH
         LEFT JOIN DKHACHHANG KH ON KH.ID = DH.DKHACHHANGID
-       WHERE DH.STATUS = 1
-       ORDER BY DH.NGAY DESC, DH.TIMECREATED DESC
-    `);
-    res.json({ data: rows });
+       WHERE DH.STATUS = 1${page.where}
+       ORDER BY DH.NGAY DESC, DH.TIMECREATED DESC, DH.ID DESC
+    `,page.params);
+    res.json(require('../services/documentList').response(rows,page));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(e.status||500).json({ error: e.message });
   }
 });
 
@@ -46,6 +45,7 @@ router.get('/:id/print', async (req, res) => {
     if(!printing.permitted(req.accessUser,printing.typeByKey('MauHoaDonBanHang'))) return res.status(403).json({error:'Bạn cần quyền Xem và In bán hàng.'});
     const result = await renderSalesInvoice(req.params.id, {
       templateId: req.query.templateId || null,
+      accessUser:req.accessUser,
       user: req.accessUser?.USERNAME || req.get('X-User') || null,
     });
     res.set({
@@ -80,16 +80,23 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    require('../permissionPolicy').assert(req.accessUser, 'PAYMENTS', 4);
     policy.assertOverride(req, 'SALES');
     const { DKHACHHANGID, DKHOXUATID, NOTE, LOAITHANHTOAN = 0, items = [] } = req.body;
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Phieu ban hang chua co san pham' });
 
     const user = req.get('X-User') || 'SYSTEM';
-    const result = await db.transaction(async (query, execute, uuidv4) => {
+    const result = await require('../services/idempotency').run(req,async (query, execute, uuidv4) => {
       const normalized = [];
+      await require('../services/stock').lock(execute,items.map(item=>item.DMATHANGID));
+      const requested=new Map();
+      for(const item of items){const quantity=Number(item.SOLUONG);if(!Number.isFinite(quantity)||quantity<=0)throw Object.assign(new Error('Số lượng không hợp lệ.'),{status:400});requested.set(item.DMATHANGID,(requested.get(item.DMATHANGID)||0)+quantity);}
+      const checked=new Set();
       const salesSettings = await require('../services/salesSettings').load(query);
       if(salesSettings.requireCustomer && !DKHACHHANGID)throw Object.assign(new Error('Vui lòng chọn khách hàng trước khi bán.'),{status:400});
-      const rates = {...charges.resolveForSales(req.body, await charges.loadForSales(query)), roundingStep:salesSettings.roundingStep};
+      const defaults = await charges.loadForSales(query);
+      policy.assertRates(req, defaults);
+      const rates = {...charges.resolveForSales(req.body, defaults), roundingStep:salesSettings.roundingStep};
       const discountPolicy = require('../services/salesSettings').discount(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA, salesSettings);
       for (const item of items) {
         const quantity = Number(item.SOLUONG || 0);
@@ -97,8 +104,10 @@ router.post('/', async (req, res) => {
         const products = await query(productSql, [item.DMATHANGID]);
         if (!products.length) throw new Error('San pham khong ton tai hoac da ngung ban');
         const product = products[0];
-        if (quantity > Number(product.TON_KHO || 0)) throw new Error(`${product.NAME} khong du ton kho`);
+        if (requested.get(item.DMATHANGID) > Number(product.TON_KHO || 0)) throw new Error(`${product.NAME} khong du ton kho`);
+        if(DKHOXUATID && !checked.has(item.DMATHANGID)){await require('../services/stock').requireAvailable(query,[{DMATHANGID:item.DMATHANGID,DKHOHANGID:DKHOXUATID,SOLUONG:requested.get(item.DMATHANGID)}]);checked.add(item.DMATHANGID);}
         const price = item.DONGIA === undefined ? Number(product.GIABAN || 0) : Number(item.DONGIA);
+        if (price !== Number(product.GIABAN || 0)) require('../permissionPolicy').assert(req.accessUser, 'PRICING', 4);
         if (item.DONGIA === null || (typeof item.DONGIA === 'string' && !item.DONGIA.trim())
           || (item.DONGIA !== undefined && !['number', 'string'].includes(typeof item.DONGIA))
           || !Number.isFinite(price) || price < 0 || price > Number.MAX_SAFE_INTEGER) {
@@ -119,6 +128,7 @@ router.post('/', async (req, res) => {
       const { subtotal, discountRate, discount, tax, serviceFee, total } = totals;
       const payment=require('../services/salePayment').calculate(total,req.body,DKHACHHANGID);
       const paymentSettings = await require('../services/paymentSettings').load('sales', query);
+      if (paymentSettings.requireBill) require('../permissionPolicy').assert(req.accessUser,'SALES',17);
       require('../services/paymentSettings').assertDebt(paymentSettings, payment.debt);
       if(req.body.DTAIKHOANNGANHANGID){
         const [bank]=await query('SELECT ID FROM DTAIKHOANNGANHANG WHERE ID=? AND STATUS=1',[req.body.DTAIKHOANNGANHANGID]);

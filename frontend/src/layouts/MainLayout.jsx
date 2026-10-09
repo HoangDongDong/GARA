@@ -1,7 +1,8 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import './MainLayout.css';
-import { workflow } from '../services';
+import { workflow, auth } from '../services';
+import '../pages/SaasPages.css';
 
 import { 
   Home, 
@@ -20,6 +21,7 @@ import {
   Shield, 
   Settings,
   Printer,
+  Monitor,
   Menu,
   X,
   ClipboardCheck,
@@ -39,7 +41,7 @@ const NAV = [
   { to: '/nha-cung-cap',   code: 'SUPPLIERS', icon: <Contact size={18} />, label: 'Nhà cung cấp' },
   { to: '/khach-hang',     code: 'CUSTOMERS', icon: <Users size={18} />, label: 'Khách hàng' },
   { to: '/ho-so-xe',       code: 'VEHICLES', icon: <FileText size={18} />, label: 'Hồ sơ xe & Lịch sử' },
-  { to: '/danh-muc',       code: 'SETTINGS', icon: <Folders size={18} />, label: 'Danh mục' },
+  { to: '/danh-muc',       code: 'CATALOG', icon: <Folders size={18} />, label: 'Danh mục' },
   { to: '/bao-hanh',       code: 'WARRANTY', icon: <ShieldCheck size={18} />, label: 'Bảo hành' },
   { to: '/thu-chi',        code: 'FINANCE', icon: <CircleDollarSign size={18} />, label: 'Thu - Chi / Công nợ' },
   { to: '/nhan-vien',      code: 'EMPLOYEES', icon: <UserCog size={18} />, label: 'Nhân viên &\nKỹ thuật viên' },
@@ -47,6 +49,7 @@ const NAV = [
   { to: '/in-chung-tu',    icon: <Printer size={18} />, label: 'In chứng từ' },
   { to: '/quan-tri',       code: 'ADMIN', icon: <Shield size={18} />, label: 'Quản trị - Phân quyền' },
   { to: '/cau-hinh',       code: 'SETTINGS', icon: <Settings size={18} />, label: 'Cấu hình' },
+  { to: '/man-hinh-phu',    code: 'SETTINGS', icon: <Monitor size={18} />, label: 'Màn hình phụ' },
 ];
 
 const MOBILE_BOTTOM_NAV = [
@@ -160,7 +163,8 @@ export default function MainLayout() {
     return () => document.removeEventListener('mousedown', click);
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
+    try { await auth.logout(); } catch { /* Local sign-out remains available if offline. */ }
     localStorage.removeItem('garage_user');
     localStorage.removeItem('garage_token');
     nav('/login');
@@ -286,8 +290,12 @@ export default function MainLayout() {
               >
                 <span className="sidebar-icon">{n.icon}</span>
                 <span className="sidebar-label">{n.label}</span>
-                {n.liveBadge && workflowBadge > 0 && <span className="sidebar-badge">{workflowBadge}</span>}
-                {n.liveBadge && supplementBadge > 0 && <span className="sidebar-badge" title="Đề xuất phát sinh chờ khách xác nhận">+{supplementBadge} PS</span>}
+                {n.liveBadge && (workflowBadge > 0 || supplementBadge > 0) && (
+                  <span className="sidebar-badges">
+                    {workflowBadge > 0 && <span className="sidebar-badge">{workflowBadge}</span>}
+                    {supplementBadge > 0 && <span className="sidebar-badge" title="Đề xuất phát sinh chờ khách xác nhận">+{supplementBadge} PS</span>}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -310,6 +318,7 @@ export default function MainLayout() {
         {/* ===== KHUNG CHÍNH (BÊN PHẢI SIDEBAR) ===== */}
         <div className="app-main-wrapper">
           <main className="app-content" ref={contentRef}>
+            {user.TENANT && <div className={'saas-subscription '+(user.TENANT.readOnly?'expired':'')}><strong>{user.TENANT.name}</strong> · Mã cửa hàng: {user.TENANT.code}{user.TENANT.endsAt && <> · Hạn sử dụng: {new Date(user.TENANT.endsAt).toLocaleDateString('vi-VN')}</>}{user.TENANT.readOnly && <span> · Đã hết hạn, chỉ xem dữ liệu. Liên hệ hỗ trợ để gia hạn.</span>}</div>}
             <Outlet />
           </main>
 

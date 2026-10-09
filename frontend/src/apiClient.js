@@ -2,12 +2,9 @@
  * apiClient.js - Wrapper cho cac API calls trong KAZUKO Auto
  * Dam bao frontend luon co baseURL dung, xu ly loi nhat quan.
  */
-import axios from 'axios';
+import apiClient from './api';
 
-const apiClient = axios.create({
-  baseURL: 'http://localhost:4000/api',
-  timeout: 15000,
-});
+
 
 apiClient.interceptors.response.use(
   (r) => r,

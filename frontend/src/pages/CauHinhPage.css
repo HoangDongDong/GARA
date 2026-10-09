@@ -10,3 +10,6 @@
 @media(max-width:800px){.config-sidebar{width:190px}.config-content{padding:16px}.config-header p,.config-saved{display:none}.config-header h1{font-size:16px}.config-field.half{grid-column:1/-1}.config-footer{flex-wrap:wrap}.config-search{min-width:180px}}@media(max-width:560px){.config-workspace{flex-direction:column}.config-sidebar{width:auto;max-height:155px;border-right:0;border-bottom:1px solid #e3e7ec}.config-unsaved{font-size:11px}.config-header{padding:12px}.config-actions{margin-left:auto}}
 .config-footer button,.config-image-control button,.config-empty button{color:#27313d}.config-footer button.primary{color:#fff}
 .config-field>label.config-checkbox{display:flex;align-items:center;gap:9px;margin-bottom:0}.config-checkbox input{flex-shrink:0}
+.config-interface-scale > div { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.config-interface-scale button { padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #334155; cursor: pointer; }
+.config-interface-scale button[aria-pressed="true"] { background: #ea580c; color: white; border-color: #ea580c; }

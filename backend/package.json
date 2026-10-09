@@ -26,9 +26,22 @@
     "migrate:pricing-policies": "node migrate_pricing_policies.js",
     "migrate:repair-line-discounts": "node migrate_repair_line_discounts.js",
     "migrate:bill-discount-amount": "node migrate_bill_discount_amount.js",
-    "migrate:repair-provisional-print": "node migrate_repair_provisional_print.js"
+    "migrate:repair-provisional-print": "node migrate_repair_provisional_print.js",
+    "migrate:permission-actions": "node migrate_permission_actions.js",
+    "test:access": "node --test tests/accessControl.test.js tests/permissionMigration.test.js",
+    "migrate:request-safety": "node migrate_request_safety.js",
+    "backup:database": "node tools/database-backup.js backup",
+    "restore:database": "node tools/database-backup.js restore",
+    "saas:init": "node tools/saas-bootstrap.js init",
+    "saas:template": "node tools/saas-bootstrap.js template",
+    "saas:worker": "node tools/saas-worker.js run",
+    "saas:backup": "node tools/saas-worker.js backup",
+    "test:saas": "node --test tests/tenancy.test.js tests/saas.firebird.test.js",
+    "saas:logins": "node tools/saas-login-directory.js",
+    "saas:template:source": "node tools/saas-template-from-source.js"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

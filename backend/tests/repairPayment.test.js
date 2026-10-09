@@ -27,7 +27,7 @@ async function payment(body, { state = 3, cash = 20 } = {}) {
     throw new Error(sql);
   }, async (sql, params) => writes.push({ sql, params }), () => 'test-id');
   try {
-    await pay({ params: { id: 'invoice' }, body, get: () => 'TEST' }, { status(code) { status = code; return this; }, json(value) { result = value; } });
+    await pay({ accessUser:{ISADMIN:1}, params: { id: 'invoice' }, body, get: () => 'TEST' }, { status(code) { status = code; return this; }, json(value) { result = value; } });
     return { status, result, writes, queries };
   } finally { db.transaction = original; }
 }
@@ -93,7 +93,7 @@ test('creating a repair invoice completes handover for full, partial and zero pa
         throw new Error(sql);
       }, async (sql, params) => writes.push({ sql, params }), () => 'test-id');
       let status = 200, result;
-      await create({ body: { TLENHSUACHUAID: 'repair', TIENMAT: cash, ALLOW_DEBT: cash < 100 }, get: () => 'TEST' },
+      await create({ accessUser:{ISADMIN:1}, body: { TLENHSUACHUAID: 'repair', TIENMAT: cash, ALLOW_DEBT: cash < 100 }, get: () => 'TEST' },
         { status(code) { status = code; return this; }, json(value) { result = value; } });
       assert.equal(status, 200, result?.error);
       assert.equal(result.completed, true);

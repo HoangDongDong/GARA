@@ -137,7 +137,7 @@ export default function DashboardPage() {
           <div key={i} className="stat-card">
             <div className={`stat-icon ${s.color}`}>{s.icon}</div>
             <div className="stat-info">
-              <div className="stat-label">{s.label}</div>
+              <div className="stat-label" title={s.label}>{s.label}</div>
               <div className="stat-value">{s.value}</div>
               <div className="stat-delta up">▲ {s.delta} <span style={{color:'#9E9E9E', fontWeight:400}}>so với tháng trước</span></div>
             </div>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
             <h3><span className="icon"><PieChart size={18} color="#E65100" /></span> Doanh thu bán hàng (Phụ tùng)</h3>
           </div>
           <div className="card-body" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 }}>
               <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#E0E0E0" strokeWidth="3"/>
                 {revenueBreakdown.map((item) => <circle key={item.name} cx="18" cy="18" r="14" fill="none" stroke={item.color} strokeWidth="3" strokeDasharray={`${item.length} 88`} strokeDashoffset={-item.offset} strokeLinecap="round"/>)}
@@ -205,7 +205,7 @@ export default function DashboardPage() {
             <h3><span className="icon"><PieChart size={18} color="#E65100" /></span> Chi phí theo loại</h3>
           </div>
           <div className="card-body" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 }}>
               <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#E0E0E0" strokeWidth="3"/>
                 {costBreakdown.map((item) => <circle key={item.name} cx="18" cy="18" r="14" fill="none" stroke={item.color} strokeWidth="3" strokeDasharray={`${item.length} 88`} strokeDashoffset={-item.offset} strokeLinecap="round"/>)}
@@ -237,7 +237,7 @@ export default function DashboardPage() {
             <button className="link-btn">Xem tất cả</button>
           </div>
           <div className="card-body no-padding table-responsive">
-            <table className="table">
+            <table className="table" style={{ minWidth: 620 }}>
               <thead>
                 <tr>
                   <th>STT</th>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
             <button className="link-btn">Xem tất cả</button>
           </div>
           <div className="card-body no-padding table-responsive">
-            <table className="table">
+            <table className="table" style={{ minWidth: 480 }}>
               <thead>
                 <tr>
                   <th>STT</th>
@@ -311,7 +311,7 @@ export default function DashboardPage() {
             <button className="link-btn">Xem tất cả</button>
           </div>
           <div className="card-body no-padding table-responsive">
-            <table className="table">
+            <table className="table" style={{ minWidth: 420 }}>
               <thead>
                 <tr>
                   <th>STT</th>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
             <button className="link-btn">Xem tất cả</button>
           </div>
           <div className="card-body no-padding table-responsive">
-            <table className="table">
+            <table className="table" style={{ minWidth: 460 }}>
               <thead>
                 <tr>
                   <th>Biển số</th>

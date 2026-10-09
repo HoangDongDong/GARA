@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
 });
 router.post('/', async (req, res) => {
   try {
-    const result = await db.transaction((q, e, uuid) => service.create(q, e, uuid, req.params.id, req.body, actor(req)));
+    const result = await db.transaction((q, e, uuid) => service.create(q, e, uuid, req.params.id, req.body, actor(req), req.accessUser));
     res.json({ ok: true, ...result });
   } catch (e) { res.status(e.statusCode || 500).json({ error: e.message }); }
 });

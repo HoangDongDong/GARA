@@ -15,24 +15,51 @@ const config = require('./config');
 
 // Use the driver's pool in the API; standalone scripts retain short-lived
 // connections so migrations and CLI checks exit without holding open sockets.
-let connectionPool = null;
+let pooling = false;
+const pools = new Map();
+const tenancy = require('./tenancy');
+const originalDetach = Symbol('originalDetach');
 function enablePool() {
-  if (!connectionPool) connectionPool=firebird.pool(6,{...config.firebird,idleTimeoutMillis:60000});
+  pooling = true;
 }
-function closePool() {
-  const current=connectionPool;
-  connectionPool=null;
-  return new Promise((resolve,reject)=>current?current.destroy(error=>error?reject(error):resolve()):resolve());
+async function closePool() {
+  pooling = false;
+  await Promise.all([...pools.values()].map(entry => new Promise((resolve, reject) => entry.pool.destroy(error => error ? reject(error) : resolve()))));
+  pools.clear();
 }
 
 function newConnection() {
+  const options = { ...config.firebird, database: tenancy.database() };
   return new Promise((resolve, reject) => {
     const ready=(err, db) => {
       if (err) return reject(err);
       resolve(db);
     };
-    if(connectionPool) connectionPool.get(ready);
-    else firebird.attach(config.firebird,ready);
+    if (!pooling) return firebird.attach(options, ready);
+    const poolKey = tenancy.key();
+    let entry = pools.get(poolKey);
+    if (entry && entry.database !== options.database) return reject(new Error('Database tenant đã thay đổi; cần đóng pool trước khi chuyển.'));
+    if (!entry) {
+      const limit = Math.max(1, Math.min(100, Number(process.env.SAAS_MAX_POOLS) || 20));
+      for (const [id, candidate] of pools) {
+        if (!candidate.active && Date.now() - candidate.used > 60000) { pools.delete(id); candidate.pool.destroy(() => {}); }
+      }
+      if (pools.size >= limit) return reject(Object.assign(new Error('Hệ thống đang bận. Vui lòng thử lại.'), { status: 503 }));
+      entry = { database: options.database, active: 0, used: Date.now(), pool: firebird.pool(3, { ...options, idleTimeoutMillis: 60000 }) };
+      pools.set(poolKey, entry);
+    }
+    entry.active++;
+    entry.pool.get((error, connection) => {
+      if (error) { entry.active--; entry.used = Date.now(); return ready(error); }
+      if (!connection[originalDetach]) connection[originalDetach] = connection.detach.bind(connection);
+      const detach = connection[originalDetach];
+      let released = false;
+      connection.detach = (...args) => {
+        if (!released) { released = true; entry.active--; entry.used = Date.now(); }
+        return detach(...args);
+      };
+      ready(null, connection);
+    });
   });
 }
 

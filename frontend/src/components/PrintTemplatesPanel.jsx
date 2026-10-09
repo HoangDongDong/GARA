@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { printTemplates } from '../services';
 import './PrintTemplatesPanel.css';
+import WebReportDesigner from './WebReportDesigner';
 
 const normalize = (value) => String(value || '').toLocaleLowerCase('vi');
 
@@ -28,6 +29,7 @@ export default function PrintTemplatesPanel({ onToast, onConfigChanged }) {
   const [dirty, setDirty] = useState(false);
   const [designerSession, setDesignerSession] = useState(null);
   const [designerLaunching, setDesignerLaunching] = useState(false);
+  const [webDesigner, setWebDesigner] = useState(null);
   const fileInputRef = useRef(null);
   const designerUrl = String(import.meta.env.VITE_FASTREPORT_DESIGNER_URL || '').trim();
 
@@ -117,7 +119,9 @@ export default function PrintTemplatesPanel({ onToast, onConfigChanged }) {
     }
   };
 
-  const openFastReportDesigner = async (template) => {
+  const openFastReportDesigner = (template) => { if(meta?.customDesignerAvailable===false)return;setWebDesigner(template); };
+
+  const openDesktopDesigner = async (template) => {
     if (designerLaunching || ['opening', 'editing'].includes(designerSession?.status)) return;
     setDesignerLaunching(true);
     try {
@@ -282,20 +286,21 @@ export default function PrintTemplatesPanel({ onToast, onConfigChanged }) {
               <div><dt>Nội dung</dt><dd>{Number(selected.HAS_TEMPLATE) ? 'Có mẫu FastReport' : 'Chưa có nội dung mẫu'}</dd></div>
             </dl>
             {selected.CONFIG_NAME && <p className="pt-use-description">{'Mẫu mặc định được dùng khi in chứng từ tương ứng trong GARA. Có thể chọn mẫu khác trước khi xem bản in.'}</p>}
-            <button className="pt-primary" onClick={() => openFastReportDesigner(selected)} disabled={!Number(selected.HAS_TEMPLATE) || designerLaunching || ['opening', 'editing'].includes(designerSession?.status)}><Edit3 size={14} />{designerLaunching ? 'Đang khởi động FastReport...' : ['opening', 'editing'].includes(designerSession?.status) ? 'FastReport đang mở' : 'Sửa mẫu bằng FastReport'}</button>
+            <button className="pt-primary" onClick={() => openFastReportDesigner(selected)} disabled={meta?.customDesignerAvailable===false || !Number(selected.HAS_TEMPLATE) || ['opening', 'editing'].includes(designerSession?.status)}><Edit3 size={14} />Sửa mẫu trên web</button>
             <div className="pt-detail-actions">
               <a href={printTemplates.contentUrl(selected.ID)} download><Download size={13} />Tải .frx</a>
               <button onClick={() => setDefault(selected)} disabled={!selected.CONFIG_NAME || !Number(selected.HAS_TEMPLATE) || Number(selected.IS_DEFAULT) === 1 || applying}><Star size={13} />Đặt mặc định</button>
             </div>
             <div className="pt-assignment"><label htmlFor="template-document-type">Gắn thêm vào loại phiếu</label><select id="template-document-type" value={assignmentType} onChange={event => setAssignmentType(event.target.value)} disabled={applying}><option value="">Chọn loại phiếu GARA</option>{categoryDefinitions.filter(item => item.configName).map(item => <option key={item.configName} value={item.configName}>{item.name}</option>)}</select><button onClick={assignTemplate} disabled={applying || !assignmentType}>Gắn mẫu</button></div>
             <details className="pt-technical"><summary>Thông tin kỹ thuật</summary><p>ID mẫu: {selected.ID}</p><p>Cấu hình: {selected.CONFIG_NAME || 'Chưa gắn loại phiếu'}</p><p>Nguồn dữ liệu GARA: {selected.SOURCE_TABLE || 'Mẫu dùng chung / chưa phân loại'}</p><p>Nguồn dữ liệu trong mẫu: {selected.DATASET_NAME || selected.FORM_NAME || 'Chưa khai báo'}</p></details>
-            <button className="pt-xml-fallback" onClick={() => openEditor(selected)} disabled={!Number(selected.HAS_TEMPLATE)}><Code2 size={13} />Sửa XML dự phòng</button>
+            <button className="pt-xml-fallback" onClick={() => openEditor(selected)} disabled={meta?.customDesignerAvailable===false || !Number(selected.HAS_TEMPLATE)}><Code2 size={13} />Sửa XML dự phòng</button>
+            {meta?.designerAvailable && <button className="pt-xml-fallback" onClick={() => openDesktopDesigner(selected)} disabled={designerLaunching || ['opening', 'editing'].includes(designerSession?.status)}><ExternalLink size={13} />Mở Designer Windows</button>}
           </> : <div className="pt-empty small">Chọn một mẫu để xem chi tiết</div>}
         </aside>
       </div>
 
       <footer className="pt-statusbar">
-        <span>{new Set(templates.filter(item => showUnassigned || item.CATEGORY_NAME !== 'Mẫu chưa phân loại').map(item => item.ID)).size} mẫu hiển thị</span><span>{categories.length} loại phiếu / nhóm mẫu</span><span>{meta?.designerAvailable ? 'FastReport Designer sẵn sàng' : 'Dùng trình sửa XML dự phòng'}</span>
+        <span>{new Set(templates.filter(item => showUnassigned || item.CATEGORY_NAME !== 'Mẫu chưa phân loại').map(item => item.ID)).size} mẫu hiển thị</span><span>{categories.length} loại phiếu / nhóm mẫu</span><span>{meta?.customDesignerAvailable===false?'Đang sử dụng bộ mẫu in chuẩn':'Trình thiết kế kéo thả trên web sẵn sàng'}</span>
       </footer>
 
       {designerSession && (
@@ -307,6 +312,8 @@ export default function PrintTemplatesPanel({ onToast, onConfigChanged }) {
           {!['opening', 'editing'].includes(designerSession.status) && <button onClick={() => setDesignerSession(null)}><X size={16} /></button>}
         </div>
       )}
+
+      {webDesigner && <WebReportDesigner template={webDesigner} onClose={() => setWebDesigner(null)} onSaved={() => { loadTemplates(true); onToast?.('Đã lưu mẫu in.'); }} />}
 
       {editor && (
         <div className="pt-overlay" onMouseDown={(event) => event.target === event.currentTarget && closeEditor()}>

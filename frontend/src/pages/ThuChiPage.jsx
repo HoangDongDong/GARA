@@ -1,3 +1,5 @@
+import { currentFinanceMonth, financeDay, financeOverview } from '../utils/financeOverview';
+import { can } from '../utils/permissions';
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import DebtLedger from '../components/DebtLedger';
@@ -10,8 +12,8 @@ import {
 import './ThuChiPage.css';
 
 export default function ThuChiPage() {
-  const [fromDate, setFromDate] = useState('01/09/2025');
-  const [toDate, setToDate] = useState('30/09/2025');
+  const [fromDate, setFromDate] = useState(()=>currentFinanceMonth().from);
+  const [toDate, setToDate] = useState(()=>currentFinanceMonth().to);
   const [transactionType, setTransactionType] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,46 +27,19 @@ export default function ThuChiPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Dữ liệu biểu đồ 9 tháng
-  const monthlyData = [
-    { month: '01/2025', thu: 120, chi: 95 },
-    { month: '02/2025', thu: 135, chi: 102 },
-    { month: '03/2025', thu: 160, chi: 118 },
-    { month: '04/2025', thu: 145, chi: 110 },
-    { month: '05/2025', thu: 180, chi: 135 },
-    { month: '06/2025', thu: 170, chi: 125 },
-    { month: '07/2025', thu: 190, chi: 140 },
-    { month: '08/2025', thu: 175, chi: 130 },
-    { month: '09/2025', thu: 186, chi: 133 },
-  ];
-
-  // Giao dịch gần đây
-  const recentTransactions = [
-    { date: '30/09/2025', type: 'Thu', content: 'Khách hàng thanh toán', amount: '12.500.000đ', status: 'Đã thu' },
-    { date: '30/09/2025', type: 'Chi', content: 'Mua phụ tùng Toyota', amount: '8.750.000đ', status: 'Đã chi' },
-    { date: '29/09/2025', type: 'Thu', content: 'Thanh toán bảo hiểm', amount: '15.000.000đ', status: 'Đã thu' },
-    { date: '28/09/2025', type: 'Chi', content: 'Trả lương nhân viên', amount: '25.000.000đ', status: 'Đã chi' },
-    { date: '27/09/2025', type: 'Thu', content: 'Khách hàng thanh toán', amount: '18.200.000đ', status: 'Đã thu' },
-    { date: '26/09/2025', type: 'Chi', content: 'Chi phí văn phòng', amount: '3.500.000đ', status: 'Đã chi' },
-  ];
-
-  // Danh sách thu trong tháng
-  const incomeList = [
-    { date: '30/09/2025', customer: 'Nguyễn Văn A', content: 'Thanh toán sửa chữa', amount: '12.500.000đ' },
-    { date: '29/09/2025', customer: 'Công ty TNHH Phụ Tùng A', content: 'Thanh toán phụ tùng', amount: '15.000.000đ' },
-    { date: '28/09/2025', customer: 'Trần Thị B', content: 'Thanh toán bảo hiểm', amount: '8.200.000đ' },
-    { date: '26/09/2025', customer: 'Lê Văn C', content: 'Thanh toán dịch vụ', amount: '6.800.000đ' },
-    { date: '25/09/2025', customer: 'Phạm Thị D', content: 'Thanh toán phụ tùng', amount: '5.500.000đ' },
-  ];
-
-  // Danh sách chi trong tháng
-  const expenseList = [
-    { date: '30/09/2025', content: 'Mua phụ tùng Toyota', category: 'Phụ tùng', amount: '8.750.000đ' },
-    { date: '29/09/2025', content: 'Lương nhân viên', category: 'Nhân sự', amount: '25.000.000đ' },
-    { date: '28/09/2025', content: 'Chi phí văn phòng', category: 'Văn phòng', amount: '3.500.000đ' },
-    { date: '26/09/2025', content: 'Thanh toán nhà cung cấp', category: 'NCC', amount: '12.000.000đ' },
-    { date: '25/09/2025', content: 'Chi phí điện nước', category: 'Văn phòng', amount: '1.800.000đ' },
-  ];
+  const [cashRows,setCashRows]=useState([]),[cashLoading,setCashLoading]=useState(true),[cashError,setCashError]=useState('');
+  const loadCash=useCallback(async()=>{setCashLoading(true);setCashError('');try{const r=await api.get('/finance/cashbook');setCashRows(r.data.data || []);}catch(error){setCashRows([]);setCashError(error.response?.data?.error || 'Không tải được thu chi.');}finally{setCashLoading(false);}},[]);
+  useEffect(()=>{loadCash();window.addEventListener('focus',loadCash);window.addEventListener('garage-cashbook-changed',loadCash);return()=>{window.removeEventListener('focus',loadCash);window.removeEventListener('garage-cashbook-changed',loadCash);};},[loadCash]);
+  const overview=financeOverview(cashRows,{from:fromDate,to:toDate,search:searchTerm,type:transactionType==='thu'?'Thu':transactionType==='chi'?'Chi':'',category:categoryFilter});
+  const money=value=>Number(value||0).toLocaleString('vi-VN')+'đ';
+  const amount=value=>cashLoading||cashError?'—':money(value);
+  const displayRow=row=>({date:financeDay(row.date).split('-').reverse().join('/'),type:Number(row.income)>0?'Thu':'Chi',content:row.description,customer:row.partner || '—',category:row.category,amount:money(Number(row.income)>0?row.income:row.expense),status:Number(row.income)>0?'Đã thu':'Đã chi'});
+  const monthlyData=overview.monthly;
+  const chartMaximum=Math.max(1,...monthlyData.flatMap(row=>[row.thu,row.chi]));
+  const recentTransactions=overview.rows.slice(0,10).map(displayRow);
+  const incomeList=overview.rows.filter(row=>Number(row.income)>0).map(displayRow);
+  const expenseList=overview.rows.filter(row=>Number(row.expense)>0).map(displayRow);
+  const categories=[...new Set(cashRows.map(row=>row.category).filter(Boolean))];
 
   const [debts, setDebts] = useState({receivable: [], payable: [], receivableTotal: 0, payableTotal: 0});
   const [debtLoading, setDebtLoading] = useState(true);
@@ -133,7 +108,7 @@ export default function ThuChiPage() {
         </h1>
         <div className="tc-actions-group">
           <button 
-            onClick={() => setShowAddModal(true)}
+            disabled={!can('FINANCE',2) || !can('PAYMENTS',4)} onClick={() => setShowAddModal(true)}
             className="tc-btn-add"
           >
             <Plus size={14} /> Tạo phiếu thu/chi
@@ -178,7 +153,7 @@ export default function ThuChiPage() {
           <button 
             type="button"
             className="tc-btn-search"
-            onClick={() => showToastMsg('Đã lọc kết quả theo tiêu chí')}
+            onClick={loadCash}
           >
             <Search size={12} /> Tìm kiếm
           </button>
@@ -189,7 +164,7 @@ export default function ThuChiPage() {
             <label className="tc-filter-label">Từ ngày</label>
             <div style={{ position: 'relative' }}>
               <input 
-                type="text" 
+                type="date" 
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 className="tc-filter-input"
@@ -203,7 +178,7 @@ export default function ThuChiPage() {
             <label className="tc-filter-label">Đến ngày</label>
             <div style={{ position: 'relative' }}>
               <input 
-                type="text" 
+                type="date" 
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
                 className="tc-filter-input"
@@ -238,11 +213,7 @@ export default function ThuChiPage() {
               style={{ width: '100%' }}
             >
               <option value="">Tất cả</option>
-              <option>Sửa chữa bảo dưỡng</option>
-              <option>Mua phụ tùng</option>
-              <option>Lương nhân sự</option>
-              <option>Chi phí văn phòng</option>
-              <option>Công nợ nhà cung cấp</option>
+              {categories.map(name=><option key={name} value={name}>{name}</option>)}
             </select>
           </div>
         </div>
@@ -273,6 +244,7 @@ export default function ThuChiPage() {
         </button>
       </div>
 
+      {cashError&&<p role="alert">{cashError}</p>}{fromDate>toDate&&<p role="alert">Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.</p>}{!cashLoading&&!cashError&&!overview.rows.length&&<p role="status">Chưa có giao dịch thu chi trong khoảng ngày đã chọn.</p>}
       {/* 4 KPI Summary Cards */}
       <div className={`tc-kpi-grid ${mobileTab !== 'overview' ? 'tc-mobile-hidden' : ''}`}>
         
@@ -283,8 +255,8 @@ export default function ThuChiPage() {
           </div>
           <div>
             <div style={{ fontSize: 11, color: '#616161', fontWeight: 500 }}>Tổng thu</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#2E7D32' }}>186.450.000đ</div>
-            <div style={{ fontSize: 9.5, color: '#2E7D32', fontWeight: 600 }}>↑ 12% so với tháng trước</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#2E7D32' }}>{amount(overview.income)}</div>
+            <div style={{ fontSize: 9.5, color: '#2E7D32', fontWeight: 600 }}>Theo khoảng ngày đã chọn</div>
           </div>
         </div>
 
@@ -295,19 +267,19 @@ export default function ThuChiPage() {
           </div>
           <div>
             <div style={{ fontSize: 11, color: '#616161', fontWeight: 500 }}>Tổng chi</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#D32F2F' }}>132.780.000đ</div>
-            <div style={{ fontSize: 9.5, color: '#D32F2F', fontWeight: 600 }}>↑ 8% so với tháng trước</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#D32F2F' }}>{amount(overview.expense)}</div>
+            <div style={{ fontSize: 9.5, color: '#D32F2F', fontWeight: 600 }}>Theo khoảng ngày đã chọn</div>
           </div>
         </div>
 
-        {/* Card 3: Tồn quỹ hiện tại */}
+        {/* Card 3: Số dư tiền mặt theo sổ */}
         <div className="card tc-kpi-card">
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1976D2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Wallet size={19} color="white" />
           </div>
           <div>
             <div style={{ fontSize: 11, color: '#616161', fontWeight: 500 }}>Tồn quỹ hiện tại</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#1976D2' }}>53.670.000đ</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#1976D2' }}>{amount(overview.balance)}</div>
           </div>
         </div>
 
@@ -353,12 +325,7 @@ export default function ThuChiPage() {
           <div style={{ flex: 1, position: 'relative', display: 'flex', minWidth: 280, overflowX: 'auto' }}>
             {/* Y Axis Labels */}
             <div style={{ width: 35, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 8.5, color: '#757575', paddingBottom: 18, textAlign: 'right', paddingRight: 6 }}>
-              <span>250tr</span>
-              <span>200tr</span>
-              <span>150tr</span>
-              <span>100tr</span>
-              <span>50tr</span>
-              <span>0</span>
+              {[1,.8,.6,.4,.2,0].map(step=><span key={step}>{(chartMaximum*step).toLocaleString('vi-VN',{maximumFractionDigits:1})}tr</span>)}
             </div>
 
             {/* Chart Area with Grid and Bars */}
@@ -373,7 +340,7 @@ export default function ThuChiPage() {
               {/* Bars Container */}
               <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', paddingBottom: 2, zIndex: 1 }}>
                 {monthlyData.map((d, i) => {
-                  const maxVal = 250;
+                  const maxVal = chartMaximum;
                   const thuHeight = Math.round((d.thu / maxVal) * 165);
                   const chiHeight = Math.round((d.chi / maxVal) * 165);
                   return (
@@ -382,12 +349,12 @@ export default function ThuChiPage() {
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 165 }}>
                         {/* Thu Bar (Green) */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{ fontSize: 7, color: '#2E7D32', fontWeight: 600, marginBottom: 1 }}>{d.thu}tr</span>
+                          <span style={{ fontSize: 7, color: '#2E7D32', fontWeight: 600, marginBottom: 1 }}>{d.thu.toLocaleString('vi-VN',{maximumFractionDigits:2})}tr</span>
                           <div style={{ width: 12, height: thuHeight, background: '#2E7D32', borderRadius: '2px 2px 0 0' }} />
                         </div>
                         {/* Chi Bar (Orange) */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <span style={{ fontSize: 7, color: '#E65100', fontWeight: 600, marginBottom: 1 }}>{d.chi}tr</span>
+                          <span style={{ fontSize: 7, color: '#E65100', fontWeight: 600, marginBottom: 1 }}>{d.chi.toLocaleString('vi-VN',{maximumFractionDigits:2})}tr</span>
                           <div style={{ width: 12, height: chiHeight, background: '#E65100', borderRadius: '2px 2px 0 0' }} />
                         </div>
                       </div>
@@ -468,7 +435,7 @@ export default function ThuChiPage() {
       {/* Bottom Section: 3 Cards (Danh sách thu, Danh sách chi, Công nợ) */}
       <div className="tc-bottom-grid">
         
-        {/* Card 1: Danh sách thu trong tháng */}
+        {/* Card 1: Danh sách thu theo bộ lọc */}
         <div className={`card tc-bottom-card ${mobileTab !== 'in_out' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -503,11 +470,11 @@ export default function ThuChiPage() {
 
           <div style={{ padding: '4px 10px', background: '#FAFAFA', borderTop: '1px solid #E0E0E0', textAlign: 'right', fontSize: 10.5, flexShrink: 0 }}>
             <span style={{ color: '#616161' }}>Tổng thu: </span>
-            <b style={{ color: '#2E7D32' }}>48.000.000đ</b>
+            <b style={{ color: '#2E7D32' }}>{amount(overview.income)}</b>
           </div>
         </div>
 
-        {/* Card 2: Danh sách chi trong tháng */}
+        {/* Card 2: Danh sách chi theo bộ lọc */}
         <div className={`card tc-bottom-card ${mobileTab !== 'in_out' ? 'tc-mobile-hidden' : ''}`} style={{ padding: 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ padding: '5px 10px', borderBottom: '1px solid #E0E0E0', background: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -542,7 +509,7 @@ export default function ThuChiPage() {
 
           <div style={{ padding: '4px 10px', background: '#FAFAFA', borderTop: '1px solid #E0E0E0', textAlign: 'right', fontSize: 10.5, flexShrink: 0 }}>
             <span style={{ color: '#616161' }}>Tổng chi: </span>
-            <b style={{ color: '#D32F2F' }}>51.050.000đ</b>
+            <b style={{ color: '#D32F2F' }}>{amount(overview.expense)}</b>
           </div>
         </div>
 

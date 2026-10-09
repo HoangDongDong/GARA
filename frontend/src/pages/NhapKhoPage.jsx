@@ -1,3 +1,4 @@
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import PartFormModal from '../components/PartFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import useDocumentNumber from '../hooks/useDocumentNumber';
@@ -120,7 +121,7 @@ export default function NhapKhoPage() {
       const [productRows, supplierRows, employeeRows, warehouses, receiptRows, groupRows] = await Promise.all([
         parts.list().catch(() => []),
         supplierApi.list().catch(() => []),
-        employees.list().catch(() => []),
+        employees.lookup().catch(() => []),
         masterData.warehouses().catch(() => []),
         inventoryReceipts.list().catch(() => []),
         supplierApi.groups().catch(() => []),
@@ -236,6 +237,9 @@ export default function NhapKhoPage() {
   };
 
   const saveReceipt = async () => {
+    if (!can('COST')) { showToast('Cần quyền Giá nhập / Giá vốn để thao tác phiếu nhập.'); return false; }
+    if (!can('INVENTORY', currentReceiptId ? 4 : 2)) { showToast('Bạn chưa có quyền lưu phiếu nhập kho.'); return false; }
+    if (Number(paymentAmount || 0) !== recordedPayment && !can('PAYMENTS',4)) { showToast('Bạn chưa có quyền thanh toán.'); return false; }
     if (savingReceipt) return false;
     const payment = Number(paymentAmount || 0);
     if (!Number.isFinite(payment) || payment < 0 || Math.abs(payment*100-Math.round(payment*100))>1e-6) {
@@ -360,7 +364,8 @@ export default function NhapKhoPage() {
   const searchReceipt = async () => {
     const keyword = window.prompt('Nhập số phiếu cần tìm:');
     if (!keyword?.trim()) return;
-    const found = receipts.find((item) => String(item.NAME || '').toLowerCase().includes(keyword.trim().toLowerCase()));
+    let matches;try{matches=await inventoryReceipts.list({q:keyword.trim()});}catch(error){showToast(error.response?.data?.error||error.message);return;}
+    const found=matches[0];
     if (!found) {
       showToast('Không tìm thấy phiếu nhập kho.');
       return;
@@ -369,6 +374,7 @@ export default function NhapKhoPage() {
   };
 
   const cancelReceipt = async () => {
+    if (!can('INVENTORY',8)) return showToast('Bạn chưa có quyền hủy phiếu nhập kho.');
     if (!currentReceiptId) {
       prepareNewReceipt();
       return;
@@ -453,6 +459,7 @@ export default function NhapKhoPage() {
   };
 
   const openAddPartForm = async () => {
+    if (!can('CATALOG',2)) return showToast('Bạn chưa có quyền thêm phụ tùng.');
     setPartForm({ ...EMPTY_PART_FORM });
     setPartFormError('');
     setShowAddPartModal(true);
@@ -495,6 +502,7 @@ export default function NhapKhoPage() {
         TONTOITHIEU: Number(partForm.TONTOITHIEU || 0),
         TONTOIDA: Number(partForm.TONTOIDA || 0),
       };
+      if (!can('COST')) delete payload.GIANHAP;
       const result = await parts.create(payload);
       const rows = await parts.list();
       const mapped = (Array.isArray(rows) ? rows : []).map(mapCatalogItem);
@@ -518,6 +526,7 @@ export default function NhapKhoPage() {
   };
 
   const openAddPartOption = (type) => {
+    if (!can('CATALOG',2)) return showToast('Bạn chưa có quyền thêm danh mục.');
     setPartOptionType(type);
     setNewPartOptionName('');
   };

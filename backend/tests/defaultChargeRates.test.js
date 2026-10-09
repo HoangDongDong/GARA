@@ -19,7 +19,7 @@ test('migration adds both defaults once and preserves previously saved values', 
     async (sql, params) => sql.includes('FROM SCONFIGGROUP') ? groups : rows.filter(row => row.NAME === params[0]),
     async (sql, params) => {
       if (sql.includes('INSERT INTO SCONFIGGROUP')) groups.push({ ID: params[0] });
-      else rows.push({ ID: params[0], NAME: params[1], value: params[3] });
+      else if (sql.includes('INSERT INTO SCONFIG')) rows.push({ ID: params[0], NAME: params[1], value: params[3] });
     },
     () => String(groups.length + rows.length + 1),
   ) };

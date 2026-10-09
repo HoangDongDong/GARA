@@ -1,3 +1,4 @@
+import { compressImage, imagePolicies } from '../utils/compressImage';
 import { useEffect, useRef, useState } from 'react';
 import { Settings, Folder, Save, RefreshCw, Search, Printer, Loader2 } from 'lucide-react';
 import PrintTemplatesPanel from '../components/PrintTemplatesPanel';
@@ -5,6 +6,7 @@ import DocumentNumberControl from '../components/DocumentNumberControl';
 import api from '../api';
 import { compressCompanyLogo } from '../utils/compressCompanyLogo';
 import './CauHinhPage.css';
+import { interfaceScaleId, readInterfaceScale, saveInterfaceScale } from '../components/GlobalInterfaceScale';
 
 const fields = { 1: 'TEXTVALUE', 2: 'DATETIMEVALUE', 3: 'INTVALUE', 4: 'DECIMALVALUE', 5: 'BLOBVALUE' };
 const messageOf = error => error.response?.data?.error || error.message;
@@ -42,6 +44,11 @@ export default function CauHinhPage() {
     setLoadError('');
     try {
       const { data } = await api.get('/system-config/grouped');
+      data.data.push({ groupId: 'interface', groupName: 'Giao diện', items: [{
+        ID: interfaceScaleId, NAME: 'InterfaceScale', CAPTION: 'Cỡ chữ và giao diện toàn hệ thống (%)',
+        DATATYPE: 3, CONTROLTYPE: 3, INTVALUE: readInterfaceScale(),
+        MOREDETAIL: 'Áp dụng cho tất cả trang, cửa sổ và màn hình phụ. Tăng cả chữ, nút và ô nhập để dễ đọc. Lưu trên trình duyệt đang dùng; cỡ chữ bản in giữ theo mẫu in.'
+      }] });
       const map = Object.fromEntries(data.data.flatMap(group => group.items.map(item => [item.ID, item[fields[Number(item.DATATYPE || 1)]] ?? ''])));
       setGroups(data.data);
       setConvention(data.controlConvention);
@@ -61,9 +68,16 @@ export default function CauHinhPage() {
     return () => { clearTimeout(noticeTimer.current); window.removeEventListener('keydown', focusSearch); };
   }, []);
   const save = async () => {
+    const scale = Number(values[interfaceScaleId]);
+    if (changed.includes(interfaceScaleId) && (!Number.isInteger(scale) || scale < 50 || scale > 200)) {
+      showToast('Nhập cỡ chữ và giao diện từ 50% đến 200%.', 'err');
+      return;
+    }
     setSaving(true);
     try {
-      await api.put('/system-config/bulk', changed.map(id => ({ id, value: values[id] })));
+      const databaseChanges = changed.filter(id => id !== interfaceScaleId);
+      if (databaseChanges.length) await api.put('/system-config/bulk', databaseChanges.map(id => ({ id, value: values[id] })));
+      if (changed.includes(interfaceScaleId)) saveInterfaceScale(values[interfaceScaleId]);
       setOriginal({ ...values });
       window.dispatchEvent(new Event('garage-charge-rates-changed'));
       const reloaded = await load();
@@ -106,11 +120,8 @@ export default function CauHinhPage() {
       finally { setCompressingLogo(false); }
       return;
     }
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { showToast('Chọn ảnh PNG, JPG, WEBP hoặc GIF tối đa 5 MB.', 'err'); return; }
-    const reader = new FileReader();
-    reader.onload = () => change(item.ID, String(reader.result).split(',')[1]);
-    reader.onerror = () => showToast('Không thể đọc ảnh đã chọn.', 'err');
-    reader.readAsDataURL(file);
+    setCompressingLogo(true);
+    try{const result=await compressImage(file,imagePolicies.configuration);change(item.ID,result.base64);}catch(error){showToast(messageOf(error),'err');}finally{setCompressingLogo(false);}
   };
   const isCheckbox = item => Number(item.CONTROLTYPE) === (convention === 'garage' ? 7 : 9);
   const renderControl = item => {
@@ -119,6 +130,11 @@ export default function CauHinhPage() {
     const value = values[item.ID] ?? '';
     const isPaymentAccount = item.NAME === 'PaymentBankAccountId';
     const props = { id: `config-${item.ID}`, disabled: busy, value, onChange: event => change(item.ID, event.target.value) };
+    if (item.ID === interfaceScaleId) return <div className="config-interface-scale">
+      <input {...props} type="number" min="50" max="200" step="10" onFocus={event => event.target.select()} />
+      <div>{[100, 125, 150, 175, 200].map(percent => <button type="button" key={percent} disabled={busy}
+        aria-pressed={Number(value) === percent} onClick={() => change(item.ID, percent)}>{percent}%</button>)}</div>
+    </div>;
     if (item.NAME.startsWith('SoPhieu')) return <DocumentNumberControl {...props}/>;
     const options = String(item.OTHERCONFIG || '').split(/\r?\n/).map(option => option.trim()).filter(Boolean);
     if (isCheckbox(item)) return <label className="config-checkbox"><input type="checkbox" disabled={busy} checked={[1, 30].includes(Number(value))} onChange={event => change(item.ID, event.target.checked ? 30 : 0)} /><span>{item.CAPTION || item.NAME}</span></label>;

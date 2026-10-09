@@ -70,7 +70,7 @@ export default function PartFormModal({ partForm, setPartForm, savingPart: savin
                         {displayImage ? 'Đổi ảnh' : 'Chọn ảnh'}
                         <input type="file" accept="image/jpeg,image/png,image/webp" disabled={savingPart} onChange={handlePartImageChange} style={{ display: 'none' }} />
                       </label>
-                      <span style={{ color: '#64748B', fontWeight: 400 }}>JPG, PNG hoặc WebP · tối đa 3 MB</span>
+                      <span style={{ color: '#64748B', fontWeight: 400 }}>JPG, PNG hoặc WebP · tự nén ≤ 300 KB, tối đa 1200 px</span>
                       <span style={{ color: '#64748B', fontWeight: 400 }}>Tự động tách nền và lưu ảnh nền trắng.</span>
                       {imageProgress && <span role="status" aria-live="polite" style={{ color: '#E65100', fontWeight: 500 }}>{imageProgress}</span>}
                       {imageError && <span role="alert" style={{ color: '#C62828', fontWeight: 500 }}>{imageError}</span>}

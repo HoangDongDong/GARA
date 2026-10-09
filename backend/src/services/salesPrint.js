@@ -29,11 +29,15 @@ const COMPANY_KEY_MAP = {
   CompanyPhone: 'CompanyPhone',
 };
 
-let _companyCache = null;
-let _companyCacheAt = 0;
+const companyCaches = new Map();
 
 async function company() {
   const now = Date.now();
+  const tenancy = require('../tenancy'), key = tenancy.key();
+  for (const [id, entry] of companyCaches) if (now - entry.time > 60000) companyCaches.delete(id);
+  const cached = companyCaches.get(key);
+  let _companyCache = cached?.value || null;
+  const _companyCacheAt = cached?.time || 0;
   if (_companyCache && now - _companyCacheAt < 60000) return _companyCache;
   try {
     const rows = await db.query(
@@ -41,21 +45,22 @@ async function company() {
     );
     const map = Object.fromEntries(rows.map((r) => [r.NAME, r.TEXTVALUE || '']));
     _companyCache = {
-      CompanyName:    map.CompanyName    || process.env.COMPANY_NAME    || 'CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM',
-      CompanyAddress: map.CompanyAddress || process.env.COMPANY_ADDRESS || '925/15 Âu Cơ - P. Tân Sơn Nhì - TP.HCM',
-      CompanyPhone:   map.CompanyPhone   || process.env.COMPANY_PHONE   || '0917 66 4444 - 0967 04 1111',
+      CompanyName:    map.CompanyName    || (tenancy.current() ? tenancy.current().name || 'Cửa hàng' : process.env.COMPANY_NAME || 'CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM'),
+      CompanyAddress: map.CompanyAddress || (tenancy.current() ? '' : process.env.COMPANY_ADDRESS || '925/15 Âu Cơ - P. Tân Sơn Nhì - TP.HCM'),
+      CompanyPhone:   map.CompanyPhone   || (tenancy.current() ? '' : process.env.COMPANY_PHONE || '0917 66 4444 - 0967 04 1111'),
       LoiCamOn:       map.LoiCamOn       || process.env.INVOICE_THANKS  || 'Cảm ơn quý khách và hẹn gặp lại!',
     };
-    _companyCacheAt = now;
-  } catch {
+  } catch (error) {
+    if (tenancy.current() || tenancy.enabled()) throw error;
     _companyCache = {
       CompanyName:    process.env.COMPANY_NAME    || 'CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM',
       CompanyAddress: process.env.COMPANY_ADDRESS || '925/15 Âu Cơ - P. Tân Sơn Nhì - TP.HCM',
       CompanyPhone:   process.env.COMPANY_PHONE   || '0917 66 4444 - 0967 04 1111',
       LoiCamOn:       process.env.INVOICE_THANKS  || 'Cảm ơn quý khách và hẹn gặp lại!',
     };
-    _companyCacheAt = now;
   }
+  if (companyCaches.size >= 100) companyCaches.delete(companyCaches.keys().next().value);
+  companyCaches.set(key,{value:_companyCache,time:now});
   return _companyCache;
 }
 
@@ -178,9 +183,9 @@ function runRenderer(templatePath, dataPath, outputPath) {
   });
 }
 
-async function renderSalesInvoice(orderId, { templateId, user } = {}) {
+async function renderSalesInvoice(orderId, { templateId, user, accessUser } = {}) {
   const printing = require('./documentPrint');
-  const result = await printing.render(printing.typeByKey('MauHoaDonBanHang'),orderId,{templateId},user);
+  const result = await printing.render(printing.typeByKey('MauHoaDonBanHang'),orderId,{templateId},user,accessUser);
   return { pdf: result.pdf, template: { id: result.template.ID, name: result.template.NAME }, orderName: result.name };
 }
 

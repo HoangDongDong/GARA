@@ -27,22 +27,7 @@ function parsePartImage(value) {
  */
 
 // Lay ton kho tu DNHAPKHOCHITIET (nhap) - DXUATPHUTUNG + TDONHANGCHITIET (xuat)
-const TONKHO_SQL = `
-  SELECT T.DMATHANGID,
-         COALESCE(SUM(CASE WHEN T.LOAI IN (0,1) THEN T.SOLUONG ELSE 0 END), 0) AS SL_NHAP,
-         COALESCE(SUM(CASE WHEN T.LOAI IN (2,3) THEN T.SOLUONG ELSE 0 END), 0) AS SL_XUAT
-    FROM (
-      SELECT NCT.DMATHANGID, NCT.SOLUONG, 1 AS LOAI
-        FROM TNHAPKHOCHITIET NCT
-       WHERE NCT.STATUS = 1
-      UNION ALL
-      SELECT XP.DMATHANGID, XP.SOLUONG, 3 AS LOAI
-        FROM TXUATPHUTUNG XP
-      UNION ALL
-      SELECT DHCT.DMATHANGID, DHCT.SLXUAT AS SOLUONG, 3 AS LOAI
-        FROM TDONHANGCHITIET DHCT
-    ) T
-   GROUP BY T.DMATHANGID`;
+const TONKHO_SQL = `SELECT S.DMATHANGID, SUM(CASE WHEN S.QUANTITY>0 THEN S.QUANTITY ELSE 0 END) AS SL_NHAP, -SUM(CASE WHEN S.QUANTITY<0 THEN S.QUANTITY ELSE 0 END) AS SL_XUAT FROM (${require('../services/stock').movements}) S GROUP BY S.DMATHANGID`;
 
 // GET /api/parts
 router.get('/', async (req, res) => {
@@ -171,7 +156,7 @@ router.put('/:id', async (req, res) => {
     const commissionUpdateSql = 'HHKIEU' in req.body ? ', HHKIEU=?, HHGIATRI=?' : '';
     await db.execute(
       `UPDATE DMATHANG
-          SET NAME=?, CODE=?, BARCODE=?, MAOEM=?, GIANHAP=?, GIABAN=?,
+          SET NAME=?, CODE=?, BARCODE=?, MAOEM=?, GIANHAP=COALESCE(?,GIANHAP), GIABAN=?,
               GIABAN2=?, GIABAN3=?, DHANGSANXUATID=?, DVITRIKHOID=?,
               DNHOMMATHANGID=?, DDONVITINHID=?, BAOHANH=?,
               TONTOITHIEU=?, TONTOIDA=?, MASANCO=?${imageUpdateSql}${taxUpdateSql}${commissionUpdateSql},
@@ -179,14 +164,14 @@ router.put('/:id', async (req, res) => {
         WHERE ID=?`,
       [
         NAME, CODE, BARCODE, MAOEM,
-        GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
+        GIANHAP === undefined ? null : GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
         DHANGSANXUATID || null, DVITRIKHOID || null,
         DNHOMMATHANGID || null, DDONVITINHID || null,
         BAOHANH, TONTOITHIEU || 0, TONTOIDA || 0, MASANCO,
         ...(ANH === undefined ? [] : [partImage ? Buffer.from(partImage.dataUrl, 'utf8') : null]),
         ...('THUESUATRIENG' in req.body ? [req.body.THUESUATRIENG] : []),
         ...('HHKIEU' in req.body ? [req.body.HHKIEU, req.body.HHGIATRI] : []),
-        'SYSTEM', req.params.id,
+        req.accessUser?.ID || 'SYSTEM', req.params.id,
       ]
     );
     res.json({ ok: true });
@@ -196,9 +181,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await db.execute(
-      `UPDATE DMATHANG SET STATUS=0, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
+      `UPDATE DMATHANG SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
        WHERE ID=?`,
-      [req.params.id]
+      [req.accessUser?.ID || 'SYSTEM',req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(e.status || 500).json({ error: e.message }); }

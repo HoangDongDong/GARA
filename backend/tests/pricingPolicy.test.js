@@ -101,9 +101,9 @@ test('VAT visibility retains numeric amounts while display cells use formatted t
   assert.equal(parameters.TaxGroupAmountText1,'110,000');
 });
 
-test('document overrides require the existing edit permission', () => {
+test('document overrides require the dedicated pricing permission', () => {
   const req={body:{items:[{TILETHUE:0}]},accessUser:{ISADMIN:0,permissions:{SALES:3}}};
   assert.throws(()=>policy.assertOverride(req,'SALES'),error=>error.status===403);
-  req.accessUser.permissions.SALES=7;policy.assertOverride(req,'SALES');
-  req.accessUser.permissions.SALES=3;req.body={items:[{TILETHUE:null}],TILEGIAMGIA:null};policy.assertOverride(req,'SALES');
+  req.accessUser.permissions.PRICING=4;policy.assertOverride(req,'SALES');
+  req.accessUser.permissions.PRICING=0;req.body={items:[{TILETHUE:null}],TILEGIAMGIA:null};policy.assertOverride(req,'SALES');
 });

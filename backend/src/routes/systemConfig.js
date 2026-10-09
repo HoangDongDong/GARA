@@ -52,14 +52,14 @@ router.get('/', async (req, res) => {
 // GET /api/system-config/db-info  — thông tin kết nối DB thực (không expose mật khẩu)
 router.get('/db-info', async (req, res) => {
   try {
-    const fb = config.firebird;
+    const fb = { ...config.firebird, database: require('../tenancy').database() };
     const pingOk = await db.ping().then(() => true).catch(() => false);
     res.json({
       dbType: 'Firebird 2.5',
-      host: fb.host || '127.0.0.1',
-      port: fb.port || 3050,
-      database: fb.database || '',
-      user: fb.user || 'SYSDBA',
+      host: require('../tenancy').enabled() ? undefined : fb.host || '127.0.0.1',
+      port: require('../tenancy').enabled() ? undefined : fb.port || 3050,
+      database: require('../tenancy').enabled() ? require('../tenancy').current().code : fb.database || '',
+      user: require('../tenancy').enabled() ? undefined : fb.user || 'SYSDBA',
       connected: pingOk,
     });
   } catch (e) {

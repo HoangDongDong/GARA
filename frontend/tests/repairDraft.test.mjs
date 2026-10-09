@@ -18,6 +18,11 @@ const draft = {
   images: [{ name: 'xe.jpg', data: 'data:image/jpeg;base64,test' }],
   items: [{ id: 'PT-1', quantity: 2, price: 150000, note: 'Dầu máy', TILETHUE: 8, TILEGIAMGIA: 12 }],
 };
+test('same user and vehicle IDs in different stores cannot read each others drafts',()=>{
+  const store=storage();store.setItem('garage_user',JSON.stringify({ID:'owner',TENANT:{id:'a'}}));saveRepairDraft(store,draft);
+  store.setItem('garage_user',JSON.stringify({ID:'owner',TENANT:{id:'b'}}));assert.equal(readRepairDraft(store,draft.vehicleId,draft.customerId),null);assert.equal(lastDraftVehicle(store),'');
+  store.setItem('garage_user',JSON.stringify({ID:'owner',TENANT:{id:'a'}}));assert.ok(readRepairDraft(store,draft.vehicleId,draft.customerId));
+});
 
 test('saved draft survives a new read and restores all editable data after reload', () => {
   const store = storage();

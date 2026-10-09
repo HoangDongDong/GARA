@@ -1,3 +1,5 @@
+import { compressImage, imagePolicies } from '../utils/compressImage';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, UserPlus, X } from 'lucide-react';
@@ -40,11 +42,10 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
   const choosePhoto = async event => {
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file) return;
-    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 3 * 1024 * 1024) return setError('Chọn ảnh JPG, PNG hoặc WebP, tối đa 3 MB.');
     const version = ++photoReadVersion.current;
     setReadingPhoto(true); setError('');
     try {
-      const result = await new Promise((resolve,reject) => {const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Không đọc được ảnh.')); reader.readAsDataURL(file);});
+      const result = (await compressImage(file,imagePolicies.employee)).data;
       // Decode locally before saving so malformed files cannot replace a working photo.
       await new Promise((resolve,reject) => {const image = new Image(); image.onload = resolve; image.onerror = () => reject(new Error('Ảnh không hợp lệ hoặc không mở được.')); image.src = result;});
       if (version === photoReadVersion.current) setPhoto(result);
@@ -58,6 +59,7 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
     pending.current = true; setSaving(true); setError('');
     try {
       const payload = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, ['LOAINHANVIEN','CACHTINHLUONG','LUONGTHANG','LUONGCA'].includes(key) ? Number(value || 0) : String(value || '').trim()]));
+      if (!can('PAYROLL',4)) for (const key of ['LUONGCA','LUONGTHANG','CACHTINHLUONG']) delete payload[key];
       if (photo !== undefined) payload.PHOTO = photo;
       const result = editingEmployee ? await employees.update(editingEmployee.ID, payload) : await employees.create(payload);
       const rows = await employees.list();
@@ -86,18 +88,18 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
       <form className="employee-form-card" onSubmit={submit} role="dialog" aria-modal="true" aria-label={editingEmployee ? 'Sửa hồ sơ nhân viên' : 'Thêm hồ sơ nhân viên'}>
         <header><b><UserPlus size={18}/> {editingEmployee ? 'Sửa hồ sơ nhân viên' : 'Thêm nhân viên'}</b><button type="button" disabled={saving} onClick={onClose} aria-label="Đóng"><X size={20}/></button></header>
         <div className="employee-form-body">
-          <div className="employee-photo-editor"><EmployeePhoto employee={editingEmployee} src={photo === null ? '' : photo}/><div><b>Ảnh nhân viên</b><p>JPG, PNG hoặc WebP · tối đa 3 MB</p><input ref={photoInput} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={choosePhoto}/><div><button type="button" disabled={saving || readingPhoto} onClick={() => photoInput.current?.click()}>{readingPhoto ? 'Đang đọc ảnh…' : 'Chọn ảnh'}</button>{(photo || (photo === undefined && Number(editingEmployee?.CO_ANHNV) === 1)) && <button type="button" disabled={saving || readingPhoto} onClick={() => setPhoto(null)}>Bỏ ảnh</button>}</div></div></div>
+          <div className="employee-photo-editor"><EmployeePhoto employee={editingEmployee} src={photo === null ? '' : photo}/><div><b>Ảnh nhân viên</b><p>JPG, PNG hoặc WebP · tự nén ≤ 200 KB, tối đa 800 px</p><input ref={photoInput} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={choosePhoto}/><div><button type="button" disabled={saving || readingPhoto} onClick={() => photoInput.current?.click()}>{readingPhoto ? 'Đang đọc ảnh…' : 'Chọn ảnh'}</button>{(photo || (photo === undefined && Number(editingEmployee?.CO_ANHNV) === 1)) && <button type="button" disabled={saving || readingPhoto} onClick={() => setPhoto(null)}>Bỏ ảnh</button>}</div></div></div>
           <h3>Thông tin nhân viên</h3><div className="employee-form-grid">
             {field('NAME', 'Họ và tên', { required: true, full: true })}{field('CODE', 'Mã nhân viên', { placeholder: 'Để trống để tự tạo mã' })}
             <label><span>Vai trò công việc</span><select value={form.LOAINHANVIEN} disabled={saving} onChange={event => update('LOAINHANVIEN', event.target.value)}>{roles.map((role, index) => <option key={role} value={index}>{role}</option>)}</select></label>
             <label className="employee-form-full"><span>Phòng ban</span><div className="employee-form-select-add"><select disabled={saving} value={form.DPHONGBANID} onChange={event => update('DPHONGBANID', event.target.value)}><option value="">Chưa phân phòng ban</option>{departments.filter(row => Number(row.STATUS) === 1 || row.ID === form.DPHONGBANID).map(row => <option key={row.ID} value={row.ID}>{row.NAME}{Number(row.STATUS) !== 1 ? ' (ngừng sử dụng)' : ''}</option>)}</select><button type="button" disabled={saving} onClick={() => { setDepartmentError(''); setDepartmentForm({ NAME: '', CODE: '', NOTE: '' }); }}><Plus size={14}/> Thêm</button></div></label>
             {field('DIENTHOAI', 'Số điện thoại')}{field('EMAIL', 'Email', { type: 'email' })}{field('DIACHI', 'Địa chỉ', { full: true })}{field('CHUYENMON', 'Chuyên môn', { placeholder: 'Máy, điện, gầm, đồng sơn…', full: true })}{field('CHUNGCHI', 'Chứng chỉ', { full: true })}
           </div>
-          <h3>Lương cơ bản</h3><div className="employee-form-grid">
-            <label><span>Cách tính lương</span><select value={form.CACHTINHLUONG} disabled={saving} onChange={event => update('CACHTINHLUONG', event.target.value)}><option value="0">Theo tháng</option><option value="1">Theo ca</option></select></label>
-            <label><span>{Number(form.CACHTINHLUONG) === 1 ? 'Lương mỗi ca (đ)' : 'Lương cơ bản mỗi tháng (đ)'}</span><input type="number" min="0" max="1000000000" step="0.01" disabled={saving} value={Number(form.CACHTINHLUONG) === 1 ? form.LUONGCA : form.LUONGTHANG} onChange={event => update(Number(form.CACHTINHLUONG) === 1 ? 'LUONGCA' : 'LUONGTHANG', event.target.value)}/></label>
+          {can('PAYROLL') && <><h3>Lương cơ bản</h3><div className="employee-form-grid">
+            <label><span>Cách tính lương</span><select value={form.CACHTINHLUONG} disabled={saving || !can('PAYROLL',4)} onChange={event => update('CACHTINHLUONG', event.target.value)}><option value="0">Theo tháng</option><option value="1">Theo ca</option></select></label>
+            <label><span>{Number(form.CACHTINHLUONG) === 1 ? 'Lương mỗi ca (đ)' : 'Lương cơ bản mỗi tháng (đ)'}</span><input type="number" min="0" max="1000000000" step="0.01" disabled={saving || !can('PAYROLL',4)} value={Number(form.CACHTINHLUONG) === 1 ? form.LUONGCA : form.LUONGTHANG} onChange={event => update(Number(form.CACHTINHLUONG) === 1 ? 'LUONGCA' : 'LUONGTHANG', event.target.value)}/></label>
           </div>
-          <p className="employee-form-note">Hoa hồng được cấu hình theo dịch vụ / phụ tùng và chia khi xác nhận sửa chữa. Tài khoản, nhóm quyền được quản lý tại Quản trị - Phân quyền.</p>
+          </>}<p className="employee-form-note">Hoa hồng được cấu hình theo dịch vụ / phụ tùng và chia khi xác nhận sửa chữa. Tài khoản, nhóm quyền được quản lý tại Quản trị - Phân quyền.</p>
           <label><span>Ghi chú</span><textarea rows={2} maxLength={255} disabled={saving} value={form.NOTE} onChange={event => update('NOTE', event.target.value)}/></label>
           {error && <p className="employee-form-error" role="alert">{error}</p>}
         </div>

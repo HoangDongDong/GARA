@@ -2,7 +2,7 @@ const test=require('node:test');const assert=require('node:assert/strict');const
 const id='190263eb-bc79-4ad2-9cee-ecd5d0470426';
 async function mockQuery(query,fn){const original=db.query;db.query=query;try{return await fn();}finally{db.query=original;}}
 test('19 document types require view and print within the same business permission',()=>{
- assert.equal(p.types.length,19);for(const t of p.types){assert.ok(t.codes.length);for(const bit of [0,1,16])assert.equal(p.permitted({permissions:{[t.codes[0]]:bit}},t),false);assert.equal(p.permitted({permissions:{[t.codes[0]]:17}},t),true);assert.equal(p.permitted({ISADMIN:1},t),true);}assert.throws(()=>p.typeByKey('TDONHANG; DELETE'),/không hợp lệ/);
+ assert.equal(p.types.length,19);for(const t of p.types){assert.ok(t.codes.length);for(const bit of [0,1,16])assert.equal(p.permitted({permissions:{[t.codes[0]]:bit}},t),false);assert.equal(p.permitted({permissions:{[t.codes[0]]:17,EMPLOYEES:1,COST:1}},t),true);assert.equal(p.permitted({ISADMIN:1},t),true);}assert.throws(()=>p.typeByKey('TDONHANG; DELETE'),/không hợp lệ/);
 });
 test('date range rejects impossible dates and reversed ranges',()=>{
  assert.throws(()=>p.range('2026-02-30','2026-03-01'));assert.throws(()=>p.range('2026-03-03','2026-03-01'));assert.deepEqual(p.range('2024-02-29','2024-03-01'),['2024-02-29','2024-03-01']);
@@ -52,8 +52,10 @@ test('legacy quote aliases use saved customer contact and company fax, while the
   assert.doesNotThrow(()=>p.validateBindings(require('../src/services/quoteReceipt54').template(),d));
  });
 });
-test('customer debt uses saved balance before incomplete payment fields',async()=>{
+test('customer debt uses the shared ledger after settlement',async()=>{
+ const service=require('../src/services/debtPrint'),original=service.load;service.load=async()=>({rows:[{ItemName:'Balance',Amount:150000}],total:150000});try{
  await mockQuery(async sql=>sql.includes('FROM DKHACHHANG WHERE')?[{ID:id,STATUS:1,NAME:'Khách kiểm thử'}]:sql.includes('FROM TDONHANG WHERE')?[{NAME:'SALE',TONGCONG:1000000,TIENTHANHTOAN:0,CONLAI:0,DATHANHTOAN:1}]:sql.includes('FROM THOADONSUACHUA WHERE')?[{NAME:'REPAIR',TONGCONG:500000,CONLAI:150000}]:[],async()=>{const d=await p.payload(p.typeByKey('MauCongNoKhachHang'),id,{},'test');assert.equal(d.parameters.TONGCONG,150000);});
+ }finally{service.load=original;}
 });
 test('incompatible imported template bindings fail instead of printing fabricated zeros',()=>{
  const data={parameters:{DocTitle:'GARA'},tables:{Table0:[{ItemName:'Phụ tùng'}]}};

@@ -22,12 +22,12 @@ async function save(items, discount = 0, rates = { taxRate: 0, serviceRate: 0 },
       { NAME: 'MacDinhGiamGia', DECIMALVALUE: rates.defaultDiscount || 0 },
       { NAME: 'LamTronTien', INTVALUE: rates.roundingStep || 0 },
     ] : [{ ID: params[0], NAME: params[0], GIABAN: 2200000, GIANHAP: 1000000, TON_KHO: 20 }],
-    async (sql, params) => { inserts.push({ sql, params }); },
+    async (sql, params) => { if(!sql.startsWith('UPDATE DMATHANG SET ID=ID')) inserts.push({ sql, params }); },
     () => 'test-id',
   );
   numbers.nextInTransaction = async () => 'BH-TEST';
   try {
-    await createSale({ body: { items, TILEGIAMGIA: discount, ...input }, get: () => 'test-user' }, {
+    await createSale({ accessUser:{ISADMIN:1}, body: { items, TILEGIAMGIA: discount, ...input }, get: () => 'test-user' }, {
       status(code) { status = code; return this; },
       json(value) { body = value; },
     });

@@ -1,4 +1,5 @@
-const MAX_BYTES = 3 * 1024 * 1024;
+import { compressImage, imagePolicies } from './compressImage';
+const MAX_BYTES = 20 * 1024 * 1024;
 let worker;
 let sequence = 0;
 const jobs = new Map();
@@ -22,16 +23,19 @@ function getWorker() {
   worker.onmessageerror = () => stopWorker(new Error('Không nhận được ảnh sau xử lý.'));
   return worker;
 }
-export function preparePartImage(file, onProgress = () => {}) {
+export async function preparePartImage(file, onProgress = () => {}) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !file.size || file.size > MAX_BYTES) {
-    return Promise.reject(new Error('Chọn ảnh JPG, PNG hoặc WebP, tối đa 3 MB.'));
+    return Promise.reject(new Error('Chọn ảnh JPG, PNG hoặc WebP, tối đa 20 MB.'));
   }
   if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') {
     return Promise.reject(new Error('Trình duyệt chưa hỗ trợ xử lý ảnh nền. Vui lòng dùng Chrome hoặc Edge mới.'));
   }
+  onProgress('Đang giảm kích thước ảnh…');
+  const prepared=await compressImage(file,imagePolicies.part);
+  file=prepared.blob;
   const id = ++sequence;
   onProgress('Đang tách nền ảnh mặt hàng…');
-  return new Promise((resolve, reject) => {
+  const value=await new Promise((resolve, reject) => {
     try {
       const activeWorker = getWorker();
       const timeout = setTimeout(() => stopWorker(new Error('Xử lý ảnh quá lâu. Vui lòng thử lại.')), 180000);
@@ -41,4 +45,5 @@ export function preparePartImage(file, onProgress = () => {}) {
       const job = jobs.get(id); clearTimeout(job?.timeout); jobs.delete(id); reject(error);
     }
   });
+  return (await compressImage(value,imagePolicies.part)).data;
 }

@@ -82,9 +82,9 @@ router.patch('/tiep-nhan/:id/status', async (req, res) => {
   try {
     const { TRANGTHAI } = req.body;
     await db.execute(
-      `UPDATE TTIEPNHANXE SET TRANGTHAI=?, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
+      `UPDATE TTIEPNHANXE SET TRANGTHAI=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
        WHERE ID=?`,
-      [TRANGTHAI, req.params.id]
+      [TRANGTHAI,req.accessUser.ID,req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -92,7 +92,14 @@ router.patch('/tiep-nhan/:id/status', async (req, res) => {
 
 // ===== TLENHSUACHUA =====
 router.get('/:id/assignments', async (req, res) => {
-  try { res.json({ data: await require('../services/repairCommissions').preview(db.query, req.params.id) }); }
+  try {
+    const data = await require('../services/repairCommissions').preview(db.query, req.params.id);
+    if (!require('../permissionPolicy').has(req.accessUser, 'COMMISSIONS')) {
+      data.total = null;
+      data.details = [];
+    }
+    res.json({ data });
+  }
   catch (error) { res.status(error.statusCode || 500).json({ error: error.message }); }
 });
 router.get('/', async (req, res) => {
@@ -184,7 +191,9 @@ router.post('/', async (req, res) => {
       const ma = await require('../services/documentNumbers').nextInTransaction('LenhSuaChua',query,execute);
       let tongCong = 0;
       let tongPT = 0;
-      const rates = charges.resolveForRepairs(req.body, await charges.loadForRepairs(query));
+      const defaults = await charges.loadForRepairs(query);
+      policy.assertRates(req, defaults);
+      const rates = charges.resolveForRepairs(req.body, defaults);
       const discountPolicy = policy.discountPolicy(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA);
       const normalized = [];
       for (const it of items) {
@@ -195,6 +204,7 @@ router.post('/', async (req, res) => {
         if (Number(it.LOAI || 0) === 0) tongPT += amount;
         else tongCong += amount;
         const product = await policy.item(query, it.LOAI, Number(it.LOAI || 0) === 0 ? it.DMATHANGID : it.DDICHVUID);
+        if (price !== Number(product.UNITPRICE || 0)) require('../permissionPolicy').assert(req.accessUser, 'PRICING', 4);
         normalized.push({ ...it, quantity, price, amount, discountRate: policy.rate(it.TILEGIAMGIA), ...policy.taxPolicy(product, rates, it.TILETHUE) });
       }
       const billReduction = policy.billDiscount(normalized, discountPolicy.discountRate, req.body.TIENGIAMGIAPHIEU);
@@ -251,7 +261,7 @@ router.post('/', async (req, res) => {
       }
 
       // Luu xong tiep nhan va bao gia: cho khach hang xac nhan sua chua.
-      const quoteCompletedState = 1;
+      const quoteCompletedState = require('../permissionPolicy').has(req.accessUser, 'APPROVE_QUOTE', 4) ? 1 : 0;
       if (activeFlow) {
         await execute(
           `UPDATE TTRANGTHAIXE
@@ -299,9 +309,9 @@ router.patch('/:id/status', async (req, res) => {
   try {
     const { TRANGTHAI } = req.body;
     await db.execute(
-      `UPDATE TLENHSUACHUA SET TRANGTHAI=?, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
+      `UPDATE TLENHSUACHUA SET TRANGTHAI=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
        WHERE ID=?`,
-      [TRANGTHAI, req.params.id]
+      [TRANGTHAI,req.accessUser.ID,req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -309,13 +319,17 @@ router.patch('/:id/status', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await db.execute(
-      `UPDATE TLENHSUACHUA SET STATUS=0, USERMODIFIEDID='SYSTEM', TIMEMODIFIED=CURRENT_TIMESTAMP
-       WHERE ID=?`,
-      [req.params.id]
-    );
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    await db.transaction(async(query,execute)=>{
+      const [order]=await query('SELECT ID,TRANGTHAI FROM TLENHSUACHUA WHERE ID=? AND STATUS=1 WITH LOCK',[req.params.id]);
+      if(!order)throw Object.assign(new Error('Không tìm thấy lệnh sửa chữa.'),{status:404});
+      if(Number(order.TRANGTHAI)!==0 || (await query('SELECT FIRST 1 ID FROM TXUATPHUTUNG WHERE TLENHSUACHUAID=? AND STATUS=1',[req.params.id])).length || (await query('SELECT FIRST 1 ID FROM THOADONSUACHUA WHERE TLENHSUACHUAID=? AND STATUS=1',[req.params.id])).length)throw Object.assign(new Error('Chỉ được hủy báo giá chưa bắt đầu sửa, chưa xuất hàng hoặc lập hóa đơn.'),{status:409});
+      const actor=req.accessUser.ID;
+      await execute('UPDATE TLENHSUACHUA SET STATUS=0,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?',[actor,req.params.id]);
+      await execute('UPDATE TLENHSUACHUACHITIET SET STATUS=0,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE TLENHSUACHUAID=?',[actor,req.params.id]);
+      await execute('UPDATE TTRANGTHAIXE SET STATUS=0,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE TLENHSUACHUAID=?',[actor,req.params.id]);
+    });
+    res.json({ok:true});
+  }catch(e){res.status(e.status||500).json({error:e.message});}
 });
 
 module.exports = router;

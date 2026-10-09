@@ -1,3 +1,4 @@
+import { compressImage, imagePolicies } from '../utils/compressImage';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Car, FileText, ImageUp, ScanLine, Wrench, XCircle } from 'lucide-react';
 import { customers, masterData, vehicles } from '../services';
@@ -12,32 +13,10 @@ const fieldLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize:
 const fieldInput = { height: 34, border: '1px solid #CBD5E1', borderRadius: 5, padding: '0 10px', fontSize: 12, outlineColor: '#E65100' };
 const addButtonStyle = { height: 34, padding: '0 12px', border: 0, borderRadius: 5, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
-const prepareVehicleImage = (source, name = 'anh-ho-so-xe.jpg') => new Promise((resolve, reject) => {
-  if (source instanceof Blob && !source.type.startsWith('image/')) return reject(new Error('Tệp đã chọn không phải hình ảnh.'));
-  const objectUrl = source instanceof Blob ? URL.createObjectURL(source) : null;
-  const image = new Image();
-  image.onload = () => {
-    try {
-      const maxSide = 1600;
-      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-      const data = canvas.toDataURL('image/jpeg', 0.82);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      resolve({ name: name.replace(/\.[^.]+$/, '') + '.jpg', data });
-    } catch (error) {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      reject(error);
-    }
-  };
-  image.onerror = () => {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    reject(new Error('Không thể đọc ảnh đã chọn.'));
-  };
-  image.src = objectUrl || source;
-});
+const prepareVehicleImage = async (source, name = 'anh-ho-so-xe.jpg') => {
+ const result=await compressImage(source,imagePolicies.vehicle);
+ return {name:name.replace(/\.[^.]+$/, '')+'.jpg',data:result.data};
+};
 
 export default function VehicleProfileModal({ open, onClose, onCreated, onUpdated, notify = () => {}, editingVehicle = null }) {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -300,15 +279,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
   const scanVehicleImage = async (imageSource) => {
     setScanning(true); setScanProgress(10); setScanStatus('Đang gửi ảnh đến Google Gemini...'); setCameraError('');
     try {
-      let image = imageSource;
-      if (imageSource instanceof Blob) {
-        image = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error('Không thể đọc ảnh đã chọn.'));
-          reader.readAsDataURL(imageSource);
-        });
-      }
+      const image=(await compressImage(imageSource,imagePolicies.vehicle)).data;
       setScanProgress(45); setScanStatus('Gemini đang nhận diện thông tin xe...');
       const analysis = await vehicles.analyzeImage(image);
       if (analysis?.catalogCreated?.brand || analysis?.catalogCreated?.model) await reloadOptions();
@@ -352,10 +323,11 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     const image = canvas.toDataURL('image/jpeg', 0.92);
     stopCamera();
     try {
+      setScanning(true);
       const prepared = await prepareVehicleImage(image, 'anh-nhan-dien-xe.jpg');
       setVehicleImage(prepared);
       await scanVehicleImage(prepared.data);
-    } catch (error) { notify(error.message || 'Không thể xử lý ảnh chụp xe.'); }
+    } catch (error) { notify(error.message || 'Không thể xử lý ảnh chụp xe.'); } finally {setScanning(false);}
   };
 
   const chooseImage = async (event) => {
@@ -367,7 +339,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
       const prepared = await prepareVehicleImage(file, file.name);
       setVehicleImage(prepared);
       await scanVehicleImage(prepared.data);
-    } catch (error) { notify(error.message || 'Không thể xử lý ảnh xe.'); }
+    } catch (error) { notify(error.message || 'Không thể xử lý ảnh xe.'); } finally {setScanning(false);}
   };
 
   const chooseProfileImage = async (event) => {
@@ -380,7 +352,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
       await scanVehicleImage(prepared.data);
     } catch (error) {
       notify(error.message || 'Không thể xử lý ảnh xe.');
-    }
+    } finally {setScanning(false);}
   };
 
   return <>
@@ -427,7 +399,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
           </div>
           <label style={{...fieldLabel,marginTop:11}}>Ghi chú hồ sơ xe<textarea rows={3} value={form.GHICHU} onChange={(e)=>update('GHICHU',e.target.value)} style={{border:'1px solid #CBD5E1',borderRadius:5,padding:8,fontFamily:'inherit'}}/></label>
         </div>
-        <div style={{padding:'10px 16px',borderTop:'1px solid #E2E8F0',display:'flex',justifyContent:'flex-end',gap:8}}><button type="button" onClick={onClose}>Hủy</button><button type="submit" disabled={saving} style={{background:'#E65100',color:'#fff',border:0,borderRadius:5,padding:'0 18px',height:34,fontWeight:700}}>{saving ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Tạo hồ sơ xe')}</button></div>
+        <div style={{padding:'10px 16px',borderTop:'1px solid #E2E8F0',display:'flex',justifyContent:'flex-end',gap:8}}><button type="button" onClick={onClose}>Hủy</button><button type="submit" disabled={saving || scanning} style={{background:'#E65100',color:'#fff',border:0,borderRadius:5,padding:'0 18px',height:34,fontWeight:700}}>{saving ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Tạo hồ sơ xe')}</button></div>
       </form>
     </div>
     {cameraOpen && <div onMouseDown={(event)=>event.target===event.currentTarget&&stopCamera()} style={{position:'fixed',inset:0,zIndex:10040,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{width:'min(760px,97vw)',background:'#fff',borderRadius:9,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.45)'}}><div style={{background:'#E65100',color:'#fff',padding:'11px 14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}><b style={{display:'flex',alignItems:'center',gap:7}}><Camera size={18}/> QUÉT ĐẦU XE</b><button type="button" onClick={stopCamera} style={{border:0,background:'transparent',color:'#fff',display:'flex',cursor:'pointer'}}><XCircle size={20}/></button></div><div style={{padding:14}}><div style={{position:'relative',aspectRatio:'16/9',background:'#111827',borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>{cameraStream?<video ref={videoRef} playsInline muted style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<div style={{color:'#CBD5E1',textAlign:'center',padding:20}}><Camera size={38} style={{marginBottom:8}}/><div>{cameraError||'Đang mở camera...'}</div></div>}<div style={{position:'absolute',left:'25%',right:'25%',bottom:'15%',height:'22%',border:'2px solid #FB923C',borderRadius:7,boxShadow:'0 0 0 999px rgba(0,0,0,.12)',pointerEvents:'none'}}/></div><div style={{fontSize:11,color:'#64748B',marginTop:8}}>Đặt đầu xe trong khung, giữ rõ biển số và logo/tên xe. Hệ thống ưu tiên đối chiếu hồ sơ đã có theo biển số.</div>{cameraError&&<div style={{marginTop:8,color:'#C62828',fontSize:11}}>{cameraError}</div>}<div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:12,flexWrap:'wrap'}}><button type="button" onClick={()=>{stopCamera(); cameraInputRef.current?.click();}} style={{height:35,padding:'0 14px',border:'1px solid #E65100',color:'#E65100',borderRadius:5,background:'#FFF7ED',display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontWeight:600}}><Camera size={15}/> Mở máy ảnh</button><button type="button" onClick={()=>{stopCamera(); fileInputRef.current?.click();}} style={{height:35,padding:'0 14px',border:'1px solid #CBD5E1',borderRadius:5,background:'#fff',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}><ImageUp size={15}/> Chọn ảnh</button><button type="button" disabled={!cameraStream} onClick={captureAndScan} style={{height:35,padding:'0 16px',border:0,borderRadius:5,background:'#E65100',color:'#fff',fontWeight:700,display:'flex',alignItems:'center',gap:5,cursor:cameraStream?'pointer':'not-allowed',opacity:cameraStream?1:.55}}><Camera size={15}/> Chụp và nhận diện</button></div></div></div></div>}

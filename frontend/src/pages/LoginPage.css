@@ -4,8 +4,8 @@
 
 .kazuko-login-page {
   display: flex;
-  min-height: 100vh;
-  width: 100vw;
+  min-height: 100%;
+  width: 100%;
   background-color: #E2CEBD;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   margin: 0;

@@ -6,3 +6,21 @@
 .pt-unassigned-toggle{display:flex;align-items:center;gap:6px;padding:10px 8px;border-top:1px solid #e5e7eb;font-size:10px;color:#607d8b}.pt-unassigned-toggle input{accent-color:#e65100}.pt-use-description{margin:0 11px 8px;padding:8px;background:#fff8ef;color:#775229;font-size:10px;line-height:1.5}.pt-assignment{display:flex;flex-direction:column;gap:6px;margin:5px 11px 10px}.pt-assignment select{width:100%;border:1px solid #cfd8dc;border-radius:4px;padding:7px;font:inherit;background:#fff;color:#455a64}.pt-assignment button{font:inherit;background:#fff;color:#455a64;border:1px solid #cfd8dc;justify-content:center}.pt-technical{margin:0 11px 10px;color:#78909c;font-size:9px;overflow-wrap:anywhere}.pt-technical summary{cursor:pointer}.pt-technical p{margin:5px 0}.pt-empty>span{max-width:340px;text-align:center;font-size:11px;line-height:1.5}.pt-details{overflow:auto}.pt-details dl{flex-shrink:0}.pt-editor-toolbar button,.pt-editor-modal>footer button{color:#455a64}.pt-editor-modal>footer button.save{color:#fff}
 @media(max-width:1050px){.pt-browser{grid-template-columns:180px minmax(220px,1fr) minmax(200px,28%)}.pt-details{display:flex}.pt-template-pane{border-right:1px solid #dfe5e8}}@media(max-width:720px){.pt-browser{display:flex;flex-direction:column;overflow:auto}.pt-categories{flex-shrink:0}.pt-template-pane{min-height:250px;flex-shrink:0}.pt-details{min-height:350px;flex-shrink:0}.pt-template-grid{overflow:visible}}
 .pt-editor-toolbar{flex-wrap:wrap}.pt-editor-toolbar label{display:flex;align-items:center;gap:5px}.pt-editor-toolbar input,.pt-editor-toolbar select{max-width:240px;min-height:28px;border:1px solid #cfd8dc;border-radius:4px;padding:4px;color:#455a64;background:#fff}.pt-pane-title button{display:flex;align-items:center;gap:4px;border:1px solid #cfd8dc;border-radius:4px;padding:4px 7px;background:white;color:#455a64;font:inherit;cursor:pointer}
+.pt-template-grid { min-width: 0; }
+.pt-template-grid .pt-template-card {
+  min-width: 0;
+  height: auto;
+  min-height: 130px;
+  white-space: normal;
+  overflow: hidden;
+}
+.pt-template-card .pt-template-name {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.4;
+}
+.pt-template-card .pt-template-meta { width: 100%; }

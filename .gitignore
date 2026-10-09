@@ -43,3 +43,16 @@ bin/
 obj/
 *.user
 backend/tmp/
+backend/storage/print-template-backups/
+
+backend/storage/security/
+*.fdb
+*.FDB
+*.fbk
+*.FBK
+backend/saas-test-results/
+backend/saas/
+backend/storage/relocation-backup-*/
+ops/windows/generated/
+frontend/*.png
+!frontend/test_car.png

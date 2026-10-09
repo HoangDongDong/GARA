@@ -1,3 +1,4 @@
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -59,6 +60,7 @@ export default function HoSoChoDuyetPage() {
   const permission = readPermission();
   const canAdd = (permission & 2) === 2;
   const canEdit = (permission & 4) === 4;
+  const canNext = order => canEdit && can(order.trangThai === 3 ? 'PAYMENTS' : workflowPermission(order.trangThai + 1), 4);
   const [orders, setOrders] = useState([]);
   const [supplements, setSupplements] = useState([]);
   const [viewMode, setViewMode] = useState('kanban');
@@ -95,7 +97,7 @@ export default function HoSoChoDuyetPage() {
       navigate(`/sua-chua?vehicleId=${encodeURIComponent(order.vehicleId)}`);
       return;
     }
-    if (!canEdit) return notify('Chức vụ của bạn chưa có quyền Sửa cho chức năng Sửa chữa - Dịch vụ.', 'error');
+    if (!canNext(order)) return notify('Chức vụ của bạn chưa có quyền Sửa cho chức năng Sửa chữa - Dịch vụ.', 'error');
     if (order.trangThai === 1) {
       navigate(`/sua-chua?vehicleId=${encodeURIComponent(order.vehicleId)}&repairId=${encodeURIComponent(order.repairId)}&confirm=1`);
       return;
@@ -146,9 +148,9 @@ export default function HoSoChoDuyetPage() {
       <button
         type="button"
         className={`${compact ? 'hscd-btn-table-detail' : 'hscd-btn-step-next'} btn-stage-${stageId}`}
-        disabled={!canEdit || changingId === order.id}
+        disabled={!canNext(order) || changingId === order.id}
         onClick={(event) => { event.stopPropagation(); handleNextStep(order); }}
-        title={!canEdit ? 'Cần quyền Sửa' : 'Chuyển đúng sang bước tiếp theo'}
+        title={!canNext(order) ? 'Cần quyền thao tác ở bước này' : 'Chuyển đúng sang bước tiếp theo'}
       >
         {changingId === order.id ? 'Đang lưu...' : compact ? 'Bước kế →' : stage.nextBtn}
         <ArrowRight size={13}/>
@@ -163,7 +165,7 @@ export default function HoSoChoDuyetPage() {
       <div className="hscd-header-actions"><div className="hscd-view-toggle"><button className={`hscd-view-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}><Kanban size={15}/> <span>Quy trình</span></button><button className={`hscd-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}><TableIcon size={15}/> <span>Danh sách</span></button></div><button className="hscd-btn-reset" onClick={loadBoard} disabled={loading} title="Tải lại dữ liệu"><RefreshCw size={14}/> <span>Làm mới</span></button>{canAdd && <button className="hscd-btn-add" onClick={() => navigate('/sua-chua')} title="Lập phiếu tiếp nhận sửa chữa mới"><Plus size={14}/> <span>Tạo hồ sơ</span></button>}</div>
     </div>
 
-    <RepairSupplementQueue rows={supplements} loading={loading} search={search} advisor={filterAdvisor} canEdit={canEdit} onChanged={loadBoard} />
+    <RepairSupplementQueue rows={supplements} loading={loading} search={search} advisor={filterAdvisor} canEdit={canEdit && can('APPROVE_SUPPLEMENT', 4)} onChanged={loadBoard} />
 
     <div className="hscd-stats-grid">{WORKFLOW_STAGES.map((stage) => <div key={stage.id} className={`hscd-stat-card stage-${stage.id} ${filterStage === stage.id ? 'selected' : ''}`} onClick={() => setFilterStage(filterStage === stage.id ? 'all' : stage.id)}><div className="hscd-stat-info"><span className="hscd-stat-name">{stage.label}</span><div className="hscd-stat-value">{counts[stage.id]} <span>xe</span></div></div><div className="hscd-stat-icon-wrap">{stage.icon}</div></div>)}</div>
 

@@ -1,3 +1,4 @@
+import { can, currentUser } from '../utils/permissions';
 import { Folder, Folders, Layers, Search, Plus, Pencil, Ban, RotateCcw, Info, ChevronRight } from 'lucide-react';
 import useCatalogController, { ALL, UNGROUPED } from '../hooks/useCatalogController';
 import CatalogForms from '../components/CatalogForms';
@@ -41,7 +42,7 @@ export default function DanhMucPage() {
             <span className="catalog-panel-heading-badge">{Object.keys(data).length}</span>
           </div>
           <div className="catalog-types-list">
-            {Object.entries(data).map(([key, item]) => (
+            {Object.entries(data).filter(([key]) => Number(currentUser().ISADMIN) === 1 || !['banks','funds','stores','cashReasons'].includes(key)).map(([key, item]) => (
               <button
                 key={key}
                 type="button"
@@ -65,7 +66,7 @@ export default function DanhMucPage() {
                 <span className="catalog-panel-heading-title">{groupTitle}</span>
               </div>
               {definition.groupResource && <div className="catalog-group-toolbar">
-                <button type="button" className="catalog-secondary catalog-btn-add-group" disabled={loading || saving || !!error} onClick={() => openEditor('add-group')}>
+                <button type="button" className="catalog-secondary catalog-btn-add-group" disabled={!can('CATALOG',2) || loading || saving || !!error} onClick={() => openEditor('add-group')}>
                   <Plus size={13} /> {groupAddLabel}
                 </button>
                 <button
@@ -134,13 +135,13 @@ export default function DanhMucPage() {
 
               {!definition.readonly && (
                 <div className="catalog-record-actions">
-                  <button type="button" className="catalog-primary catalog-btn-action" disabled={loading || saving || !!error} onClick={() => openEditor('add')}>
+                  <button type="button" className="catalog-primary catalog-btn-action" disabled={!can('CATALOG',2) || loading || saving || !!error} onClick={() => openEditor('add')}>
                     <Plus size={14} /> Thêm mới
                   </button>
-                  <button type="button" className="catalog-secondary catalog-btn-action" disabled={!selected || loading || saving || !!error} onClick={() => openEditor('edit')}>
+                  <button type="button" className="catalog-secondary catalog-btn-action" disabled={!can('CATALOG',4) || !selected || loading || saving || !!error} onClick={() => openEditor('edit')}>
                     <Pencil size={14} /> Sửa
                   </button>
-                  <button type="button" className="catalog-secondary catalog-btn-action" disabled={!selected || loading || saving || !!error || definition.statusReadonly} onClick={toggleActive}>
+                  <button type="button" className="catalog-secondary catalog-btn-action" disabled={!can('CATALOG',4) || !selected || loading || saving || !!error || definition.statusReadonly} onClick={toggleActive}>
                     {selected?.active !== false ? <Ban size={14} /> : <RotateCcw size={14} />}
                     {selected?.active !== false ? 'Ngừng sử dụng' : 'Khôi phục'}
                   </button>
