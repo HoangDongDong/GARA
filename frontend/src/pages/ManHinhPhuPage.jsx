@@ -1,4 +1,4 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -7,7 +7,7 @@ import {
   Coffee, Wifi, PhoneCall, Car, Gift, Clock, Star, Tv, ChevronRight,
   ChevronLeft, QrCode, FileText, Play, Pause, User, Activity
 } from 'lucide-react';
-import api from '../api';
+import api from '../api.js';
 import './ManHinhPhuPage.css';
 
 const key = () => 'garage_secondary_displays_v1' + (() => { try { const user=JSON.parse(localStorage.getItem('garage_user') || '{}'); return user.TENANT ? ':'+user.TENANT.id : ''; } catch { return ''; } })();

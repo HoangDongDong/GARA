@@ -1,0 +1,10 @@
+{
+  "name": "garage-app-tests",
+  "private": true,
+  "scripts": {
+    "test": "node run-tests.cjs",
+    "test:backend": "node run-tests.cjs backend",
+    "test:frontend": "node run-tests.cjs frontend",
+    "test:print-agent": "node run-tests.cjs print-agent"
+  }
+}

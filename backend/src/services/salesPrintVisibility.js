@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 const prefix = 'SalesPrintShow_';
 const groupName = 'Nội dung hóa đơn bán hàng';
 const definitions = [

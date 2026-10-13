@@ -1,6 +1,6 @@
 const router = require('express').Router({ mergeParams: true });
-const db = require('../db');
-const service = require('../services/repairSupplements');
+const db = require('../db.js');
+const service = require('../services/repairSupplements.js');
 const actor = req => req.accessUser.ID;
 router.get('/', async (req, res) => {
   try {

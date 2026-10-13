@@ -1,5 +1,8 @@
+import CustomerCreateModal from '../components/CustomerCreateModal';
+import QuickCreateButton from '../components/QuickCreateButton';
+import { employees, masterData, vehicles } from '../services';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
-import useDocumentNumber from '../hooks/useDocumentNumber';
+import useDocumentNumber from '../hooks/useDocumentNumber.js';
 import { useState, useEffect } from 'react';
 import { 
   ClipboardList, User, Car, Activity, FileText, History, Notebook,
@@ -9,6 +12,10 @@ import {
 import axios from 'axios';
 
 export default function TiepNhanXePage() {
+  const [lookupOptions, setLookupOptions] = useState({brands:[], models:[], employees:[], fuels:[]});
+  useEffect(() => {
+    Promise.all([masterData.brands(), masterData.models(), employees.lookup(),vehicles.meta()]).then(([brands, models, staff, meta]) => setLookupOptions(current => ({...current, brands, models, employees:staff,fuels:meta.fuels || []}))).catch(() => {});
+  }, []);
   const [activeTab, setActiveTab] = useState('basic');
   const [historyTab, setHistoryTab] = useState('recent');
   const [toast, setToast] = useState(null);
@@ -30,14 +37,6 @@ export default function TiepNhanXePage() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('kh006');
   const selectedCustomer = customerList.find(c => (c.ID || c.id) === selectedCustomerId) || customerList[0] || {};
-
-  // Khách hàng mới modal form
-  const [newCustomer, setNewCustomer] = useState({
-    NAME: '',
-    DIENTHOAI: '',
-    DIACHI: '',
-    MASOTHUE: ''
-  });
 
   // Dữ liệu xe
   const [vehicle, setVehicle] = useState({
@@ -160,24 +159,6 @@ export default function TiepNhanXePage() {
     setCurrentVehicleId(null);
     setWarrantyData([]);
     showToastMsg(`Biển số xe ${vehicle.plate} chưa có trong hệ thống, bạn có thể nhập mới.`, 'info');
-  };
-
-  // Thêm nhanh khách hàng mới
-  const handleAddCustomerSubmit = (e) => {
-    e.preventDefault();
-    if (!newCustomer.NAME.trim() || !newCustomer.DIENTHOAI.trim()) {
-      alert('Vui lòng nhập Họ tên và Số điện thoại khách hàng!');
-      return;
-    }
-    const created = {
-      ID: 'kh_' + Date.now(),
-      ...newCustomer
-    };
-    setCustomerList(prev => [created, ...prev]);
-    setSelectedCustomerId(created.ID);
-    setShowAddCustomerModal(false);
-    setNewCustomer({ NAME: '', DIENTHOAI: '', DIACHI: '', MASOTHUE: '' });
-    showToastMsg(`Đã thêm khách hàng mới: ${created.NAME}`);
   };
 
   // Tạo phiếu mới
@@ -333,32 +314,27 @@ export default function TiepNhanXePage() {
                 </div>
                 <div>
                   <label style={{ fontSize: 9, marginBottom: 1, display: 'block', fontWeight: 600 }}>Hãng xe <span style={{color:'red'}}>*</span></label>
-                  <select 
+                  <div className="select-with-quick-create" style={{flex:1,minWidth:0}}><select
                     value={vehicle.brand} 
                     onChange={(e) => setVehicle({...vehicle, brand: e.target.value})}
                     style={{ width: '100%', padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, fontSize: 10 }}
                   >
-                    <option>Toyota</option>
-                    <option>Honda</option>
-                    <option>Hyundai</option>
-                    <option>Kia</option>
-                    <option>Mazda</option>
-                    <option>Ford</option>
-                  </select>
+                    <option value="">-- Chọn --</option>
+                    {vehicle.brand && !lookupOptions.brands.some(row => row.NAME === vehicle.brand) && <option value={vehicle.brand}>{vehicle.brand}</option>}
+                    {lookupOptions.brands.map(row => <option key={row.ID} value={row.NAME}>{row.NAME}</option>)}
+                  </select><QuickCreateButton resource="brands" title="Thêm hãng xe" onCreated={(id, row, rows) => { setLookupOptions(current => ({...current, brands: [...current.brands, row]})); setVehicle(current => ({...current, brand:row.NAME})); }}/></div>
                 </div>
                 <div>
                   <label style={{ fontSize: 9, marginBottom: 1, display: 'block', fontWeight: 600 }}>Dòng xe <span style={{color:'red'}}>*</span></label>
-                  <select 
+                  <div className="select-with-quick-create" style={{flex:1,minWidth:0}}><select
                     value={vehicle.model} 
                     onChange={(e) => setVehicle({...vehicle, model: e.target.value})}
                     style={{ width: '100%', padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, fontSize: 10 }}
                   >
-                    <option>Fortuner</option>
-                    <option>Innova</option>
-                    <option>Vios</option>
-                    <option>Camry</option>
-                    <option>Corolla Cross</option>
-                  </select>
+                    <option value="">-- Chọn --</option>
+                    {vehicle.model && !lookupOptions.models.some(row => row.NAME === vehicle.model) && <option value={vehicle.model}>{vehicle.model}</option>}
+                    {lookupOptions.models.map(row => <option key={row.ID} value={row.NAME}>{row.NAME}</option>)}
+                  </select><QuickCreateButton resource="models" title="Thêm dòng xe" initialValues={{DHANGXEID:lookupOptions.brands.find(row => row.NAME === vehicle.brand)?.ID || ''}} onCreated={(id, row, rows) => { setLookupOptions(current => ({...current, models: [...current.models, row]})); setVehicle(current => ({...current, model:row.NAME})); }}/></div>
                 </div>
                 <div>
                   <label style={{ fontSize: 9, marginBottom: 1, display: 'block', fontWeight: 600 }}>Phiên bản</label>
@@ -445,28 +421,28 @@ export default function TiepNhanXePage() {
               
               <div style={{ display: 'flex', alignItems: 'center' }}>
                  <label style={{ width: 100, fontSize: 9, margin: 0, fontWeight: 600, flexShrink: 0 }}>Cố vấn DV <span style={{color:'red'}}>*</span></label>
-                 <select 
+                 <div className="select-with-quick-create" style={{flex:1,minWidth:0}}><select
                    value={reception.advisor} 
                    onChange={(e) => setReception({...reception, advisor: e.target.value})}
                    style={{ flex: 1, padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, minWidth: 0, fontSize: 10 }}
                  >
-                   <option>Nguyễn Văn A</option>
-                   <option>Lê Thị Mai</option>
-                   <option>Phạm Văn Hùng</option>
-                 </select>
+                    <option value="">-- Chọn --</option>
+                    {reception.advisor && !lookupOptions.employees.some(row => row.NAME === reception.advisor) && <option value={reception.advisor}>{reception.advisor}</option>}
+                    {lookupOptions.employees.map(row => <option key={row.ID} value={row.NAME}>{row.NAME}</option>)}
+                  </select><QuickCreateButton resource="employees" title="Thêm cố vấn dịch vụ" onCreated={(id, row, rows) => { setLookupOptions(current => ({...current, employees: rows})); setReception(current => ({...current, advisor:row.NAME})); }}/></div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center' }}>
                  <label style={{ width: 100, fontSize: 9, margin: 0, fontWeight: 600, flexShrink: 0 }}>Kỹ thuật viên</label>
-                 <select 
+                 <div className="select-with-quick-create" style={{flex:1,minWidth:0}}><select
                    value={reception.technician} 
                    onChange={(e) => setReception({...reception, technician: e.target.value})}
                    style={{ flex: 1, padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, minWidth: 0, fontSize: 10 }}
                  >
-                   <option>Trần Văn B</option>
-                   <option>Hoàng Văn C</option>
-                   <option>Vũ Đức Dũng</option>
-                 </select>
+                    <option value="">-- Chọn --</option>
+                    {reception.technician && !lookupOptions.employees.some(row => row.NAME === reception.technician) && <option value={reception.technician}>{reception.technician}</option>}
+                    {lookupOptions.employees.map(row => <option key={row.ID} value={row.NAME}>{row.NAME}</option>)}
+                  </select><QuickCreateButton resource="employees" title="Thêm kỹ thuật viên" onCreated={(id, row, rows) => { setLookupOptions(current => ({...current, employees: rows})); setReception(current => ({...current, technician:row.NAME})); }}/></div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -483,18 +459,11 @@ export default function TiepNhanXePage() {
               
               <div style={{ display: 'flex', alignItems: 'center' }}>
                  <label style={{ width: 100, fontSize: 9, margin: 0, fontWeight: 600, flexShrink: 0 }}>Nhiên liệu</label>
-                 <select 
+                 <div className="select-with-quick-create" style={{flex:1,minWidth:0}}><select
                    value={vehicle.fuel} 
                    onChange={(e) => setVehicle({...vehicle, fuel: e.target.value})}
                    style={{ flex: 1, padding: '2px 6px', border: '1px solid #ccc', borderRadius: 4, minWidth: 0, fontSize: 10 }}
-                 >
-                   <option>Dầu (60%)</option>
-                   <option>Dầu (100%)</option>
-                   <option>Dầu (25%)</option>
-                   <option>Xăng (60%)</option>
-                   <option>Xăng (100%)</option>
-                   <option>Xăng (25%)</option>
-                 </select>
+                 ><option value="">-- Chọn nhiên liệu --</option>{vehicle.fuel && !lookupOptions.fuels.includes(vehicle.fuel) && <option value={vehicle.fuel}>{vehicle.fuel}</option>}{lookupOptions.fuels.map(name=><option key={name} value={name}>{name}</option>)}</select><QuickCreateButton resource="fuels" title="Thêm loại nhiên liệu" label="Thêm" onCreated={(id,row)=>{setLookupOptions(current=>({...current,fuels:[...current.fuels,row.NAME]}));setVehicle(current=>({...current,fuel:row.NAME}));}}/></div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -890,87 +859,8 @@ export default function TiepNhanXePage() {
       </div>
 
       {/* Modal Thêm Nhanh Khách Hàng */}
-      {showAddCustomerModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16
-        }}>
-          <div style={{ background: 'white', borderRadius: 8, width: 400, overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
-            <div style={{ padding: '10px 14px', background: '#E65100', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>+ THÊM KHÁCH HÀNG MỚI</div>
-              <button onClick={() => setShowAddCustomerModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={16} /></button>
-            </div>
-            <form onSubmit={handleAddCustomerSubmit} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Tên khách hàng <span style={{color:'red'}}>*</span></label>
-                <input 
-                  type="text" 
-                  value={newCustomer.NAME} 
-                  onChange={(e) => setNewCustomer({...newCustomer, NAME: e.target.value})}
-                  placeholder="Họ và tên chủ xe..." 
-                  style={{ width: '100%', padding: '4px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} 
-                  required 
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Số điện thoại <span style={{color:'red'}}>*</span></label>
-                <input 
-                  type="text" 
-                  value={newCustomer.DIENTHOAI} 
-                  onChange={(e) => setNewCustomer({...newCustomer, DIENTHOAI: e.target.value})}
-                  placeholder="09xx xxx xxx" 
-                  style={{ width: '100%', padding: '4px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} 
-                  required 
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Địa chỉ</label>
-                <input 
-                  type="text" 
-                  value={newCustomer.DIACHI} 
-                  onChange={(e) => setNewCustomer({...newCustomer, DIACHI: e.target.value})}
-                  placeholder="Số nhà, đường, quận/huyện..." 
-                  style={{ width: '100%', padding: '4px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} 
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>Mã số thuế / CCCD</label>
-                <input 
-                  type="text" 
-                  value={newCustomer.MASOTHUE} 
-                  onChange={(e) => setNewCustomer({...newCustomer, MASOTHUE: e.target.value})}
-                  placeholder="Mã số thuế (nếu có)..." 
-                  style={{ width: '100%', padding: '4px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} 
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 6 }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddCustomerModal(false)}
-                  style={{ padding: '4px 10px', border: '1px solid #ccc', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}
-                >
-                  Hủy
-                </button>
-                <button 
-                  type="submit"
-                  style={{ padding: '4px 14px', background: '#E65100', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Lưu khách hàng
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showAddCustomerModal && <CustomerCreateModal onClose={() => setShowAddCustomerModal(false)} notify={showToastMsg}
+        onCreated={(id,rows) => {setCustomerList(current => [...new Map([...current,...rows].map(row => [row.ID,row])).values()]);setSelectedCustomerId(id);}}/>}
 
       {/* Modal In Phiếu */}
       {showPrintModal && (

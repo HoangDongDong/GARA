@@ -66,8 +66,8 @@
 - 13 kiểm thử báo cáo qua, frontend build qua; đã kết xuất/xem PDF ngắn, 85 dòng dài nhiều trang và báo cáo rỗng. Phần tổng, ghi chú và chữ ký giữ cùng nhau khi sang trang.
 - Công cụ browser bị chính sách truy cập chặn trang localhost; chưa xác nhận trực quan giao diện web.
 
-Tại backend: node --test tests/reportCenter.test.js tests/cashbook.test.js tests/debts.test.js tests/employeeCompensation*.test.js
+Tại backend: node --test ../Test/backend/tests/reportCenter.test.js tests/cashbook.test.js tests/debts.test.js tests/employeeCompensation*.test.js
 
-Kiểm tra Firebird chỉ đọc: đặt TEST_REPORTS_FIREBIRD=1 rồi node --test tests/reportCenter.firebird.test.js (cần quyền kết nối localhost).
+Kiểm tra Firebird chỉ đọc: đặt TEST_REPORTS_FIREBIRD=1 rồi node --test ../Test/backend/tests/reportCenter.firebird.test.js (cần quyền kết nối localhost).
 
 Tại frontend: npm run build.

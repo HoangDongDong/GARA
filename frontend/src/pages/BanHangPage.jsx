@@ -1,10 +1,12 @@
+import CustomerCreateModal from '../components/CustomerCreateModal';
+import PartCreateModal from '../components/PartCreateModal';
 import SaleHistory from '../components/SaleHistory';
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import DiscountFields from '../components/DiscountFields';
-import { billDiscount } from '../utils/billDiscount';
+import { billDiscount } from '../utils/billDiscount.js';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
-import api from '../api';
-import useSecondaryPayment from '../hooks/useSecondaryPayment';
+import api from '../api.js';
+import useSecondaryPayment from '../hooks/useSecondaryPayment.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {createPortal} from 'react-dom';
 import {
@@ -42,9 +44,9 @@ import { customers, masterData, parts, sales } from '../services';
 import CustomerSelect from '../components/CustomerSelect';
 import LineTaxField from '../components/LineTaxField';
 import EditableSalePrice from '../components/EditableSalePrice';
-import useChargeRates from '../hooks/useChargeRates';
-import canEditPricing from '../utils/canEditPricing';
-import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy';
+import useChargeRates from '../hooks/useChargeRates.js';
+import canEditPricing from '../utils/canEditPricing.js';
+import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy.js';
 import './BanHangPage.css';
 
 const money = (value) => Number(value || 0).toLocaleString('vi-VN');
@@ -80,6 +82,7 @@ export default function BanHangPage() {
   const canEditPolicy = canEditPricing('SALES');
   const chargeConfig = useChargeRates('sales');
   const [productList, setProductList] = useState([]);
+  const [showPartCreate, setShowPartCreate] = useState(false);
   const [customerList, setCustomerList] = useState([]);
   const [customerGroups, setCustomerGroups] = useState([]);
   const [warehouseList, setWarehouseList] = useState([]);
@@ -145,11 +148,7 @@ export default function BanHangPage() {
   const invoiceGeneration = useRef(0);
   useEffect(() => () => { invoiceGeneration.current++; if (invoicePdfRef.current) URL.revokeObjectURL(invoicePdfRef.current); }, []);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [customerForm, setCustomerForm] = useState({
-    NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', MASOTHUE: '', DIACHI: '', DNHOMKHACHHANGID: '',
-  });
-  const [customerFormError, setCustomerFormError] = useState('');
-  const [savingCustomer, setSavingCustomer] = useState(false);
+
   const [toastMsg, setToastMsg] = useState('');
 
   // Load dữ liệu thực từ backend API
@@ -212,6 +211,16 @@ export default function BanHangPage() {
       simage: cat.SIMAGE || null,
     })),
   ], [partCategories]);
+
+  const handlePartCreated = row => {
+    setProductList(current => [...current, {...row,GIABAN:Number(row.GIABAN || 0),IMAGE:Number(row.CO_ANH) === 1 ? parts.imageUrl(row.ID) : ''}]);
+    setSearch(''); setActiveCategory('all');
+    setToastMsg(`Đã thêm mặt hàng ${row.CODE} - ${row.NAME}.`);
+    setTimeout(() => setToastMsg(''),2500);
+    parts.list().then(rows => setProductList(rows.map(item => ({...item,GIABAN:Number(item.GIABAN || 0),TON_KHO:Number(item.TON_KHO || 0),IMAGE:Number(item.CO_ANH) === 1 ? parts.imageUrl(item.ID) : ''}))))
+      .catch(() => {setToastMsg('Mặt hàng đã lưu. Chưa tải lại được toàn bộ danh sách sản phẩm.');});
+    masterData.categories().then(setPartCategories).catch(() => {});
+  };
 
   // Lọc và sắp xếp sản phẩm
   const filteredProducts = useMemo(() => {
@@ -373,66 +382,7 @@ export default function BanHangPage() {
     }
   };
 
-  const openCustomerModal = () => {
-    const retailGroup = customerGroups.find((group) =>
-      String(group.NAME || '').toLowerCase().replace(/\s/g, '').includes('khachle')
-    );
-    setCustomerForm({
-      NAME: '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', MASOTHUE: '', DIACHI: '',
-      DNHOMKHACHHANGID: retailGroup?.ID || '',
-    });
-    setCustomerFormError('');
-    setShowCustomerModal(true);
-  };
-
-  const handleAddCustomerGroup = async () => {
-    const name = window.prompt('Nhập tên nhóm khách hàng mới:');
-    if (!name?.trim()) return;
-    if (customerGroups.some((group) => String(group.NAME || '').trim().toLowerCase() === name.trim().toLowerCase())) {
-      setCustomerFormError('Nhóm khách hàng này đã tồn tại.');
-      return;
-    }
-    try {
-      const result = await masterData.create('customer_groups', { NAME: name.trim() });
-      const groups = await masterData.customerGroups();
-      setCustomerGroups(Array.isArray(groups) ? groups : []);
-      setCustomerForm((current) => ({ ...current, DNHOMKHACHHANGID: result?.id || '' }));
-      setCustomerFormError('');
-    } catch (error) {
-      setCustomerFormError(error?.response?.data?.error || error.message || 'Không thể thêm nhóm khách hàng.');
-    }
-  };
-
-  const handleCreateCustomer = async (event) => {
-    event.preventDefault();
-    if (!customerForm.NAME.trim()) {
-      setCustomerFormError('Vui lòng nhập tên khách hàng.');
-      return;
-    }
-    const code = customerForm.MAKHACH.trim().toUpperCase();
-    if (code && customerList.some((customer) => String(customer.MAKHACH || '').trim().toUpperCase() === code)) {
-      setCustomerFormError('Mã khách hàng đã tồn tại. Vui lòng nhập mã khác.');
-      return;
-    }
-    setSavingCustomer(true);
-    setCustomerFormError('');
-    try {
-      const payload = Object.fromEntries(
-        Object.entries(customerForm).map(([key, value]) => [key, String(value || '').trim() || null])
-      );
-      const result = await customers.create(payload);
-      const rows = await customers.list();
-      setCustomerList(Array.isArray(rows) ? rows : []);
-      setCustomerId(result?.id || '');
-      setShowCustomerModal(false);
-      setToastMsg(`Đã thêm khách hàng "${customerForm.NAME.trim()}" thành công.`);
-      setTimeout(() => setToastMsg(''), 2500);
-    } catch (error) {
-      setCustomerFormError(error?.response?.data?.error || error.message || 'Không thể thêm khách hàng.');
-    } finally {
-      setSavingCustomer(false);
-    }
-  };
+  const openCustomerModal = () => setShowCustomerModal(true);
 
   const loadInvoicePrint = async (saleId) => {
     const version = ++invoiceGeneration.current;
@@ -650,6 +600,7 @@ export default function BanHangPage() {
                 <Layers size={17} className="header-icon" />
                 <span>Danh sách sản phẩm</span>
               </div>
+                <button type="button" className="pos-create-part" disabled={!can('CATALOG',2)} onClick={() => setShowPartCreate(true)} title="Thêm mặt hàng mới"><Plus size={14}/> Thêm mặt hàng</button>
               <div className="pos-sort-wrap">
                 {cart.length > 0 && (
                   <button
@@ -1183,60 +1134,13 @@ export default function BanHangPage() {
         </div>
       )}
 
+      {showPartCreate && <PartCreateModal warehouseId={warehouseId} groupId={activeCategory === 'all' ? '' : activeCategory}
+        onClose={() => setShowPartCreate(false)} onCreated={handlePartCreated}/>}
+
       {/* ===== POPUP: TẠO / CHỌN KHÁCH HÀNG ===== */}
-      {showCustomerModal && (
-        <div className="pos-modal-overlay" onClick={() => !savingCustomer && setShowCustomerModal(false)}>
-          <div className="pos-modal-box" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
-            <div className="pos-modal-header">
-              <h4>THÊM KHÁCH HÀNG</h4>
-              <button type="button" className="pos-modal-close" disabled={savingCustomer} onClick={() => setShowCustomerModal(false)}>
-                &times;
-              </button>
-            </div>
-            <form onSubmit={handleCreateCustomer}>
-              <div className="pos-modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600 }}>
-                  Tên khách hàng <span style={{ color: '#D32F2F' }}>*</span>
-                  <input autoFocus value={customerForm.NAME} onChange={(e) => setCustomerForm({ ...customerForm, NAME: e.target.value })} placeholder="Nhập tên khách hàng..." style={{ marginTop: 4 }} />
-                </label>
-
-                <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600 }}>
-                  Nhóm khách hàng
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <select value={customerForm.DNHOMKHACHHANGID} onChange={(e) => setCustomerForm({ ...customerForm, DNHOMKHACHHANGID: e.target.value })}>
-                      <option value="">-- Chọn nhóm khách hàng --</option>
-                      {customerGroups.map((group) => <option key={group.ID} value={group.ID}>{group.NAME}</option>)}
-                    </select>
-                    <button type="button" onClick={handleAddCustomerGroup} title="Thêm nhóm khách hàng" style={{ flexShrink: 0, justifyContent: 'center', padding: '0 12px', background: '#E65100', color: '#fff', border: 0, borderRadius: 4, fontWeight: 700, whiteSpace: 'nowrap' }}>＋ Thêm</button>
-                  </div>
-                </label>
-
-                <label style={{ fontSize: 11, fontWeight: 600 }}>Mã khách hàng
-                  <input value={customerForm.MAKHACH} onChange={(e) => setCustomerForm({ ...customerForm, MAKHACH: e.target.value })} placeholder="Ví dụ: KH001" style={{ marginTop: 4 }} />
-                </label>
-                <label style={{ fontSize: 11, fontWeight: 600 }}>Số điện thoại
-                  <input value={customerForm.DIENTHOAI} onChange={(e) => setCustomerForm({ ...customerForm, DIENTHOAI: e.target.value })} placeholder="Nhập số điện thoại..." style={{ marginTop: 4 }} />
-                </label>
-                <label style={{ fontSize: 11, fontWeight: 600 }}>Email
-                  <input type="email" value={customerForm.EMAIL} onChange={(e) => setCustomerForm({ ...customerForm, EMAIL: e.target.value })} placeholder="email@example.com" style={{ marginTop: 4 }} />
-                </label>
-                <label style={{ fontSize: 11, fontWeight: 600 }}>CCCD / Mã số thuế
-                  <input value={customerForm.MASOTHUE} onChange={(e) => setCustomerForm({ ...customerForm, MASOTHUE: e.target.value })} placeholder="Nhập CCCD hoặc mã số thuế..." style={{ marginTop: 4 }} />
-                </label>
-                <label style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600 }}>Địa chỉ
-                  <textarea rows={3} value={customerForm.DIACHI} onChange={(e) => setCustomerForm({ ...customerForm, DIACHI: e.target.value })} placeholder="Nhập địa chỉ..." style={{ marginTop: 4, resize: 'vertical' }} />
-                </label>
-
-                {customerFormError && <div style={{ gridColumn: '1 / -1', padding: '7px 9px', background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2', borderRadius: 4, fontSize: 11 }}>{customerFormError}</div>}
-              </div>
-              <div className="pos-modal-footer">
-                <button type="button" className="btn-pos-white" disabled={savingCustomer} onClick={() => setShowCustomerModal(false)}>Hủy</button>
-                <button type="submit" className="btn-pos-barcode" disabled={savingCustomer}>{savingCustomer ? 'Đang lưu...' : 'Thêm khách hàng'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showCustomerModal && <CustomerCreateModal onClose={() => setShowCustomerModal(false)}
+        onCreated={(id,rows,created) => { setCustomerList(current => [...new Map([...current,...rows].map(row => [row.ID,row])).values()]); setCustomerId(id); }}
+        notify={text => {setToastMsg(text);setTimeout(() => setToastMsg(''),2500);}}/>}
 
       {/* ===== POPUP: DANH SÁCH TẤT CẢ PHIẾU BÁN HÀNG ===== */}
       {showSaleListModal && (

@@ -1,9 +1,9 @@
 const router = require('express').Router();
-const tenancy = require('../tenancy');
-const platform = require('../services/platform');
-const registration = require('../services/saasRegistration');
-const security = require('../authSecurity');
-const credentials=require('../services/platformCredentials');
+const tenancy = require('../tenancy.js');
+const platform = require('../services/platform.js');
+const registration = require('../services/saasRegistration.js');
+const security = require('../authSecurity.js');
+const credentials=require('../services/platformCredentials.js');
 const wrap = task => async (req,res) => { try { res.set('Cache-Control','no-store'); await task(req,res); } catch (error) { if (!error.status) console.error('SaaS:',error.message); res.status(error.status || 503).json({ error:error.status ? error.message : 'Hệ thống cửa hàng tạm thời chưa sẵn sàng.' }); } };
 const attempts = new Map();
 function limit(req,res,next) {

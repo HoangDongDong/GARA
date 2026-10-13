@@ -1,10 +1,10 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
 import { useEffect, useRef, useState } from 'react';
 import { Settings, Folder, Save, RefreshCw, Search, Printer, Loader2 } from 'lucide-react';
 import PrintTemplatesPanel from '../components/PrintTemplatesPanel';
 import DocumentNumberControl from '../components/DocumentNumberControl';
-import api from '../api';
-import { compressCompanyLogo } from '../utils/compressCompanyLogo';
+import api from '../api.js';
+import { compressCompanyLogo } from '../utils/compressCompanyLogo.js';
 import './CauHinhPage.css';
 import { interfaceScaleId, readInterfaceScale, saveInterfaceScale } from '../components/GlobalInterfaceScale';
 
@@ -135,7 +135,7 @@ export default function CauHinhPage() {
       <div>{[100, 125, 150, 175, 200].map(percent => <button type="button" key={percent} disabled={busy}
         aria-pressed={Number(value) === percent} onClick={() => change(item.ID, percent)}>{percent}%</button>)}</div>
     </div>;
-    if (item.NAME.startsWith('SoPhieu')) return <DocumentNumberControl {...props}/>;
+    if (item.NAME.startsWith('SoPhieu') || ['MaMatHang','MaKhachHang','MaDichVu','MaNhanVien'].includes(item.NAME)) return <DocumentNumberControl {...props}/>;
     const options = String(item.OTHERCONFIG || '').split(/\r?\n/).map(option => option.trim()).filter(Boolean);
     if (isCheckbox(item)) return <label className="config-checkbox"><input type="checkbox" disabled={busy} checked={[1, 30].includes(Number(value))} onChange={event => change(item.ID, event.target.checked ? 30 : 0)} /><span>{item.CAPTION || item.NAME}</span></label>;
     if (type === 5) return <div className="config-image-control">{item.NAME==='CompanyLogo' && <small>{compressingLogo?'Đang nén logo…':'PNG/JPG tối đa 20 MB; tự nén còn tối đa 256 KB, cạnh dài tối đa 800 px. PNG giữ nền trong suốt.'}</small>}{value && <img src={`data:image/${String(value).startsWith('/9j/')?'jpeg':'png'};base64,${value}`} alt={item.CAPTION || item.NAME} />}<input id={props.id} type="file" accept={item.NAME==='CompanyLogo'?'image/png,image/jpeg':'image/png,image/jpeg,image/webp,image/gif'} disabled={busy} onChange={event => upload(item, event)} /><button type="button" disabled={busy || !value} onClick={() => change(item.ID, '')}>Xóa ảnh</button></div>;

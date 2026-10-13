@@ -20,7 +20,7 @@ function formatSalesTotal(xml) {
   });
 }
 function applyTaxBreakdown(xml, parameters) {
-  const groups = require('./pricingPolicy').summary(parameters.TAXSUMMARY).filter(group => Number(group.amount) !== 0);
+  const groups = require('./pricingPolicy.js').summary(parameters.TAXSUMMARY).filter(group => Number(group.amount) !== 0);
   if (!groups.length || parameters.PrintShow_tax === false) return xml;
   groups.forEach((group, index) => {
     parameters[`TaxGroupRate${index}`] = group.rate;

@@ -1,4 +1,4 @@
-const crypto=require('crypto'), db=require('../db'), printing=require('./documentPrint');
+const crypto=require('crypto'), db=require('../db.js'), printing=require('./documentPrint.js');
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const admin=user=>{if(Number(user?.ISADMIN)!==1)throw fail('Chỉ Admin được cấu hình Agent.',403);};

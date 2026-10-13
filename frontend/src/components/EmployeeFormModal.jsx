@@ -1,20 +1,26 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, UserPlus, X } from 'lucide-react';
 import { catalog, employees } from '../services';
 import MasterDataFormModal from './MasterDataFormModal';
-import { catalogDefinitions } from '../pages/catalogDefinitions';
+import { catalogDefinitions } from '../pages/catalogDefinitions.js';
 import './EmployeeFormModal.css';
 import EmployeePhoto from './EmployeePhoto';
 
 const EMPTY = { NAME: '', CODE: '', DIENTHOAI: '', EMAIL: '', DIACHI: '', CHUNGCHI: '', CHUYENMON: '', NOTE: '', DPHONGBANID: '', LOAINHANVIEN: 1, CACHTINHLUONG: 0, LUONGTHANG: 0, LUONGCA: 0 };
-const roles = ['Nhân viên', 'Kỹ thuật viên', 'Cố vấn dịch vụ', 'Thủ kho', 'Thu ngân'];
+const defaultRoles = ['Nhân viên', 'Kỹ thuật viên', 'Cố vấn dịch vụ', 'Thủ kho', 'Thu ngân'].map((NAME,CODE) => ({NAME,CODE,STATUS:1}));
+const roleDefinition = {name:'Vai trò công việc',fields:[{key:'NAME',label:'Tên vai trò công việc',required:true}]};
 const errorText = error => error.response?.data?.error || error.message || 'Không lưu được hồ sơ nhân viên.';
 
 export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated, editingEmployee, notify = () => {} }) {
   const [form, setForm] = useState(EMPTY);
+  const [roles, setRoles] = useState(defaultRoles);
+  const [roleForm, setRoleForm] = useState(null);
+  const [roleError, setRoleError] = useState('');
+  const [roleBusy, setRoleBusy] = useState(false);
+  const rolePending = useRef(false);
   const [departments, setDepartments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -31,9 +37,9 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
     if (!open) return;
     let cancelled = false;
     setForm(Object.fromEntries(Object.entries(EMPTY).map(([key, value]) => [key, editingEmployee?.[key] ?? value])));
-    setError(''); setDepartmentForm(null); setDepartments([]);
+    setError(''); setDepartmentForm(null); setDepartments([]); setRoles(defaultRoles); setRoleForm(null); setRoleError('');
     setPhoto(undefined); setReadingPhoto(false); photoReadVersion.current += 1;
-    employees.meta().then(data => { if (!cancelled) setDepartments(data.departments || []); }).catch(exception => { if (!cancelled) setError(errorText(exception)); });
+    employees.meta().then(data => { if (!cancelled) { setDepartments(data.departments || []); setRoles(data.roles || defaultRoles); } }).catch(exception => { if (!cancelled) setError(errorText(exception)); });
     firstInput.current?.focus();
     return () => { cancelled = true; photoReadVersion.current += 1; };
   }, [open, editingEmployee]);
@@ -53,7 +59,7 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
     finally {if (version === photoReadVersion.current) setReadingPhoto(false);}
   };
   const submit = async event => {
-    event.preventDefault();
+    event.preventDefault(); event.stopPropagation();
     if (pending.current || readingPhoto) return;
     if (!form.NAME.trim()) return setError('Vui lòng nhập họ và tên nhân viên.');
     pending.current = true; setSaving(true); setError('');
@@ -70,7 +76,7 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
     finally { pending.current = false; setSaving(false); }
   };
   const saveDepartment = async event => {
-    event.preventDefault();
+    event.preventDefault(); event.stopPropagation();
     if (departmentBusy) return;
     setDepartmentBusy(true); setDepartmentError('');
     try {
@@ -79,6 +85,17 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
       update('DPHONGBANID', result.id); setDepartmentForm(null);
     } catch (exception) { setDepartmentError(errorText(exception)); }
     finally { setDepartmentBusy(false); }
+  };
+  const saveRole = async event => {
+    event.preventDefault(); event.stopPropagation();
+    if (rolePending.current) return;
+    rolePending.current = true; setRoleBusy(true); setRoleError('');
+    try {
+      const row = await employees.createRole({NAME:roleForm.NAME.trim()});
+      setRoles(current => [...current,row]);
+      update('LOAINHANVIEN', row.CODE); setRoleForm(null);
+    } catch (exception) { setRoleError(errorText(exception)); }
+    finally { rolePending.current = false; setRoleBusy(false); }
   };
   const field = (key, label, props = {}) => <label className={props.full ? 'employee-form-full' : ''}>
     <span>{label}{props.required && ' *'}</span><input ref={key === 'NAME' ? firstInput : undefined} required={props.required} disabled={saving} maxLength={255} type={props.type || 'text'} value={form[key]} onChange={event => update(key, event.target.value)} placeholder={props.placeholder}/>
@@ -90,8 +107,8 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
         <div className="employee-form-body">
           <div className="employee-photo-editor"><EmployeePhoto employee={editingEmployee} src={photo === null ? '' : photo}/><div><b>Ảnh nhân viên</b><p>JPG, PNG hoặc WebP · tự nén ≤ 200 KB, tối đa 800 px</p><input ref={photoInput} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={choosePhoto}/><div><button type="button" disabled={saving || readingPhoto} onClick={() => photoInput.current?.click()}>{readingPhoto ? 'Đang đọc ảnh…' : 'Chọn ảnh'}</button>{(photo || (photo === undefined && Number(editingEmployee?.CO_ANHNV) === 1)) && <button type="button" disabled={saving || readingPhoto} onClick={() => setPhoto(null)}>Bỏ ảnh</button>}</div></div></div>
           <h3>Thông tin nhân viên</h3><div className="employee-form-grid">
-            {field('NAME', 'Họ và tên', { required: true, full: true })}{field('CODE', 'Mã nhân viên', { placeholder: 'Để trống để tự tạo mã' })}
-            <label><span>Vai trò công việc</span><select value={form.LOAINHANVIEN} disabled={saving} onChange={event => update('LOAINHANVIEN', event.target.value)}>{roles.map((role, index) => <option key={role} value={index}>{role}</option>)}</select></label>
+            {field('NAME', 'Họ và tên', { required: true, full: true })}{field('CODE', 'Mã nhân viên', { placeholder: 'Để trống để tự sinh theo cấu hình' })}
+            <label><span>Vai trò công việc</span><div className="employee-form-select-add"><select value={form.LOAINHANVIEN} disabled={saving} onChange={event => update('LOAINHANVIEN', event.target.value)}>{!roles.some(row => Number(row.CODE) === Number(form.LOAINHANVIEN)) && <option value={form.LOAINHANVIEN}>{editingEmployee?.VAITRO || 'Vai trò đã lưu'}</option>}{roles.filter(row => Number(row.STATUS) === 1 || Number(row.CODE) === Number(form.LOAINHANVIEN)).map(row => <option key={row.CODE} value={row.CODE}>{row.NAME}</option>)}</select><button type="button" disabled={saving || !can('EMPLOYEES',2)} title="Thêm vai trò công việc" aria-label="Thêm vai trò công việc" onClick={() => { setRoleError(''); setRoleForm({NAME:''}); }}><Plus size={14}/> Thêm</button></div></label>
             <label className="employee-form-full"><span>Phòng ban</span><div className="employee-form-select-add"><select disabled={saving} value={form.DPHONGBANID} onChange={event => update('DPHONGBANID', event.target.value)}><option value="">Chưa phân phòng ban</option>{departments.filter(row => Number(row.STATUS) === 1 || row.ID === form.DPHONGBANID).map(row => <option key={row.ID} value={row.ID}>{row.NAME}{Number(row.STATUS) !== 1 ? ' (ngừng sử dụng)' : ''}</option>)}</select><button type="button" disabled={saving} onClick={() => { setDepartmentError(''); setDepartmentForm({ NAME: '', CODE: '', NOTE: '' }); }}><Plus size={14}/> Thêm</button></div></label>
             {field('DIENTHOAI', 'Số điện thoại')}{field('EMAIL', 'Email', { type: 'email' })}{field('DIACHI', 'Địa chỉ', { full: true })}{field('CHUYENMON', 'Chuyên môn', { placeholder: 'Máy, điện, gầm, đồng sơn…', full: true })}{field('CHUNGCHI', 'Chứng chỉ', { full: true })}
           </div>
@@ -106,6 +123,7 @@ export default function EmployeeFormModal({ open, onClose, onCreated, onUpdated,
         <footer><button type="button" disabled={saving} onClick={onClose}>Hủy</button><button type="submit" className="employee-form-primary" disabled={saving || readingPhoto}>{saving ? 'Đang lưu…' : 'Lưu nhân viên'}</button></footer>
       </form>
     </div>
+    {roleForm && <MasterDataFormModal definition={roleDefinition} mode="add" form={roleForm} setForm={setRoleForm} saving={roleBusy} error={roleError} onSubmit={saveRole} onClose={() => !roleBusy && setRoleForm(null)}/>}
     {departmentForm && <MasterDataFormModal definition={catalogDefinitions.departments} mode="add" form={departmentForm} setForm={setDepartmentForm} saving={departmentBusy} error={departmentError} onSubmit={saveDepartment} onClose={() => { if (!departmentBusy) setDepartmentForm(null); }}/>}
   </>, document.body);
 }

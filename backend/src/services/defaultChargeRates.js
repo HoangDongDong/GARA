@@ -24,7 +24,7 @@ function validate(name, value) {
   }
 }
 
-async function load(query = require('../db').query) {
+async function load(query = require('../db.js').query) {
   const rows = await query("SELECT NAME, DECIMALVALUE FROM SCONFIG WHERE NAME IN ('MacDinhThueSuat','MacDinhPhiDichVu') AND STATUS=30");
   const values = new Map(rows.map(row => [row.NAME, row.DECIMALVALUE]));
   const taxRate = values.get('MacDinhThueSuat') ?? 0;
@@ -42,7 +42,7 @@ function resolve(input, defaults) {
   return { taxRate: Number(taxRate), serviceRate: Number(serviceRate) };
 }
 
-async function loadForSales(query = require('../db').query) {
+async function loadForSales(query = require('../db.js').query) {
   const rates = await load(query);
   const rows = await query("SELECT NAME, INTVALUE FROM SCONFIG WHERE NAME IN ('BanHangTinhThue','BanHangTinhPhiDichVu') AND STATUS=30");
   const values = new Map(rows.map(row => [row.NAME, row.INTVALUE]));

@@ -1,8 +1,9 @@
+import QuickCreateButton from '../components/QuickCreateButton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Edit3, KeyRound, Plus, Save, Shield, Trash2, UserCog, Users, X } from 'lucide-react';
 import { accessControl } from '../services';
 import './QuanTriPage.css';
-import { functionMasks } from '../utils/permissions';
+import { functionMasks } from '../utils/permissions.js';
 
 const BITS = [
   ['Xem', 1], ['Thêm', 2], ['Sửa', 4], ['Xóa', 8], ['In', 16],
@@ -11,8 +12,8 @@ const BITS = [
 const errorText = (error) => error?.response?.data?.error || error?.message || 'Có lỗi xảy ra.';
 const isAdminOnlyFunction = (code) => code === 'ADMIN' || code === 'SETTINGS';
 
-function Modal({ title, onClose, children }) {
-  return <div className="qt-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+function Modal({ title, onClose, children, layer = 10000 }) {
+  return <div className="qt-overlay" style={{zIndex:layer}} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div className="qt-modal">
       <div className="qt-modal-head"><b>{title}</b><button type="button" onClick={onClose}><X size={18}/></button></div>
       {children}
@@ -81,7 +82,10 @@ export default function QuanTriPage() {
     event.preventDefault();
     try {
       if (groupForm.ID) await accessControl.updateGroup(groupForm.ID, { name: groupForm.NAME, note: groupForm.NOTE });
-      else await accessControl.createGroup({ name: groupForm.NAME, note: groupForm.NOTE });
+      else {
+        const result = await accessControl.createGroup({ name: groupForm.NAME, note: groupForm.NOTE });
+        if (userForm) setUserForm(current => ({...current, groupId:result.id}));
+      }
       const keep = groupForm.ID || '';
       setGroupForm(null); await reload(keep); notify('Đã lưu chức vụ.');
     } catch (error) { notify(errorText(error), 'error'); }
@@ -148,13 +152,13 @@ export default function QuanTriPage() {
       </section>
     </div>
 
-    {groupForm && <Modal title={groupForm.ID ? 'Sửa chức vụ' : 'Thêm chức vụ'} onClose={() => setGroupForm(null)}><form onSubmit={saveGroup} className="qt-form"><label>Tên chức vụ *<input autoFocus value={groupForm.NAME} onChange={(event) => setGroupForm({ ...groupForm, NAME: event.target.value })} required/></label><label>Mô tả<textarea rows="3" value={groupForm.NOTE || ''} onChange={(event) => setGroupForm({ ...groupForm, NOTE: event.target.value })}/></label><div className="qt-form-actions"><button type="button" onClick={() => setGroupForm(null)}>Hủy</button><button className="qt-primary" type="submit"><Save size={15}/> Lưu</button></div></form></Modal>}
+    {groupForm && <Modal layer={10060} title={groupForm.ID ? 'Sửa chức vụ' : 'Thêm chức vụ'} onClose={() => setGroupForm(null)}><form onSubmit={saveGroup} className="qt-form"><label>Tên chức vụ *<input autoFocus value={groupForm.NAME} onChange={(event) => setGroupForm({ ...groupForm, NAME: event.target.value })} required/></label><label>Mô tả<textarea rows="3" value={groupForm.NOTE || ''} onChange={(event) => setGroupForm({ ...groupForm, NOTE: event.target.value })}/></label><div className="qt-form-actions"><button type="button" onClick={() => setGroupForm(null)}>Hủy</button><button className="qt-primary" type="submit"><Save size={15}/> Lưu</button></div></form></Modal>}
 
     {userForm && <Modal title={userForm.ID ? 'Sửa tài khoản' : 'Cấp tài khoản cho nhân viên'} onClose={() => setUserForm(null)}><form onSubmit={saveUser} className="qt-form">
-      <label>Nhân viên *{userForm.ID ? <input value={userForm.employeeName || 'Tài khoản hệ thống'} disabled/> : <select value={userForm.employeeId} onChange={(event) => { const employee = availableEmployees.find((item) => item.ID === event.target.value); setUserForm({ ...userForm, employeeId: event.target.value, email: employee?.EMAIL || '' }); }} required><option value="">Chọn nhân viên...</option>{availableEmployees.map((employee) => <option key={employee.ID} value={employee.ID}>{employee.NAME} — {employee.DIENTHOAI || 'không SĐT'}</option>)}</select>}</label>
+      <label>Nhân viên *{userForm.ID ? <input value={userForm.employeeName || 'Tài khoản hệ thống'} disabled/> : <div className="select-with-quick-create"><select value={userForm.employeeId} onChange={(event) => { const employee = availableEmployees.find((item) => item.ID === event.target.value); setUserForm({ ...userForm, employeeId: event.target.value, email: employee?.EMAIL || '' }); }} required><option value="">Chọn nhân viên...</option>{availableEmployees.map((employee) => <option key={employee.ID} value={employee.ID}>{employee.NAME} — {employee.DIENTHOAI || 'không SĐT'}</option>)}</select><QuickCreateButton resource="employees" title="Thêm nhân viên" label="Thêm" onCreated={async (id, row) => { await reload(); setUserForm(current => ({...current, employeeId:id, email:row.EMAIL || ''})); }}/></div>}</label>
       <div className="qt-form-grid"><label>Tên đăng nhập *<input value={userForm.username} onChange={(event) => setUserForm({ ...userForm, username: event.target.value })} required/></label><label>{userForm.ID ? 'Mật khẩu mới (để trống nếu giữ nguyên)' : 'Mật khẩu *'}<input type="password" value={userForm.password} onChange={(event) => setUserForm({ ...userForm, password: event.target.value })} required={!userForm.ID} minLength={userForm.password ? 6 : undefined}/></label></div>
       <label>Email<input type="email" value={userForm.email} onChange={(event) => setUserForm({ ...userForm, email: event.target.value })}/></label>
-      <label>Chức vụ / Nhóm quyền *<select value={userForm.groupId} onChange={(event) => setUserForm({ ...userForm, groupId: event.target.value })} required><option value="">Chọn chức vụ...</option>{data.groups.map((group) => <option key={group.ID} value={group.ID}>{group.NAME}</option>)}</select></label>
+      <label>Chức vụ / Nhóm quyền *<div className="select-with-quick-create"><select value={userForm.groupId} onChange={(event) => setUserForm({ ...userForm, groupId: event.target.value })} required><option value="">Chọn chức vụ...</option>{data.groups.map((group) => <option key={group.ID} value={group.ID}>{group.NAME}</option>)}</select><button type="button" className="quick-create-button" title="Thêm chức vụ / nhóm quyền" aria-label="Thêm chức vụ / nhóm quyền" onClick={() => setGroupForm({NAME:'',NOTE:''})}><Plus size={16}/><span>Thêm</span></button></div></label>
       <div className="qt-form-actions"><button type="button" onClick={() => setUserForm(null)}>Hủy</button><button className="qt-primary" type="submit"><Save size={15}/> Lưu tài khoản</button></div>
     </form></Modal>}
   </div>;

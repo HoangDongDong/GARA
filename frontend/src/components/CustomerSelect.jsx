@@ -1,6 +1,6 @@
 import { forwardRef, useId, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { filterCustomers } from '../utils/customerSearch';
+import { filterCustomers } from '../utils/customerSearch.js';
 import './CustomerSelect.css';
 
 const customerLabel = (customer) => [customer.MAKHACH, customer.NAME, customer.DIENTHOAI].filter(Boolean).join(' - ');

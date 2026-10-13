@@ -40,7 +40,7 @@ async function create(query, execute, uuid, repairId, body, actor, user) {
   for (const item of items) {
     const rows = await query(`SELECT ID, NAME, ${item.type === 0 ? 'GIABAN' : 'GIA'} AS UNITPRICE${item.type === 0 ? ', DDONVITINHID' : ''} FROM ${item.type === 0 ? 'DMATHANG' : 'DDICHVU'} WHERE ID=? AND STATUS=1`, [item.source]);
     if (!rows.length) fail('Hạng mục không tồn tại hoặc đã ngừng sử dụng.');
-    if (user && item.price !== Number(rows[0].UNITPRICE || 0)) require('../permissionPolicy').assert(user, 'PRICING', 4);
+    if (user && item.price !== Number(rows[0].UNITPRICE || 0)) require('../permissionPolicy.js').assert(user, 'PRICING', 4);
     snapshots.push({ ...item, name: rows[0].NAME, unit: rows[0].DDONVITINHID || null });
   }
   const id = uuid();
@@ -78,8 +78,8 @@ async function decide(query, execute, uuid, repairId, id, body, actor) {
   const approved = body.approvedItemIds;
   if (!Array.isArray(approved) || new Set(approved).size !== approved.length || approved.some(key => !items.some(it => it.ID === key))) fail('Danh sách hạng mục được duyệt không hợp lệ.');
   const state = approved.length === 0 ? 'rejected' : approved.length === items.length ? 'approved' : 'partially_approved';
-  const policy = require('./pricingPolicy');
-  const chargeRates = require('./defaultChargeRates');
+  const policy = require('./pricingPolicy.js');
+  const chargeRates = require('./defaultChargeRates.js');
   const currentRates = await chargeRates.loadForRepairs(query);
   const [policyOrder] = await query('SELECT CHARGEVERSION, TILEGIAMGIA, TIENGIAMGIAPHIEU, TILETHUE, TILEPHIDICHVU FROM TLENHSUACHUA WHERE ID=?', [repairId]);
   for (const it of items) {
@@ -123,7 +123,7 @@ async function decide(query, execute, uuid, repairId, id, body, actor) {
     LYDO, GHICHU, STT, STATUS, USERCREATEDID, TIMECREATED)
     SELECT ?, ID, DXEID, 2, 2, CURRENT_TIMESTAMP, ?, ?, 0, 1, ?, CURRENT_TIMESTAMP FROM TTRANGTHAIXE WHERE ID=?`,
     [uuid(), 'Khách xác nhận phát sinh sửa chữa', `${id}: ${state}; ${customer}; ${evidence}`.slice(0, 1000), actor, flow.ID]);
-  await require('./repairCommissions').captureAdditional(query, execute, uuid, repairId, actor);
+  await require('./repairCommissions.js').captureAdditional(query, execute, uuid, repairId, actor);
   return { state };
 }
 async function assertResolved(query, repairId) {

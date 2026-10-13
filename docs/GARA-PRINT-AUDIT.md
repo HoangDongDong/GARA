@@ -68,10 +68,10 @@ Migration sao lưu SCONFIG vào `backend/system-config-templates-backup-*.json`.
 ## Kiểm tra
 
 - `npm run build --prefix frontend`: thành công.
-- `node --test backend/tests/*.test.js`: 11 kiểm thử thành công, gồm quyền Xem + In, ngày hợp lệ, đúng loại thu/chi, chặn bàn giao chưa hoàn thành, thuế/giảm giá, ưu tiên số dư đã lưu và chặn biến mẫu không tương thích.
-- `node backend/verify_print_documents.js`: 18 mẫu tạo được PDF; 15 dùng chứng từ thật, 3 thu/chi/lương dùng mock tách biệt. Không chèn chứng từ kiểm thử vào Firebird.
+- `node --test Test/backend/tests/*.test.js`: 11 kiểm thử thành công, gồm quyền Xem + In, ngày hợp lệ, đúng loại thu/chi, chặn bàn giao chưa hoàn thành, thuế/giảm giá, ưu tiên số dư đã lưu và chặn biến mẫu không tương thích.
+- `node Test/firebird/verify_print_documents.js`: 18 mẫu tạo được PDF; 15 dùng chứng từ thật, 3 thu/chi/lương dùng mock tách biệt. Không chèn chứng từ kiểm thử vào Firebird.
 - API `/api/printing/types`: 200, trả đủ 18 loại cho admin; không có token: 401. API xuất PDF và luồng in POS cũ trả PDF hợp lệ.
-- PDF được render thành ảnh để kiểm tra bảng, chữ tiếng Việt, ngắt trang và mã vạch. Các bản kiểm tra chứa dữ liệu nghiệp vụ ở `backend/print-verification/`, đã đưa vào .gitignore.
+- PDF được render thành ảnh để kiểm tra bảng, chữ tiếng Việt, ngắt trang và mã vạch. Các bản kiểm tra chứa dữ liệu nghiệp vụ ở `Test/artifacts/print-verification/`, đã đưa vào .gitignore.
 
 Triển khai trên database khác: `npm run migrate:print-documents --prefix backend`, sau khi có nhóm cấu hình In ấn & Mẫu và kết nối Firebird đúng. In là thao tác đọc; không chuyển trạng thái sửa chữa, thu tiền hay trừ kho.
 

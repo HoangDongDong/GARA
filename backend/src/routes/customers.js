@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db.js');
 
 /**
  * GARAGE.FDB - DKHACHHANG:
@@ -47,11 +47,12 @@ router.get('/:id', async (req, res) => {
 // POST /api/customers
 router.post('/', async (req, res) => {
   try {
-    require("../services/pricingPolicy").validateMaster(req.body);
+    require("../services/pricingPolicy.js").validateMaster(req.body);
     const { NAME, MAKHACH, DIENTHOAI, EMAIL, DIACHI, MASOTHUE, DNHOMKHACHHANGID } = req.body;
-    if (!NAME) return res.status(400).json({ error: 'Ten khach hang khong duoc trong' });
-    const customerCode = String(MAKHACH || '').trim();
-    if (customerCode) {
+    if (!NAME || !String(NAME).trim()) return res.status(400).json({ error: 'Ten khach hang khong duoc trong' });
+    let customerCode = String(MAKHACH || '').trim();
+    const automatic = !customerCode || String(req.body.AUTO_CODE || '').trim().toUpperCase() === customerCode.toUpperCase();
+    if (!automatic) {
       const duplicates = await db.query(
         `SELECT FIRST 1 ID FROM DKHACHHANG
           WHERE STATUS = 1 AND UPPER(TRIM(MAKHACH)) = ?`,
@@ -63,14 +64,17 @@ router.post('/', async (req, res) => {
     }
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const id = db.uuidv4();
-    await db.execute(
+    await db.transaction(async (query, execute) => {
+    if (automatic) customerCode = await require('../services/documentNumbers.js').nextInTransaction('KhachHang', query, execute);
+    await execute(
       `INSERT INTO DKHACHHANG
          (ID, NAME, MAKHACH, DIENTHOAI, EMAIL, DIACHI, MASOTHUE, DNHOMKHACHHANGID, GIAMGIARIENG,
           STATUS, USERCREATEDID, TIMECREATED)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
       [id, String(NAME).trim(), customerCode || null, DIENTHOAI, EMAIL, DIACHI, MASOTHUE, DNHOMKHACHHANGID || null, req.body.GIAMGIARIENG ?? null, actor]
     );
-    res.json({ ok: true, id });
+    });
+    res.json({ ok: true, id, code: customerCode });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message });
   }
@@ -78,7 +82,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    require("../services/pricingPolicy").validateMaster(req.body);
+    require("../services/pricingPolicy.js").validateMaster(req.body);
     const { NAME, MAKHACH, DIENTHOAI, EMAIL, DIACHI, MASOTHUE, DNHOMKHACHHANGID } = req.body;
     if (!NAME || !String(NAME).trim()) {
       return res.status(400).json({ error: 'Ten khach hang khong duoc trong' });

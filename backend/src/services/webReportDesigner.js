@@ -3,8 +3,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { DOMParser } = require('@xmldom/xmldom');
-const { runRenderer, fillMissingVariables } = require('./salesPrint');
-const { mapLegacyMoneyWords } = require('./legacyPrintExpressions');
+const { runRenderer, fillMissingVariables } = require('./salesPrint.js');
+const { mapLegacyMoneyWords } = require('./legacyPrintExpressions.js');
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const backupRoot = path.resolve(__dirname, '../../storage/print-template-backups');
@@ -35,7 +35,7 @@ function readBlob(blob) {
     stream.on('end', () => resolve(Buffer.concat(chunks)));
   }));
 }
-function directory(id) { return path.join(require('../tenancy').storageDirectory(backupRoot), revision(String(id))); }
+function directory(id) { return path.join(require('../tenancy.js').storageDirectory(backupRoot), revision(String(id))); }
 function listBackups(id) {
   const dir = directory(id);
   if (!fs.existsSync(dir)) return [];

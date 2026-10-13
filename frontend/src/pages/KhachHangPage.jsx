@@ -1,4 +1,5 @@
-import { can, canQuickCreate } from '../utils/permissions';
+import MasterDataFormModal from '../components/MasterDataFormModal';
+import { can, canQuickCreate } from '../utils/permissions.js';
 import CustomerFormModal from '../components/CustomerFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useEffect, useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react';
 import { customers, masterData, vehicles } from '../services';
 import './KhachHangPage.css';
-import { discountPolicy } from '../utils/pricingPolicy';
+import { discountPolicy } from '../utils/pricingPolicy.js';
 
 const fmtMoney = (n) => {
   if (n == null) return '0đ';
@@ -113,7 +114,7 @@ export default function KhachHangPage() {
       const code = String(customer.MAKHACH || customer.MAKH || customer.CODE || '').trim().toUpperCase();
       return id !== editingId && code === normalizedCode;
     });
-    if (duplicateCode) {
+    if (duplicateCode && !(formMode === 'add' && String(form.AUTO_CODE || '').toUpperCase() === normalizedCode)) {
       setFormError('Mã khách hàng đã tồn tại. Vui lòng nhập mã khác.');
       return;
     }
@@ -684,46 +685,9 @@ export default function KhachHangPage() {
 
       {formMode && <CustomerFormModal formMode={formMode} form={form} setForm={setForm} saving={saving} formError={formError} customerGroups={customerGroups} closeForm={closeForm} handleFormSubmit={handleFormSubmit} openGroupForm={openGroupForm} />}
 
-      {showGroupForm && (
-        <div
-          onMouseDown={(event) => { if (event.target === event.currentTarget && !savingGroup) setShowGroupForm(false); }}
-          style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-        >
-          <div style={{ width: 390, maxWidth: '100%', background: 'white', borderRadius: 7, overflow: 'hidden', boxShadow: '0 10px 32px rgba(0,0,0,0.28)' }}>
-            <div style={{ background: '#E65100', color: 'white', padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>THÊM NHÓM KHÁCH HÀNG</div>
-              <button type="button" onClick={() => !savingGroup && setShowGroupForm(false)} disabled={savingGroup} style={{ border: 0, background: 'transparent', color: 'white', cursor: 'pointer', padding: 2, display: 'flex' }}>
-                <X size={17} />
-              </button>
-            </div>
-            <form onSubmit={handleAddGroup} style={{ padding: 14 }}>
-              <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                Tên nhóm khách hàng <span style={{ color: '#D32F2F' }}>*</span>
-                <input
-                  autoFocus
-                  value={newGroupName}
-                  onChange={(event) => setNewGroupName(event.target.value)}
-                  placeholder="Nhập tên nhóm..."
-                  style={{ width: '100%', marginTop: 4, padding: '7px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }}
-                />
-              </label>
-              {groupError && (
-                <div style={{ marginTop: 8, padding: '6px 8px', background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2', borderRadius: 4, fontSize: 10.5 }}>
-                  {groupError}
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 7, marginTop: 12 }}>
-                <button type="button" onClick={() => setShowGroupForm(false)} disabled={savingGroup} style={{ padding: '5px 13px', border: '1px solid #ccc', borderRadius: 4, background: 'white', color: '#424242', fontSize: 11, cursor: 'pointer' }}>
-                  Hủy
-                </button>
-                <button type="submit" disabled={savingGroup} style={{ padding: '5px 16px', border: 0, borderRadius: 4, background: '#E65100', color: 'white', fontSize: 11, fontWeight: 700, cursor: savingGroup ? 'wait' : 'pointer', opacity: savingGroup ? 0.7 : 1 }}>
-                  {savingGroup ? 'Đang lưu...' : 'Thêm nhóm'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showGroupForm && <MasterDataFormModal definition={{name:'Nhóm khách hàng',fields:[{key:'NAME',label:'Tên nhóm khách hàng',required:true}]}}
+        mode="add" form={{NAME:newGroupName}} setForm={value=>setNewGroupName(typeof value === 'function' ? value({NAME:newGroupName}).NAME : value.NAME)}
+        saving={savingGroup} error={groupError} onSubmit={handleAddGroup} onClose={()=>!savingGroup && setShowGroupForm(false)}/>}
     </div>
   );
 }

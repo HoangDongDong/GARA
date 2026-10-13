@@ -1,4 +1,4 @@
-import { compressImage, imagePolicies } from './compressImage';
+import { compressImage, imagePolicies } from './compressImage.js';
 const MAX_BYTES = 20 * 1024 * 1024;
 let worker;
 let sequence = 0;

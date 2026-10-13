@@ -1,6 +1,6 @@
 const crypto=require('crypto');
-const platform=require('./platform');
-const tenancy=require('../tenancy');
+const platform=require('./platform.js');
+const tenancy=require('../tenancy.js');
 const normalize=value=>String(value||'').trim().toLowerCase();
 const key=value=>crypto.createHash('sha256').update(normalize(value)).digest('hex');
 function validate(value){const name=normalize(value);if(!/^[a-z0-9][a-z0-9._-]{2,59}$/.test(name))throw platform.fail('Tên đăng nhập cần 3–60 ký tự chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.');return name;}

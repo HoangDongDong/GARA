@@ -1,13 +1,17 @@
+import {createPortal} from 'react-dom';
+import {canQuickCreate} from '../utils/permissions.js';
+import useEditableCodePreview from '../hooks/useEditableCodePreview.js';
 import RatePolicyField from './RatePolicyField';
 import { User, X } from 'lucide-react';
 
 // Form dùng chung, được tách từ KhachHangPage.jsx.
 export default function CustomerFormModal({ formMode, form, setForm, saving, formError, customerGroups, closeForm, handleFormSubmit, openGroupForm }) {
-  return (
+  const codePreview = useEditableCodePreview('KhachHang','MAKHACH',form,setForm,formMode === 'add');
+  return createPortal(
 <div
           onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm(); }}
           style={{
-            position: 'fixed', inset: 0, zIndex: 10020,
+            position: 'fixed', inset: 0, zIndex: 10040,
             background: 'rgba(0,0,0,0.45)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', padding: 16,
           }}
@@ -22,7 +26,7 @@ export default function CustomerFormModal({ formMode, form, setForm, saving, for
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} style={{ padding: 14 }}>
+            <form onSubmit={event => {event.stopPropagation();handleFormSubmit(event);}} style={{ padding: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label style={{ gridColumn: '1 / -1', fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
                   Tên khách hàng <span style={{ color: '#D32F2F' }}>*</span>
@@ -51,6 +55,7 @@ export default function CustomerFormModal({ formMode, form, setForm, saving, for
                     <button
                       type="button"
                       onClick={openGroupForm}
+                      disabled={saving || !canQuickCreate('customer_groups')}
                       title="Thêm nhóm khách hàng"
                       style={{ padding: '0 12px', border: 0, borderRadius: 4, background: '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
@@ -62,9 +67,9 @@ export default function CustomerFormModal({ formMode, form, setForm, saving, for
                 <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
                   Mã khách hàng
                   <input
-                    value={form.MAKHACH}
-                    onChange={(event) => setForm({ ...form, MAKHACH: event.target.value })}
-                    placeholder="Ví dụ: KH001"
+                    value={form.MAKHACH || ''}
+                    placeholder={codePreview.loading ? 'Đang tạo mã…' : formMode === 'add' ? 'Tự sinh theo cấu hình hoặc nhập mã khác' : ''}
+                    onChange={event => codePreview.changeCode(event.target.value)}
                     style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }}
                   />
                 </label>
@@ -133,5 +138,5 @@ export default function CustomerFormModal({ formMode, form, setForm, saving, for
             </form>
           </div>
         </div>
-  );
+  , document.body);
 }

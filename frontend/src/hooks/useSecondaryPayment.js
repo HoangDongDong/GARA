@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import api from '../api';
+import api from '../api.js';
 function createSession() {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));

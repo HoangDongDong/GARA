@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 // Balances are derived from active receipts/payments, so cancelled cash entries
 // stop affecting the account without maintaining a second mutable balance.
 async function load(query=db.query) {

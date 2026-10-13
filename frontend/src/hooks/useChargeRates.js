@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../api';
+import api from '../api.js';
 
 export default function useChargeRates(resource, enabled = true) {
   const [rates, setRates] = useState({ taxRate: 0, serviceRate: 0 });

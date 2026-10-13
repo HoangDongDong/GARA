@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db.js');
 router.get('/charge-rates', async (req, res) => {
-  try { res.json({ data: await require('../services/defaultChargeRates').load() }); }
+  try { res.json({ data: await require('../services/defaultChargeRates.js').load() }); }
   catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
@@ -27,7 +27,7 @@ function parsePartImage(value) {
  */
 
 // Lay ton kho tu DNHAPKHOCHITIET (nhap) - DXUATPHUTUNG + TDONHANGCHITIET (xuat)
-const TONKHO_SQL = `SELECT S.DMATHANGID, SUM(CASE WHEN S.QUANTITY>0 THEN S.QUANTITY ELSE 0 END) AS SL_NHAP, -SUM(CASE WHEN S.QUANTITY<0 THEN S.QUANTITY ELSE 0 END) AS SL_XUAT FROM (${require('../services/stock').movements}) S GROUP BY S.DMATHANGID`;
+const TONKHO_SQL = `SELECT S.DMATHANGID, SUM(CASE WHEN S.QUANTITY>0 THEN S.QUANTITY ELSE 0 END) AS SL_NHAP, -SUM(CASE WHEN S.QUANTITY<0 THEN S.QUANTITY ELSE 0 END) AS SL_XUAT FROM (${require('../services/stock.js').movements}) S GROUP BY S.DMATHANGID`;
 
 // GET /api/parts
 router.get('/', async (req, res) => {
@@ -94,29 +94,29 @@ router.get('/:id/image', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    require("../services/pricingPolicy").validateMaster(req.body);
-    require('../services/repairCommissions').validateConfig(req.body);
+    require("../services/pricingPolicy.js").validateMaster(req.body);
+    require('../services/repairCommissions.js').validateConfig(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
       BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH,
     } = req.body;
     const name = String(NAME || '').trim();
-    const code = String(CODE || '').trim();
+    let code = String(CODE || '').trim();
+    const automatic = !code || req.body.AUTO_CODE === code;
     if (!name) return res.status(400).json({ error: 'Ten mat hang khong duoc trong' });
-    if (!code) return res.status(400).json({ error: 'Ma mat hang khong duoc trong' });
-    const duplicates = await db.query(
-      `SELECT FIRST 1 ID FROM DMATHANG WHERE UPPER(TRIM(CODE)) = ?`,
-      [code.toUpperCase()]
-    );
-    if (duplicates.length) return res.status(409).json({ error: 'Ma mat hang da ton tai' });
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const id = db.uuidv4();
     const partImage = ANH ? parsePartImage(ANH) : null;
     if (ANH && !partImage) {
       return res.status(400).json({ error: 'Anh mat hang khong hop le hoac vuot qua 3 MB' });
     }
-    await db.execute(
+    await db.transaction(async (query, execute) => {
+      if (automatic) code = await require('../services/documentNumbers.js').nextInTransaction('MatHang', query, execute);
+      else if ((await query('SELECT FIRST 1 ID FROM DMATHANG WHERE UPPER(TRIM(CODE))=?', [code.toUpperCase()])).length) {
+        throw Object.assign(new Error('Mã mặt hàng đã tồn tại.'), {status:409});
+      }
+    await execute(
       `INSERT INTO DMATHANG
          (ID, NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
           DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
@@ -124,7 +124,7 @@ router.post('/', async (req, res) => {
           STATUS, TAMKHOA, USERCREATEDID, TIMECREATED)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, CURRENT_TIMESTAMP)`,
       [
-        id, name, code, BARCODE, MAOEM,
+        id, name, code, code, MAOEM,
         GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
         DHANGSANXUATID || null, DVITRIKHOID || null,
         DNHOMMATHANGID || null, DDONVITINHID || null,
@@ -134,19 +134,23 @@ router.post('/', async (req, res) => {
         actor,
       ]
     );
-    res.json({ ok: true, id });
+    });
+    res.json({ ok: true, id, code });
   } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
 router.put('/:id', async (req, res) => {
   try {
-    require("../services/pricingPolicy").validateMaster(req.body);
-    require('../services/repairCommissions').validateConfig(req.body);
+    require("../services/pricingPolicy.js").validateMaster(req.body);
+    require('../services/repairCommissions.js').validateConfig(req.body);
     const {
       NAME, CODE, BARCODE, MAOEM, GIANHAP, GIABAN, GIABAN2, GIABAN3,
       DHANGSANXUATID, DVITRIKHOID, DNHOMMATHANGID, DDONVITINHID,
       BAOHANH, TONTOITHIEU, TONTOIDA, MASANCO, ANH,
     } = req.body;
+    const code = String(CODE || '').trim();
+    if (!code) return res.status(400).json({error:'Mã mặt hàng không được để trống.'});
+    if ((await db.query('SELECT FIRST 1 ID FROM DMATHANG WHERE UPPER(TRIM(CODE))=? AND ID<>?', [code.toUpperCase(),req.params.id])).length) return res.status(409).json({error:'Mã mặt hàng đã tồn tại.'});
     const partImage = ANH !== undefined && ANH ? parsePartImage(ANH) : null;
     if (ANH && !partImage) {
       return res.status(400).json({ error: 'Anh mat hang khong hop le hoac vuot qua 3 MB' });
@@ -163,7 +167,7 @@ router.put('/:id', async (req, res) => {
               USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP
         WHERE ID=?`,
       [
-        NAME, CODE, BARCODE, MAOEM,
+        NAME, code, code, MAOEM,
         GIANHAP === undefined ? null : GIANHAP || 0, GIABAN || 0, GIABAN2 || 0, GIABAN3 || 0,
         DHANGSANXUATID || null, DVITRIKHOID || null,
         DNHOMMATHANGID || null, DDONVITINHID || null,

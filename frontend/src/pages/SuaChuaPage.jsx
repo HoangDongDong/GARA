@@ -1,7 +1,8 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import CustomerCreateModal from '../components/CustomerCreateModal';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
-import useDocumentNumber from '../hooks/useDocumentNumber';
+import useDocumentNumber from '../hooks/useDocumentNumber.js';
 import DocumentNumberField from '../components/DocumentNumberField';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -20,13 +21,14 @@ import RepairSupplements from '../components/RepairSupplements';
 import LineTaxField from '../components/LineTaxField';
 import EditableSalePrice from '../components/EditableSalePrice';
 import DiscountFields from '../components/DiscountFields';
-import { billDiscount } from '../utils/billDiscount';
+import { billDiscount } from '../utils/billDiscount.js';
 import ChargeSummary from '../components/ChargeSummary';
-import useChargeRates from '../hooks/useChargeRates';
-import canEditPricing from '../utils/canEditPricing';
-import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy';
-import { lastDraftVehicle, readRepairDraft, saveRepairDraft, removeRepairDraft, restoreDraftItems } from '../utils/repairDraft';
+import useChargeRates from '../hooks/useChargeRates.js';
+import canEditPricing from '../utils/canEditPricing.js';
+import { calculate, taxPolicy, discountPolicy } from '../utils/pricingPolicy.js';
+import { lastDraftVehicle, readRepairDraft, saveRepairDraft, removeRepairDraft, restoreDraftItems } from '../utils/repairDraft.js';
 import './SuaChuaPage.css';
+import api from '../api.js';
 
 const MAX_WORKFLOW_IMAGES = 12;
 
@@ -73,6 +75,7 @@ export default function SuaChuaPage() {
   const [repairFlow, setRepairFlow] = useState({ repairId: null, workflowId: null, receptionId: null, workflowState: null });
   const [savedDetails, setSavedDetails] = useState([]);
   const [savedOrder, setSavedOrder] = useState(null);
+  const [declinedItemIds, setDeclinedItemIds] = useState([]);
   const canEditPolicy = canEditPricing('REPAIR');
   const chargeConfig = useChargeRates('repair-orders');
   const [discountOverride, setDiscountOverride] = useState(null);
@@ -84,6 +87,7 @@ export default function SuaChuaPage() {
   const [vehicleFlowOptions, setVehicleFlowOptions] = useState([]);
   const vehicleSelectionRequest = useRef(0);
   const [showRepairConfirmation, setShowRepairConfirmation] = useState(false);
+  useEffect(() => { setDeclinedItemIds([]); }, [repairFlow.repairId, savedDetails, showRepairConfirmation]);
   const [repairAssignment, setRepairAssignment] = useState({ valid: false, assignments: [] });
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -299,6 +303,31 @@ export default function SuaChuaPage() {
         tax: Number(snapshot.TIENTHUE || 0), serviceFee: Number(snapshot.PHIDICHVU || 0), total: Number(snapshot.TONGCONG || 0), taxGroups:snapshot.taxGroups || [] }
     : calculate(pricedServices, chargeRates, billReduction.percent, billReduction.fixed);
   const totalAmount = chargeTotals.total;
+  const acceptedServices = selectedServices.filter(item => !declinedItemIds.includes(item.id));
+  const confirmationPreview = useMemo(() => {
+    const lines = acceptedServices.map(item => ({id:item.id,amount:item.amount,discountRate:Number(item.TILECHIETKHAU || 0),taxRate:Number(item.TILETHUE ?? chargeRates.taxRate)}));
+    try {
+      const reduction = billDiscount(lines,Number(activeSavedOrder?.TILEGIAMGIA || 0),activeSavedOrder?.TIENGIAMGIAPHIEU);
+      if (activeSavedOrder?.TIENGIAMGIAPHIEU != null && Number(activeSavedOrder.TIENGIAMGIAPHIEU) > reduction.base) throw new Error('Tiền giảm cố định đang lớn hơn tiền các hạng mục khách chọn. Vui lòng kiểm tra lại trước khi xác nhận.');
+      return {totals:calculate(lines,chargeRates,reduction.percent,reduction.fixed),error:''};
+    } catch (error) { return {totals:null,error:error.message}; }
+  }, [savedDetails,declinedItemIds,activeSavedOrder,chargeRates.taxRate,chargeRates.serviceRate]);
+  const handlePrintRepairDocument = async (quote = Number(repairFlow.workflowState) < 2) => {
+    if (!can('REPAIR',17) || savingProcess) return;
+    try {
+      let id = repairFlow.repairId;
+      const type = quote ? 'MauBaoGia' : Number(repairFlow.workflowState) === 3 ? 'MauPhieuTamTinh' : 'MauPhieuSuaChua';
+      if (quote) {
+        id = activeSavedOrder?.TBAOGIAID;
+        if (!id) {
+          const result = await api.post(`/repair-orders/${encodeURIComponent(repairFlow.repairId)}/quote`);
+          id = result.data.quoteId;
+          setSavedOrder(current => ({...current,TBAOGIAID:id}));
+        }
+      }
+      openDocumentPrint({type,types:[type],id,autoPreview:true});
+    } catch (error) { showToast(error.response?.data?.error || 'Không thể mở bản in.'); }
+  };
   const chargeSummary = <>
     <ChargeSummary subtotal={chargeTotals.subtotal} discount={chargeTotals.discount} totals={chargeTotals}
       discountControl={<>
@@ -555,33 +584,6 @@ export default function SuaChuaPage() {
       DIENTHOAI: '', EMAIL: '', MASOTHUE: '', DIACHI: '',
     });
     setShowAddCustomer(true);
-  };
-
-  const handleCreateCustomer = async (event) => {
-    event.preventDefault();
-    if (!newCustomer.NAME.trim()) return showToast('Vui lòng nhập tên khách hàng.');
-    const normalizedCode = newCustomer.MAKHACH.trim().toUpperCase();
-    if (normalizedCode && customerOptions.some((customer) => String(customer.MAKHACH || '').trim().toUpperCase() === normalizedCode)) {
-      return showToast('Mã khách hàng đã tồn tại.');
-    }
-    setSavingCustomer(true);
-    try {
-      const result = await customers.create({
-        ...newCustomer,
-        NAME: newCustomer.NAME.trim(),
-        MAKHACH: normalizedCode || null,
-      });
-      const rows = await customers.list();
-      const list = Array.isArray(rows) ? rows : [];
-      setCustomerOptions(list);
-      updateNewVehicle('DKHACHHANGID', result.id);
-      setShowAddCustomer(false);
-      showToast(`Đã thêm và chọn khách hàng ${newCustomer.NAME.trim()}.`);
-    } catch (error) {
-      showToast(error?.response?.data?.error || error.message || 'Không thể thêm khách hàng.');
-    } finally {
-      setSavingCustomer(false);
-    }
   };
 
   const openAddCustomerGroup = () => {
@@ -870,6 +872,7 @@ export default function SuaChuaPage() {
   const handleConfirmRepair = async () => {
     if (!can('REPAIR',4) || !can('ASSIGN_REPAIR',4) || (Number(repairFlow.workflowState) === 0 && !can('APPROVE_QUOTE',4))) return showToast('Bạn chưa có quyền duyệt báo giá hoặc phân công.');
     if (!repairAssignment.valid) return showToast('Chọn nhân viên, người phụ trách chính và chia đủ 100% trước khi xác nhận.');
+    if (!acceptedServices.length || confirmationPreview.error) return showToast(confirmationPreview.error || 'Chọn ít nhất một hạng mục khách đồng ý sửa.');
     if (!repairFlow.repairId || ![0, 1].includes(Number(repairFlow.workflowState))) return showToast('Phiếu cần ở bước Tiếp nhận & Báo giá hoặc Xác nhận sửa chữa.');
     setSavingProcess(true);
     try {
@@ -887,6 +890,7 @@ export default function SuaChuaPage() {
         DXEID: vehicleInfo.vehicleId, TRANGTHAI: 2,
         TLENHSUACHUAID: repairFlow.repairId,
         assignments: repairAssignment.assignments,
+        acceptedItemIds: acceptedServices.map(item => item.id),
         DNHANVIENID: vehicleInfo.staff || 'SYSTEM',
         LYDO: 'Bat dau sua chua sau khi khach hang xac nhan',
         GHICHU: repairNotes,
@@ -894,6 +898,11 @@ export default function SuaChuaPage() {
       setRepairFlow((current) => ({ ...current, workflowState: 2 }));
       updateSelectedFlowState(2);
       setShowRepairConfirmation(false);
+      const confirmedOrder = await repairOrders.get(repairFlow.repairId);
+      setSavedOrder(confirmedOrder);
+      setSavedDetails(confirmedOrder.details || []);
+      const acceptedSources = new Set((confirmedOrder.details || []).map(item => item.DMATHANGID || item.DDICHVUID));
+      setServices(current => current.map(item => ({...item,checked:acceptedSources.has(item.sourceId)})));
       showToast('Đã lưu phân công, hoa hồng và chuyển sang Đang sửa.');
     } catch (error) {
       showToast(error?.response?.data?.error || error.message || 'Không thể xác nhận sửa chữa.');
@@ -1825,10 +1834,11 @@ export default function SuaChuaPage() {
           <div className="suachua-action-buttons-row" style={{ display: 'flex', alignItems: 'stretch', gap: 6, width: '100%', flexShrink: 0 }}>
             {/* Nửa bên trái (50%): chỉ in khi đã có phiếu lưu chính thức */}
             <div style={{ display: 'flex', flex: '1 1 50%', minWidth: 0, gap: 5 }}>
-              {repairFlow.repairId && Number(repairFlow.workflowState) !== 2 && <button
+              {repairFlow.repairId && <button
                 type="button"
+                disabled={savingProcess || !can('REPAIR',17)}
                 onClick={() => {
-                  openDocumentPrint({ type: Number(repairFlow.workflowState) === 3 ? 'MauPhieuTamTinh' : 'MauPhieuSuaChua', id: repairFlow.repairId });
+                  handlePrintRepairDocument();
                 }}
                 style={{
                   flex: 1,
@@ -1850,7 +1860,7 @@ export default function SuaChuaPage() {
                 }}
               >
                 <Printer size={13} color="#E65100" style={{ flexShrink: 0 }} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>In phiếu</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace:'normal' }}>{Number(repairFlow.workflowState) < 2 ? 'In báo giá' : Number(repairFlow.workflowState) === 2 ? 'In lệnh sửa chữa thực tế' : 'In phiếu'}</span>
               </button>}
 
               <button
@@ -2171,58 +2181,8 @@ export default function SuaChuaPage() {
         </div>
       )}
 
-      {showAddCustomer && (
-        <div onMouseDown={(event) => { if (event.target === event.currentTarget && !savingCustomer) setShowAddCustomer(false); }} style={{ position: 'fixed', inset: 0, zIndex: 10020, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <form onSubmit={handleCreateCustomer} style={{ width: 'min(560px, 96vw)', background: '#fff', borderRadius: 7, overflow: 'hidden', boxShadow: '0 10px 32px rgba(0,0,0,0.25)' }}>
-            <div style={{ background: '#E65100', color: '#fff', padding: '9px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700 }}><UserPlus size={16} /> THÊM KHÁCH HÀNG</div>
-              <button type="button" disabled={savingCustomer} onClick={() => setShowAddCustomer(false)} style={{ border: 0, background: 'transparent', color: '#fff', cursor: 'pointer', padding: 2, display: 'flex' }}><XCircle size={17} /></button>
-            </div>
-            <div style={{ padding: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <label style={{ gridColumn: '1 / -1', fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Tên khách hàng <span style={{ color: '#D32F2F' }}>*</span>
-                  <input autoFocus value={newCustomer.NAME} onChange={(e) => setNewCustomer((current) => ({ ...current, NAME: e.target.value }))} placeholder="Nhập tên khách hàng..." style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} />
-                </label>
-                <label style={{ gridColumn: '1 / -1', fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Nhóm khách hàng
-                  <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                    <select value={newCustomer.DNHOMKHACHHANGID} onChange={(e) => setNewCustomer((current) => ({ ...current, DNHOMKHACHHANGID: e.target.value }))} style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, background: '#fff' }}>
-                      <option value="">-- Chọn nhóm khách hàng --</option>
-                      {customerGroups.map((group) => <option key={group.ID} value={group.ID}>{group.NAME}</option>)}
-                    </select>
-                    <button type="button" onClick={openAddCustomerGroup} title="Thêm nhóm khách hàng" style={{ width: 34, border: '1px solid #E65100', borderRadius: 4, background: '#FFF3E0', color: '#E65100', fontSize: 18, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>+</button>
-                  </div>
-                </label>
-                <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Mã khách hàng
-                  <input value={newCustomer.MAKHACH} onChange={(e) => setNewCustomer((current) => ({ ...current, MAKHACH: e.target.value.toUpperCase() }))} placeholder="Ví dụ: KH001" style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, textTransform: 'uppercase' }} />
-                </label>
-                <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Số điện thoại
-                  <input value={newCustomer.DIENTHOAI} onChange={(e) => setNewCustomer((current) => ({ ...current, DIENTHOAI: e.target.value }))} placeholder="Nhập số điện thoại..." style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} />
-                </label>
-                <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Email
-                  <input type="email" value={newCustomer.EMAIL} onChange={(e) => setNewCustomer((current) => ({ ...current, EMAIL: e.target.value }))} placeholder="email@example.com" style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} />
-                </label>
-                <label style={{ fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  CCCD / Mã số thuế
-                  <input value={newCustomer.MASOTHUE} onChange={(e) => setNewCustomer((current) => ({ ...current, MASOTHUE: e.target.value }))} placeholder="Nhập CCCD hoặc mã số thuế..." style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11 }} />
-                </label>
-                <label style={{ gridColumn: '1 / -1', fontSize: 10.5, fontWeight: 600, color: '#424242' }}>
-                  Địa chỉ
-                  <textarea rows={3} value={newCustomer.DIACHI} onChange={(e) => setNewCustomer((current) => ({ ...current, DIACHI: e.target.value }))} placeholder="Nhập địa chỉ..." style={{ width: '100%', marginTop: 3, padding: '6px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 11, resize: 'vertical', fontFamily: 'inherit' }} />
-                </label>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 7, marginTop: 12 }}>
-                <button type="button" disabled={savingCustomer} onClick={() => setShowAddCustomer(false)} style={{ padding: '5px 13px', border: '1px solid #ccc', borderRadius: 4, background: '#fff', color: '#424242', fontSize: 11, cursor: 'pointer' }}>Hủy</button>
-                <button type="submit" disabled={savingCustomer} style={{ padding: '5px 15px', border: 0, borderRadius: 4, background: savingCustomer ? '#FDBA74' : '#E65100', color: '#fff', fontSize: 11, fontWeight: 700, cursor: savingCustomer ? 'wait' : 'pointer' }}>{savingCustomer ? 'Đang lưu...' : 'Thêm khách hàng'}</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      {showAddCustomer && <CustomerCreateModal onClose={() => setShowAddCustomer(false)} notify={showToast}
+        onCreated={(id,rows) => {setCustomerOptions(current => [...new Map([...current,...rows].map(row => [row.ID,row])).values()]);updateNewVehicle('DKHACHHANGID',id);}}/>}
 
       {showAddCustomerGroup && (
         <div onMouseDown={(event) => { if (event.target === event.currentTarget && !savingCustomerGroup) setShowAddCustomerGroup(false); }} style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.58)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -2395,7 +2355,7 @@ export default function SuaChuaPage() {
 
               <div style={{ border: '1px solid #E2E8F0', borderRadius: 6, overflow: 'hidden' }}>
                 <div style={{ padding: '7px 10px', background: '#F8FAFC', fontWeight: 700, color: '#334155', borderBottom: '1px solid #E2E8F0' }}>
-                  Hạng mục khách hàng xác nhận ({selectedServices.length})
+                  Hạng mục khách hàng xác nhận ({acceptedServices.length}/{selectedServices.length})
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                   <thead><tr style={{ background: '#FFE0B2', color: '#BF360C' }}>
@@ -2409,7 +2369,9 @@ export default function SuaChuaPage() {
                     {selectedServices.map((item, index) => (
                       <tr key={item.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                         <td style={{ padding: 6, textAlign: 'center', color: '#64748B' }}>{index + 1}</td>
-                        <td style={{ padding: 6 }}><b>{item.name}</b><div style={{ color: '#64748B', fontSize: 9.5 }}>{item.group} • {item.note}</div></td>
+                        <td style={{ padding: 6 }}>
+                          {Number(repairFlow.workflowState) < 2 && <input type="checkbox" aria-label={`Khách đồng ý sửa ${item.name}`} checked={!declinedItemIds.includes(item.id)} disabled={savingProcess} onChange={event => setDeclinedItemIds(current => event.target.checked ? current.filter(id => id !== item.id) : [...current,item.id])} style={{width:15,height:15,display:'inline-block',verticalAlign:'middle',marginRight:8,accentColor:'#E65100'}} />}
+                          <b style={{textDecoration:declinedItemIds.includes(item.id)?'line-through':'none',color:declinedItemIds.includes(item.id)?'#94A3B8':undefined}}>{item.name}</b><div style={{ color: '#64748B', fontSize: 9.5 }}>{declinedItemIds.includes(item.id)?'Khách không chọn':`${item.group} • ${item.note}`}</div></td>
                         <td style={{ padding: 6, textAlign: 'center' }}>{item.quantity || 1} {item.unit}</td>
                         <td style={{ padding: 6, textAlign: 'right' }}>{formatMoney(item.price)}</td>
                         <td style={{ padding: 6, textAlign: 'right', fontWeight: 700 }}>{formatMoney(item.amount ?? item.price * (item.quantity || 1))}</td>
@@ -2418,14 +2380,15 @@ export default function SuaChuaPage() {
                   </tbody>
                 </table>
                 <div style={{ padding: '9px 12px', background: '#FFF3E0', display: 'flex', justifyContent: 'space-between', color: '#BF360C', fontWeight: 800, fontSize: 13 }}>
-                  <span>TỔNG BÁO GIÁ</span><span>{formatMoney(totalAmount)}</span>
+                  <span>TỔNG KHÁCH ĐỒNG Ý SỬA</span><span>{formatMoney(confirmationPreview.totals?.total || 0)}</span>
                 </div>
-                {chargeSummary}
+                {confirmationPreview.totals && <ChargeSummary subtotal={confirmationPreview.totals.subtotal} discount={confirmationPreview.totals.discount} totals={confirmationPreview.totals} rates={chargeRates} />}
+                {confirmationPreview.error && <div role="alert" style={{padding:10,color:'#B91C1C'}}>{confirmationPreview.error}</div>}
               </div>
 
-              <RepairAssignmentPanel repairId={repairFlow.repairId} onChange={setRepairAssignment} disabled={savingProcess} readOnly={Number(repairFlow.workflowState) >= 2} />
+              <RepairAssignmentPanel repairId={repairFlow.repairId} acceptedTotals={Number(repairFlow.workflowState)<2?confirmationPreview.totals:null} onChange={setRepairAssignment} disabled={savingProcess} readOnly={Number(repairFlow.workflowState) >= 2} />
               {Number(repairFlow.workflowState) < 2 && <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 5, background: '#EFF6FF', color: '#1E40AF', fontSize: 11 }}>
-                Khi nhấn <b>Xác nhận sửa chữa</b>, hệ thống sẽ ghi lịch sử xác nhận của khách hàng và tự động chuyển xe sang bước <b>Đang sửa</b>.
+                Bỏ dấu chọn những hạng mục khách không đồng ý. Báo giá ban đầu được giữ nguyên; lệnh sửa chữa, tiền thanh toán và hoa hồng chỉ tính các hạng mục khách chọn khi <b>Xác nhận sửa chữa</b>.
               </div>}
             </div>
 
@@ -2433,8 +2396,8 @@ export default function SuaChuaPage() {
               <button type="button" disabled={savingProcess} onClick={() => setShowRepairConfirmation(false)} style={{ marginRight: 'auto', height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
                 {Number(repairFlow.workflowState) >= 2 ? 'Đóng' : 'Chưa xác nhận'}
               </button>
-              <button type="button" disabled={savingProcess || !repairFlow.repairId || !can('REPAIR',17)} title="In lệnh sửa chữa đã lưu" onClick={() => openDocumentPrint({ type: 'MauPhieuSuaChua', types: ['MauPhieuSuaChua'], id: repairFlow.repairId, autoPreview: true })} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#E65100', fontWeight: 600, cursor: savingProcess || !repairFlow.repairId ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Printer size={14} /> In lệnh sửa chữa
+              <button type="button" disabled={savingProcess || !repairFlow.repairId || !can('REPAIR',17)} title="In chứng từ đã lưu" onClick={() => handlePrintRepairDocument()} style={{ height: 34, padding: '0 14px', background: '#fff', border: '1px solid #CBD5E1', borderRadius: 5, color: '#E65100', fontWeight: 600, cursor: savingProcess || !repairFlow.repairId ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Printer size={14} /> {Number(repairFlow.workflowState)<2?'In báo giá':'In lệnh sửa chữa thực tế'}
               </button>
               {Number(repairFlow.workflowState) < 2 && <button type="button" disabled={savingProcess || !repairAssignment.valid || !can('ASSIGN_REPAIR',4) || (Number(repairFlow.workflowState) === 0 && !can('APPROVE_QUOTE',4))} onClick={handleConfirmRepair} style={{ height: 34, padding: '0 16px', background: savingProcess || !repairAssignment.valid ? '#FDBA74' : '#E65100', color: '#fff', border: 0, borderRadius: 5, fontWeight: 700, cursor: savingProcess ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CheckCircle size={14} /> {savingProcess ? 'Đang xác nhận...' : 'Xác nhận sửa chữa'}

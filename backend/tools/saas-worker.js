@@ -1,5 +1,5 @@
-require('../src/config');
-const service = require('../src/services/saasWorker');
+require('../src/config.js');
+const service = require('../src/services/saasWorker.js');
 const command = process.argv[2] || 'once';
 let stopping = false;
 process.on('SIGINT', () => { stopping = true; });

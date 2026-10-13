@@ -2,7 +2,7 @@
  * apiClient.js - Wrapper cho cac API calls trong KAZUKO Auto
  * Dam bao frontend luon co baseURL dung, xu ly loi nhat quan.
  */
-import apiClient from './api';
+import apiClient from './api.js';
 
 
 

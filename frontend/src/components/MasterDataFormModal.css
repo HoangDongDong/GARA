@@ -8,3 +8,7 @@
 .master-form-modal footer button:first-child{background:#fff;color:#475569;border:1px solid #cbd5e1}
 .master-form-error{color:#c62828;background:#fff1f1;padding:9px;border-radius:4px}.master-form-unavailable{color:#9a3412;background:#fff7ed;padding:10px;font-size:12px;border-radius:4px}
 @media(max-width:600px){.master-form-fields input,.master-form-fields select,.master-form-fields textarea{font-size:16px}}
+
+.master-select-add{display:flex;align-items:stretch;gap:6;margin-top:5px}.master-select-add select{flex:1;min-width:0;margin-top:0}.master-select-add button{flex-shrink:0;padding:0 12px;border:1px solid #E65100;border-radius:4px;background:#E65100;color:#fff;display:flex;align-items:center;justify-content:center;gap:4px;font:inherit;font-weight:600;white-space:nowrap;cursor:pointer}.master-select-add button:disabled{opacity:.5;cursor:default}
+
+.master-time24{margin-top:6px}.master-time24-controls{display:flex;align-items:flex-end;gap:10px}.master-time24-controls>div{width:110px}.master-form-fields .master-time24 span{color:#64748b;font-size:11px;font-weight:400}.master-time24-controls input{text-align:center;font-variant-numeric:tabular-nums;font-size:16px}.master-time24-colon{padding-bottom:10px;color:#475569;font-size:18px}.master-time24 small{display:block;margin-top:6px;color:#64748b;font-weight:400}

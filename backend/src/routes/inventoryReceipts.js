@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const receiptPayment = require('../services/receiptPayment');
+const db = require('../db.js');
+const receiptPayment = require('../services/receiptPayment.js');
 
 router.get('/', async (req, res) => {
   try {
-    const page=require('../services/documentList').filters(req.query,'NK');
+    const page=require('../services/documentList.js').filters(req.query,'NK');
     const rows = await db.query(`
       SELECT ${page.select} NK.ID, NK.NAME, NK.NOTE, NK.NGAY,
              NK.DNHACUNGCAPID, NCC.NAME AS TEN_NCC,
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
        WHERE NK.STATUS = 1${page.where}
        ORDER BY NK.NGAY DESC, NK.TIMECREATED DESC, NK.ID DESC
     `,page.params);
-    res.json(require('../services/documentList').response(rows,page));
+    res.json(require('../services/documentList.js').response(rows,page));
   } catch (e) {
     res.status(e.status||500).json({ error: e.message });
   }
@@ -64,8 +64,8 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    require('../permissionPolicy').assert(req.accessUser,'COST');
-    if (Number(req.body.TIENTHANHTOAN || 0) !== 0) require('../permissionPolicy').assert(req.accessUser, 'PAYMENTS', 4);
+    require('../permissionPolicy.js').assert(req.accessUser,'COST');
+    if (Number(req.body.TIENTHANHTOAN || 0) !== 0) require('../permissionPolicy.js').assert(req.accessUser, 'PAYMENTS', 4);
     const {
       NAME, NGAY, NOTE, SOLOHANG,
       DNHACUNGCAPID, DKHOHANGID, DNHANVIENID,
@@ -77,14 +77,14 @@ router.post('/', async (req, res) => {
     if (!DNHANVIENID) return res.status(400).json({ error: 'Vui long chon nhan vien nhap' });
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Phieu nhap chua co mat hang' });
 
-    const validated = require('../services/receiptValidation').normalize(req.body);
+    const validated = require('../services/receiptValidation.js').normalize(req.body);
     const payment = receiptPayment.calculate(validated.total, TIENTHANHTOAN);
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
-    const result = await require('../services/idempotency').run(req,async (query, execute, uuidv4) => {
-      await require('../services/stock').lock(execute, validated.items.map(item=>item.DMATHANGID));
-      await require('../services/receiptValidation').references(query,req.body,validated.items);
+    const result = await require('../services/idempotency.js').run(req,async (query, execute, uuidv4) => {
+      await require('../services/stock.js').lock(execute, validated.items.map(item=>item.DMATHANGID));
+      await require('../services/receiptValidation.js').references(query,req.body,validated.items);
       if (requestedCode) await execute("UPDATE SNUMBERCOUNTER SET SEQ=SEQ WHERE CODE='NhapKho'");
-      const code = requestedCode || await require('../services/documentNumbers').nextInTransaction('NhapKho',query,execute);
+      const code = requestedCode || await require('../services/documentNumbers.js').nextInTransaction('NhapKho',query,execute);
       const duplicates = await query(`SELECT FIRST 1 ID FROM TNHAPKHO WHERE NAME = ?`, [code]);
       if (duplicates.length) {
         const error = new Error('So phieu nhap da ton tai');
@@ -133,7 +133,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id/pay', async (req, res) => {
   try {
-    require('../permissionPolicy').assert(req.accessUser,'COST');
+    require('../permissionPolicy.js').assert(req.accessUser,'COST');
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const payment = await db.transaction(async (query,execute) => {
       const [receipt] = await query('SELECT TONGCONG FROM TNHAPKHO WHERE ID=? AND STATUS=1 WITH LOCK',[req.params.id]);
@@ -155,12 +155,12 @@ router.delete('/:id', async (req, res) => {
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     await db.transaction(async (query, execute) => {
       const items=await query('SELECT DMATHANGID,SOLUONG,DKHOHANGID FROM TNHAPKHOCHITIET WHERE TNHAPKHOID=? AND STATUS=1',[req.params.id]);
-      await require('../services/stock').lock(execute,items.map(item=>item.DMATHANGID));
+      await require('../services/stock.js').lock(execute,items.map(item=>item.DMATHANGID));
       const [receipt]=await query('SELECT TONGCONG,CONGNO,DATHANHTOAN,DNHACUNGCAPID,DKHOHANGID FROM TNHAPKHO WHERE ID=? AND STATUS=1 WITH LOCK',[req.params.id]);
       if(!receipt)throw Object.assign(new Error('Không tìm thấy phiếu nhập.'),{statusCode:404});
       if(Number(receipt.DATHANHTOAN)===1 || Number(receipt.CONGNO??receipt.TONGCONG)!==Number(receipt.TONGCONG))throw Object.assign(new Error('Phiếu đã thanh toán; phải xử lý hoàn tiền trước khi hủy.'),{statusCode:409});
       if((await query('SELECT FIRST 1 ID FROM TTHUCHI WHERE DNHACUNGCAPID=? AND STATUS=1 AND COALESCE(KHONGDOICONGNO,0)=0',[receipt.DNHACUNGCAPID])).length)throw Object.assign(new Error('Nhà cung cấp đã có thanh toán công nợ; cần đối chiếu trước khi hủy phiếu.'),{statusCode:409});
-      await require('../services/stock').requireAvailable(query,items.map(item=>({...item,DKHOHANGID:item.DKHOHANGID||receipt.DKHOHANGID})));
+      await require('../services/stock.js').requireAvailable(query,items.map(item=>({...item,DKHOHANGID:item.DKHOHANGID||receipt.DKHOHANGID})));
       await execute(
         `UPDATE TNHAPKHO
             SET STATUS=0, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP

@@ -40,7 +40,10 @@ function styled(type,size){
  }
  return `<?xml version="1.0" encoding="utf-8"?><Report DoublePass="true" ScriptLanguage="CSharp" ReportInfo.Description="Phong cách hóa đơn bán phụ tùng">${dictionary}<ReportPage Name="Page1" PaperWidth="${paper.width}" PaperHeight="${paper.height}" LeftMargin="${paper.margin}" RightMargin="${receipt?8:paper.margin}" TopMargin="${receipt?3:paper.margin}" BottomMargin="${receipt?3:paper.margin}"><ReportTitleBand Name="Title" Width="${w}" Height="${height}" CanGrow="true" CanShrink="true">${header}</ReportTitleBand><DataBand Name="Data1" Width="${w}" Height="${barcode?rh+76:rh}" DataSource="Table0" CanGrow="true" CanShrink="true">${detail}<DataHeaderBand Name="Columns" Width="${w}" Height="${rh}" CanGrow="true" RepeatOnEveryPage="true">${table('colHeader',false)}</DataHeaderBand></DataBand><ReportSummaryBand Name="ReportSummary1" Width="${w}" Height="${money?rh*7:80}" CanGrow="true" CanShrink="true">${totals}</ReportSummaryBand>${receipt?'':`<PageFooterBand Name="Footer" Width="${w}" Height="20">${text('Trang [Page]',0,0,w,20,'HorzAlign="Right"',8)}</PageFooterBand>`}</ReportPage></Report>`;
 }
-module.exports={sizes,build:styled};
+module.exports={sizes,build:(type,size)=>{
+ const xml=styled(type,size);
+ return size==='A5'?require('./a5TemplateTypography.js').apply(xml).xml:xml;
+}};
 
 
 

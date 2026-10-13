@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import api from '../api';
-import { prepareRegistrationLogin } from '../utils/registrationLogin';
+import api from '../api.js';
+import { prepareRegistrationLogin } from '../utils/registrationLogin.js';
 import './SaasPages.css';
 
 export default function RegisterPage() {

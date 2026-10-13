@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const rights = require('../permissionPolicy');
-const { parsePhoto, imageMime, storePhoto } = require('../services/employeePhoto');
+const db = require('../db.js');
+const rights = require('../permissionPolicy.js');
+const { parsePhoto, imageMime, storePhoto } = require('../services/employeePhoto.js');
+const employeeRoles = require('../services/employeeRoles.js');
 
 router.get('/lookup', async (req, res) => {
-  try { res.json({ data: await db.query('SELECT ID,NAME,CODE,CHUYENMON,LOAINHANVIEN FROM DNHANVIEN WHERE STATUS=1 ORDER BY NAME') }); }
+  try { res.json({ data: await db.query('SELECT n.ID,n.NAME,n.CODE,n.CHUYENMON,n.LOAINHANVIEN,r.NAME AS VAITRO FROM DNHANVIEN n LEFT JOIN DVAITRONHANVIEN r ON r.CODE=n.LOAINHANVIEN WHERE n.STATUS=1 ORDER BY n.NAME') }); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -23,11 +24,17 @@ router.get('/:id/image', async (req, res) => {
 });
 
 router.get('/meta', async (req, res) => {
-  try { res.json({ data: { departments: await db.query('SELECT ID,NAME,STATUS FROM DPHONGBAN ORDER BY NAME') } }); }
+  try { res.json({ data: { departments: await db.query('SELECT ID,NAME,STATUS FROM DPHONGBAN ORDER BY NAME'), roles: await employeeRoles.list(db.query) } }); }
   catch (error) { res.status(500).json({ error: error.message }); }
 });
+router.post('/roles', async (req, res) => {
+  try {
+    rights.assert(req.accessUser, 'EMPLOYEES', 2);
+    res.json({ok:true,data:await employeeRoles.create(db, req.body.NAME, req.accessUser?.ID || 'SYSTEM')});
+  } catch (error) { res.status(error.statusCode || 500).json({error:error.message}); }
+});
 router.get('/commissions', async (req, res) => {
-  try { res.set('Cache-Control', 'no-store').json(await require('../services/employeeCommissions').load(db.query, req.query, { commissions: rights.has(req.accessUser, 'COMMISSIONS'), payroll: rights.has(req.accessUser, 'PAYROLL') })); }
+  try { res.set('Cache-Control', 'no-store').json(await require('../services/employeeCommissions.js').load(db.query, req.query, { commissions: rights.has(req.accessUser, 'COMMISSIONS'), payroll: rights.has(req.accessUser, 'PAYROLL') })); }
   catch (error) { res.status(error.statusCode || 500).json({ error: error.message }); }
 });
 
@@ -41,7 +48,7 @@ async function profile(body, current = {}) {
   }
   if (!result.NAME) throw Object.assign(new Error('Họ và tên không được để trống.'), { statusCode: 400 });
   result.LOAINHANVIEN = Number(body.LOAINHANVIEN ?? current.LOAINHANVIEN ?? 0);
-  if (![0,1,2,3,4].includes(result.LOAINHANVIEN)) throw Object.assign(new Error('Vai trò nhân viên không hợp lệ.'), { statusCode: 400 });
+  if (!Number.isInteger(result.LOAINHANVIEN) || result.LOAINHANVIEN < 0 || (![0,1,2,3,4].includes(result.LOAINHANVIEN) && !(await db.query('SELECT CODE FROM DVAITRONHANVIEN WHERE CODE=? AND STATUS=1', [result.LOAINHANVIEN])).length)) throw Object.assign(new Error('Vai trò nhân viên không hợp lệ.'), { statusCode: 400 });
   result.CACHTINHLUONG = Number(body.CACHTINHLUONG ?? current.CACHTINHLUONG ?? 0);
   if (![0,1].includes(result.CACHTINHLUONG)) throw Object.assign(new Error('Cách tính lương không hợp lệ.'), { statusCode: 400 });
   for (const key of ['LUONGTHANG','LUONGCA']) {
@@ -61,11 +68,12 @@ router.get('/', async (req, res) => {
       `SELECT n.ID, n.NAME, n.CODE, n.NOTE, n.DIENTHOAI, n.DIACHI,
               n.EMAIL, n.CHUNGCHI, n.CHUYENMON, n.SIMAGEID, n.TIMECREATED,n.TIMEMODIFIED,
               CASE WHEN EXISTS (SELECT 1 FROM SIMAGE I WHERE I.ID=n.SIMAGEID AND I.STATUS=1 AND I.IMAGE IS NOT NULL) THEN 1 ELSE 0 END AS CO_ANHNV,
-              n.NGHITHU7, n.NGHICHUNHAT, n.LOAINHANVIEN, n.CACHTINHLUONG,
+              n.NGHITHU7, n.NGHICHUNHAT, n.LOAINHANVIEN, r.NAME AS VAITRO, n.CACHTINHLUONG,
               n.LUONGCA, n.LUONGTHANG, n.STATUS,n.DPHONGBANID,p.NAME AS PHONGBAN,
               u.ID AS SUSERID, u.USERNAME, g.ID AS SGROUPUSERID, g.NAME AS CHUCVU
          FROM DNHANVIEN n
          LEFT JOIN DPHONGBAN p ON p.ID=n.DPHONGBANID
+         LEFT JOIN DVAITRONHANVIEN r ON r.CODE=n.LOAINHANVIEN
          LEFT JOIN SUSER u ON u.DNHANVIENID=n.ID AND u.STATUS=1
          LEFT JOIN SGROUPUSER g ON g.ID=u.SGROUPUSERID AND g.STATUS=1
         WHERE ${includeInactive ? 'n.STATUS IN (0, 1)' : 'n.STATUS = 1'}
@@ -81,8 +89,8 @@ router.post('/', async (req, res) => {
     const data = await profile(req.body);
     const photo = req.body.PHOTO !== undefined ? parsePhoto(req.body.PHOTO) : null;
     const id = db.uuidv4();
-    if (!data.CODE) data.CODE = `NV-${id.slice(0,8).toUpperCase()}`;
     await db.transaction(async (query, execute, uuid) => {
+    if (!data.CODE) data.CODE = await require('../services/documentNumbers.js').nextInTransaction('NhanVien', query, execute);
     const imageId = await storePhoto(execute, uuid, photo, req.accessUser?.ID || 'SYSTEM', data.NAME);
     await execute(
       `INSERT INTO DNHANVIEN

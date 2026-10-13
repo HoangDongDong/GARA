@@ -1,13 +1,13 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const db = require('../db');
-const { applyCompanyLogo } = require('./companyLogo');
-const { decodeConfigImage } = require('./configImageStorage');
-const { mapLegacyMoneyWords } = require('./legacyPrintExpressions');
-const { documentTypes } = require('./garagePrintCatalog');
-const { templateFilter, templateOptions } = require('./systemConfigOptions');
-const { company, clean, prefixed, runRenderer, fillMissingVariables, buildSalesPayload } = require('./salesPrint');
+const db = require('../db.js');
+const { applyCompanyLogo } = require('./companyLogo.js');
+const { decodeConfigImage } = require('./configImageStorage.js');
+const { mapLegacyMoneyWords } = require('./legacyPrintExpressions.js');
+const { documentTypes } = require('./garagePrintCatalog.js');
+const { templateFilter, templateOptions } = require('./systemConfigOptions.js');
+const { company, clean, prefixed, runRenderer, fillMissingVariables, buildSalesPayload } = require('./salesPrint.js');
 const permissionCodes = {
   MauPhieuTiepNhan:['REPAIR'], MauPhieuSuaChua:['REPAIR'], MauPhieuTamTinh:['REPAIR'], MauBaoGia:['REPAIR'], MauPhieuBanGiao:['REPAIR'],
   MauHoaDonSuaChua:['REPAIR','FINANCE'], MauPhieuBaoHanh:['WARRANTY'], MauHoaDonBanHang:['SALES'],
@@ -20,7 +20,7 @@ const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
 const date = value => value && !Number.isNaN(new Date(value).getTime()) ? new Date(value).toLocaleDateString('vi-VN',{timeZone:'Asia/Bangkok'}) : '';
 const fail = (message,status=400) => Object.assign(new Error(message),{status});
 const types = documentTypes.map(type => ({ ...type, codes: permissionCodes[type.key], layout: textTypes.has(type.key) ? 'text' : type.key==='MauMaVachPhuTung' ? 'barcode' : 'money' }));
-function permitted(user,type) { return Number(user?.ISADMIN)===1 || (type.codes.some(code => (Number(user?.permissions?.[code]||0)&17)===17) && (type.key!=='MauPhieuNhapKho' || require('../permissionPolicy').has(user,'COST')) && (type.key!=='MauBangLuong' || require('../permissionPolicy').has(user,'EMPLOYEES'))); }
+function permitted(user,type) { return Number(user?.ISADMIN)===1 || (type.codes.some(code => (Number(user?.permissions?.[code]||0)&17)===17) && (type.key!=='MauPhieuNhapKho' || require('../permissionPolicy.js').has(user,'COST')) && (type.key!=='MauBangLuong' || require('../permissionPolicy.js').has(user,'EMPLOYEES'))); }
 function typeByKey(key) { const type=types.find(item=>item.key===key); if(!type)throw fail('Loại bản in không hợp lệ.');return type; }
 function range(from,to) {
   for(const value of [from,to]) if(value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0,10)!==value))throw fail('Khoảng ngày không hợp lệ.');
@@ -90,7 +90,7 @@ async function payload(type,id,filters,user) {
      const [invoice]=await db.query('SELECT FIRST 1 TILETHUE,TIENTHUE,TILEPHIDICHVU,PHIDICHVU,TILEGIAMGIA,TIENGIAMGIA,TONGCONG,TAXSUMMARY,CHARGEVERSION FROM THOADONSUACHUA WHERE TLENHSUACHUAID=? AND STATUS=1 ORDER BY NGAY DESC,TIMECREATED DESC',[id]);
      if(invoice)header={...header,...invoice};
      else if(Number(header.CHARGEVERSION)!==1 && (header.TILETHUE!=null||header.TILEPHIDICHVU!=null||Number(header.TRANGTHAI)!==3)){
-      const charges=require('./defaultChargeRates');
+      const charges=require('./defaultChargeRates.js');
       const defaults=header.TILETHUE==null||header.TILEPHIDICHVU==null?await charges.load():{taxRate:0,serviceRate:0};
       const rates=charges.resolve(header,defaults);
       const totals=charges.calculate(rows.reduce((sum,row)=>sum+Number(row.Amount||0),0),rates);
@@ -104,6 +104,8 @@ async function payload(type,id,filters,user) {
     }break;
    case 'MauBaoGia': {
     rows=await details('TBAOGIACHITIET','TBAOGIAID',id);
+    // Quotes retain the original total even after declined repair lines are removed.
+    if(header.TONGCONG!=null && header.TIENHANG!=null)header.PHIDICHVU=Math.max(0,Math.round((Number(header.TONGCONG)-Number(header.TIENHANG)+Number(header.TIENGIAMGIA || 0)-Number(header.TIENTHUE || 0)-Number(header.PHIVANCHUYEN || 0))*100)/100);
     const [fax]=await db.query("SELECT TEXTVALUE FROM SCONFIG WHERE NAME='CompanyFax' AND STATUS=30");
     reception.CompanyFax=fax?.TEXTVALUE||'';
     header={...header,TENKHACH:header.TENKHACH||customer?.NAME||'',DIACHI:header.DIACHI||customer?.DIACHI||'',DIENTHOAI:header.DIENTHOAI||customer?.DIENTHOAI||'',
@@ -153,7 +155,7 @@ async function payload(type,id,filters,user) {
    case 'MauCongNoKhachHang':case 'MauCongNoNhaCungCap': {
     const kind=type.key==='MauCongNoKhachHang'?'receivable':'payable';
     if(kind==='receivable')customer=header;else supplier=header;
-    const balance=await require('./debtPrint').load(kind,id,from,to);
+    const balance=await require('./debtPrint.js').load(kind,id,from,to);
     rows=balance.rows;header={...header,TONGCONG:balance.total};
     extra='Công nợ gồm số dư đầu kỳ, chứng từ và phiếu thu/chi trong kỳ.';break;
    }
@@ -164,6 +166,7 @@ async function payload(type,id,filters,user) {
  const total=header.TONGCONG??(subtotal-Number(header.TIENGIAMGIA||0)+Number(header.TIENTHUE||0)+Number(header.PHIVANCHUYEN||0)+Number(header.PHIDICHVU||0));
  const parameters={...(await company()),CompanyEmail:companyEmail?.TEXTVALUE||'',...prefixed('DXE',vehicle),...prefixed('DKHACHHANG',customer),...prefixed('DNHACUNGCAP',supplier),...prefixed('DNHANVIEN',employee),...prefixed('DNHANVIEN2',employee),...prefixed('DKHOHANG',warehouse),...prefixed('DKHOHANG2',warehouse),...header,...reception,
  'In bởi':user||'',DocTitle:type.label.toLocaleUpperCase('vi'),DocNumber:type.key==='MauMaVachPhuTung'?(header.CODE||header.NAME||''):header.NAME||header.BIENSO||'',DocDate:date(header.NGAY||header.NGAYBATDAU||header.TIMECREATED),
+ DocDateLong:require('./a5TemplateTypography.js').longDate(header.NGAY||header.NGAYBATDAU||header.TIMECREATED),
  CustomerName:header.TENDOITUONG||customer?.NAME||supplier?.NAME||header.DKHACHHANG_NAME||'',Contact:customer?.DIENTHOAI||supplier?.DIENTHOAI||'',VehiclePlate:vehicle?.BIENSO||'',
  Description:header.NOTE||'',Extra:extra,TotalText:money(total),TONGCONG:total,
  FooterNote:['MauHoSoXe','MauLichSuSuaChua','MauBaoCao','MauMaVachPhuTung'].includes(type.key)?'': 'Khách hàng / người giao nhận                         Nhân viên GARA',
@@ -181,8 +184,8 @@ async function payload(type,id,filters,user) {
   AdditionalChargesText:[Number(header.PHIDICHVU)?'Phí dịch vụ: '+money(header.PHIDICHVU):'',Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n'),
  });
  if(type.key==='MauHoaDonBanHang'){
-  Object.assign(parameters,await require('./salesPrintVisibility').load());
-  require('./salesPrintVisibility').hideZeroValues(parameters);
+  Object.assign(parameters,await require('./salesPrintVisibility.js').load());
+  require('./salesPrintVisibility.js').hideZeroValues(parameters);
   parameters.TotalCommaText=Number(total||0).toLocaleString('en-US');
   parameters.TotalNumberText=parameters.TotalCommaText;
   parameters.PrintShow_additionalCharges=parameters.PrintShow_tax||parameters.PrintShow_shipping||parameters.PrintShow_serviceFee;
@@ -191,7 +194,7 @@ async function payload(type,id,filters,user) {
   if(Number(header.CHARGEVERSION)===1 && rounding)parameters.SummaryText+=`; điều chỉnh làm tròn: ${money(rounding)}`;
   parameters.AdditionalChargesText=[Number(header.PHIDICHVU)?'Phí dịch vụ: '+money(header.PHIDICHVU):'',parameters.PrintShow_tax&&Number(header.TIENTHUE)?'Thuế: '+money(header.TIENTHUE):'',parameters.PrintShow_shipping&&Number(header.PHIVANCHUYEN)?'Vận chuyển: '+money(header.PHIVANCHUYEN):''].filter(Boolean).join('\n');
  }
- const taxGroups=require('./pricingPolicy').summary(header.TAXSUMMARY);
+ const taxGroups=require('./pricingPolicy.js').summary(header.TAXSUMMARY);
  parameters.TaxBreakdownText=taxGroups.filter(group=>group.amount!==0).map(group=>`VAT ${group.rate}%: ${money(group.amount)}`).join('\n');
  parameters.DiscountSource=header.NGUONGIAMGIA||'';
  if(taxGroups.length){
@@ -223,23 +226,28 @@ function validateBindings(xml,data) {
  if(missing.size)throw fail('Mẫu này chưa được ánh xạ đủ dữ liệu GARA ('+[...missing].slice(0,5).join(', ')+'). Hãy chọn mẫu GARA hoặc chỉnh mẫu trong Quản lý mẫu in.',409);
 }
 async function render(type,id,filters,user,accessUser) {
- const template=await resolve(type,filters.templateId);let data=await payload(type,id,filters,user);if(accessUser)data=require('./printPrivacy').protect(accessUser,data);
+ const template=await resolve(type,filters.templateId);let data=await payload(type,id,filters,user);if(accessUser)data=require('./printPrivacy.js').protect(accessUser,data);
+ data=require('./printDates.js').normalize(data);
  const logo=decodeConfigImage(await db.queryBlob("SELECT BLOBVALUE FROM SCONFIG WHERE NAME='CompanyLogo' AND STATUS=30",[],'BLOBVALUE'));
- let xml=require('./chargePrint').applyServiceFeeRow(mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data),data.parameters);
+ let xml=require('./chargePrint.js').applyServiceFeeRow(mapLegacyMoneyWords(applyCompanyLogo(template.content.toString('utf8'),logo,{insertMissing:false}),data),data.parameters);
+ xml=require('./printDates.js').applyTimeLabels(xml,data.parameters);
  if(type.key==='MauHoaDonBanHang'){
-  xml=require('./salesLineDiscountPrint').hideUnusedDiscountColumns(xml,data.tables.Table0);
-  xml=require('./salesLineDiscountPrint').fitMoneyColumns(xml,data.tables.Table0);
-  xml=require('./chargePrint').formatSalesTotal(xml);
+  xml=require('./salesLineDiscountPrint.js').hideUnusedDiscountColumns(xml,data.tables.Table0);
+  xml=require('./salesLineDiscountPrint.js').fitMoneyColumns(xml,data.tables.Table0);
+  xml=require('./chargePrint.js').formatSalesTotal(xml);
  }
- xml=require('./chargePrint').applyTaxBreakdown(xml,data.parameters);
+ xml=require('./chargePrint.js').applyTaxBreakdown(xml,data.parameters);
+ if(type.key==='MauBaoGia')xml=require('./quoteConfirmationPrint.js').apply(xml);
+ xml=require('./repairInvoiceLayout.js').apply(xml,type.key);
+ xml=require('./invoiceNotePrint.js').apply(xml,data.parameters,type.key);
  if(xml.includes('Name="DocumentReceiptVariants"')){
-  require('./documentReceiptVariants').prepare(data);
-  xml=require('./salesLineDiscountPrint').hideUnusedDiscountColumns(xml,data.tables.Table0);
-  xml=require('./salesLineDiscountPrint').fitMoneyColumns(xml,data.tables.Table0);
+  require('./documentReceiptVariants.js').prepare(data);
+  xml=require('./salesLineDiscountPrint.js').hideUnusedDiscountColumns(xml,data.tables.Table0);
+  xml=require('./salesLineDiscountPrint.js').fitMoneyColumns(xml,data.tables.Table0);
  }
  let notice='';
  if(type.key==='MauMaVachPhuTung'){
-  const barcode=require('./barcodePrint');
+  const barcode=require('./barcodePrint.js');
   ({xml,notice}=barcode.adaptBarcodeTemplate(xml,data));
   barcode.prepareBarcodePayload(xml,data);
  }

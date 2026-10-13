@@ -1,16 +1,29 @@
+import api from '../api.js';
 import RatePolicyField from './RatePolicyField';
 import CommissionConfig from './CommissionConfig';
 import { Package, ImagePlus, X } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { preparePartImage } from '../utils/partImage';
+import { useEffect, useRef, useState } from 'react';
+import { preparePartImage } from '../utils/partImage.js';
 
 // Form dùng chung, được tách từ NhapKhoPage.jsx.
 export default function PartFormModal({ partForm, setPartForm, savingPart: savingRecord, partFormError, partMeta, setShowAddPartModal, handleCreatePart, openAddPartOption, formMode = "add", imagePreview = "" }) {
+  const codeTouched = useRef(Boolean(partForm.CODE));
+  const [codeLoading,setCodeLoading] = useState(formMode === 'add' && !partForm.CODE);
+  const [codeError,setCodeError] = useState('');
+  useEffect(() => {
+    if (formMode !== 'add' || codeTouched.current) {setCodeLoading(false); return;}
+    const controller = new AbortController();
+    api.get('/document-numbers/MatHang/next',{signal:controller.signal}).then(response => {
+      if (!controller.signal.aborted && !codeTouched.current) setPartForm(current => current.CODE ? current : {...current,CODE:response.data.code,BARCODE:response.data.code,AUTO_CODE:response.data.code});
+    }).catch(exception => {if(!controller.signal.aborted)setCodeError(exception.response?.data?.error || 'Chưa tải được mã tự sinh. Có thể nhập mã hoặc để trống để tự sinh khi lưu.');})
+      .finally(() => {if(!controller.signal.aborted)setCodeLoading(false);});
+    return () => controller.abort();
+  },[formMode]);
   const [processingImage, setProcessingImage] = useState(false);
   const [imageProgress, setImageProgress] = useState('');
   const [imageError, setImageError] = useState('');
   const processing = useRef(false);
-  const savingPart = savingRecord || processingImage;
+  const savingPart = savingRecord || processingImage || codeLoading;
   const handlePartImageChange = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -88,14 +101,12 @@ export default function PartFormModal({ partForm, setPartForm, savingPart: savin
                 </div>
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Mã mặt hàng <span style={{ color: '#D32F2F' }}>*</span>
-                  <input value={partForm.CODE} onChange={(event) => setPartForm({ ...partForm, CODE: event.target.value })} placeholder="Ví dụ: PT009" style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
+                  Mã mặt hàng / Mã vạch
+                  <input value={partForm.CODE} onChange={(event) => { codeTouched.current = true; setPartForm({ ...partForm, CODE: event.target.value, BARCODE:event.target.value, AUTO_CODE:'' }); }} placeholder={codeLoading ? 'Đang tạo mã…' : 'Tự sinh theo cấu hình hoặc nhập mã khác'} style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
+                  <small style={{display:'block',marginTop:4,color:codeError ? '#b91c1c' : '#64748b'}}>{codeError || 'Mã tự sinh theo cấu hình Số phiếu; bạn có thể chỉnh. Mã này dùng để quét mã vạch.'}</small>
                 </label>
 
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                  Mã vạch
-                  <input value={partForm.BARCODE} onChange={(event) => setPartForm({ ...partForm, BARCODE: event.target.value })} placeholder="Nhập mã vạch..." style={{ width: '100%', marginTop: 3, padding: '7px 9px', border: '1px solid #CBD5E1', borderRadius: 4, fontSize: 12 }} />
-                </label>
+
 
                 <label style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
                   Mã OEM

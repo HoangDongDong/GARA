@@ -56,3 +56,9 @@ backend/storage/relocation-backup-*/
 ops/windows/generated/
 frontend/*.png
 !frontend/test_car.png
+
+# Collected local QA artifacts and database migration backups
+Test/artifacts/
+Test/firebird/*backup*.json
+Test/firebird/tmp/
+Test/firebird/scratch_*.js

@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
-import api from '../api';
-import {can} from '../utils/permissions';
+import api from '../api.js';
+import {can} from '../utils/permissions.js';
 import {openDocumentPrint} from './DocumentPrintDialog';
 export default function SaleHistory(){
   const [rows,setRows]=useState([]),[q,setQ]=useState(''),[offset,setOffset]=useState(0),[more,setMore]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false);

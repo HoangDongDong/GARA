@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 const definitions = [
   { name: 'PaymentAllowDebt', caption: 'Cho phép khách nợ', detail: 'Áp dụng chung cho bán hàng và thanh toán giao xe. Phải chọn khách hàng để ghi nhận công nợ.' },
   { name: 'PaymentRequireBill', caption: 'Bắt buộc in bill', detail: 'Áp dụng chung cho bán hàng và thanh toán giao xe. Tự mở bill để in sau khi lưu, kể cả khi khách còn nợ.' },

@@ -1,4 +1,4 @@
-const crypto=require('crypto'),db=require('../db');
+const crypto=require('crypto'),db=require('../db.js');
 const fail=(message,status)=>Object.assign(new Error(message),{status,statusCode:status});
 function canonical(value){if(Array.isArray(value))return value.map(canonical);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));return value;}
 async function run(req,task) {
@@ -12,7 +12,7 @@ async function run(req,task) {
   return db.transaction(async(query,execute,uuid)=>{
     await execute('UPDATE SUSER SET ID=ID WHERE ID=? AND STATUS=1',[actor]);
     const [existing]=await query('SELECT PAYLOADHASH,RESULTDATA FROM APP_REQUESTS WHERE ID=?',[id]);
-    if(existing){if(existing.PAYLOADHASH!==hash)throw fail('Khóa yêu cầu đã dùng với nội dung khác.',409);const data=await require('./webReportDesigner').readBlob(existing.RESULTDATA);return JSON.parse(data.toString('utf8'));}
+    if(existing){if(existing.PAYLOADHASH!==hash)throw fail('Khóa yêu cầu đã dùng với nội dung khác.',409);const data=await require('./webReportDesigner.js').readBlob(existing.RESULTDATA);return JSON.parse(data.toString('utf8'));}
     const result=await task(query,execute,uuid);
     await execute('INSERT INTO APP_REQUESTS (ID,PAYLOADHASH,RESULTDATA,TIMECREATED) VALUES (?,?,?,CURRENT_TIMESTAMP)',[id,hash,Buffer.from(JSON.stringify(result),'utf8')]);
     return result;

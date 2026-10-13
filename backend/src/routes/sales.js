@@ -1,26 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { renderSalesInvoice } = require('../services/salesPrint');
-const charges = require('../services/defaultChargeRates');
-const policy = require('../services/pricingPolicy');
+const db = require('../db.js');
+const { renderSalesInvoice } = require('../services/salesPrint.js');
+const charges = require('../services/defaultChargeRates.js');
+const policy = require('../services/pricingPolicy.js');
 
 router.get('/charge-rates', async (req, res) => {
-  try { res.json({ data: { ...await charges.loadForSales(), ...await require('../services/paymentSettings').load('sales'), ...await require('../services/salesSettings').load() } }); }
+  try { res.json({ data: { ...await charges.loadForSales(), ...await require('../services/paymentSettings.js').load('sales'), ...await require('../services/salesSettings.js').load() } }); }
   catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
 const productSql = `
   SELECT M.ID, M.NAME, M.CODE, M.GIABAN, M.GIANHAP, M.BAOHANH, M.THUESUATRIENG,
          G.THUESUATRIENG AS THUENHOM, G.NAME AS NHOM,
-         ${require('../services/stock').expression('M.ID')} AS TON_KHO
+         ${require('../services/stock.js').expression('M.ID')} AS TON_KHO
     FROM DMATHANG M
     LEFT JOIN DNHOMMATHANG G ON G.ID=M.DNHOMMATHANGID AND G.STATUS=1
    WHERE M.ID = ? AND M.STATUS = 1 AND COALESCE(M.TAMKHOA, 0) = 0`;
 
 router.get('/', async (req, res) => {
   try {
-    const page=require('../services/documentList').filters(req.query,'DH');
+    const page=require('../services/documentList.js').filters(req.query,'DH');
     const rows = await db.query(`
       SELECT ${page.select} DH.ID, DH.NAME, DH.NGAY, DH.DKHACHHANGID,
              KH.NAME AS TEN_KH, DH.TIENHANG, DH.TIENGIAMGIA,
@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
        WHERE DH.STATUS = 1${page.where}
        ORDER BY DH.NGAY DESC, DH.TIMECREATED DESC, DH.ID DESC
     `,page.params);
-    res.json(require('../services/documentList').response(rows,page));
+    res.json(require('../services/documentList.js').response(rows,page));
   } catch (e) {
     res.status(e.status||500).json({ error: e.message });
   }
@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
 // Render the sale with the default "Hóa đơn bán hàng" template (or ?templateId=) as PDF.
 router.get('/:id/print', async (req, res) => {
   try {
-    const printing = require('../services/documentPrint');
+    const printing = require('../services/documentPrint.js');
     if(!printing.permitted(req.accessUser,printing.typeByKey('MauHoaDonBanHang'))) return res.status(403).json({error:'Bạn cần quyền Xem và In bán hàng.'});
     const result = await renderSalesInvoice(req.params.id, {
       templateId: req.query.templateId || null,
@@ -62,7 +62,7 @@ router.get('/:id/print', async (req, res) => {
 
 router.get('/next-number', async (req,res) => {
   try {
-    const code=await require('../services/documentNumbers').previewNumber('BanPhuTung');
+    const code=await require('../services/documentNumbers.js').previewNumber('BanPhuTung');
     res.set('Cache-Control','no-store').json({code,provisional:true});
   } catch(e){res.status(e.status||500).json({error:e.message});}
 });
@@ -80,24 +80,24 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    require('../permissionPolicy').assert(req.accessUser, 'PAYMENTS', 4);
+    require('../permissionPolicy.js').assert(req.accessUser, 'PAYMENTS', 4);
     policy.assertOverride(req, 'SALES');
     const { DKHACHHANGID, DKHOXUATID, NOTE, LOAITHANHTOAN = 0, items = [] } = req.body;
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Phieu ban hang chua co san pham' });
 
     const user = req.get('X-User') || 'SYSTEM';
-    const result = await require('../services/idempotency').run(req,async (query, execute, uuidv4) => {
+    const result = await require('../services/idempotency.js').run(req,async (query, execute, uuidv4) => {
       const normalized = [];
-      await require('../services/stock').lock(execute,items.map(item=>item.DMATHANGID));
+      await require('../services/stock.js').lock(execute,items.map(item=>item.DMATHANGID));
       const requested=new Map();
       for(const item of items){const quantity=Number(item.SOLUONG);if(!Number.isFinite(quantity)||quantity<=0)throw Object.assign(new Error('Số lượng không hợp lệ.'),{status:400});requested.set(item.DMATHANGID,(requested.get(item.DMATHANGID)||0)+quantity);}
       const checked=new Set();
-      const salesSettings = await require('../services/salesSettings').load(query);
+      const salesSettings = await require('../services/salesSettings.js').load(query);
       if(salesSettings.requireCustomer && !DKHACHHANGID)throw Object.assign(new Error('Vui lòng chọn khách hàng trước khi bán.'),{status:400});
       const defaults = await charges.loadForSales(query);
       policy.assertRates(req, defaults);
       const rates = {...charges.resolveForSales(req.body, defaults), roundingStep:salesSettings.roundingStep};
-      const discountPolicy = require('../services/salesSettings').discount(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA, salesSettings);
+      const discountPolicy = require('../services/salesSettings.js').discount(await policy.customer(query, DKHACHHANGID), req.body.TILEGIAMGIA, salesSettings);
       for (const item of items) {
         const quantity = Number(item.SOLUONG || 0);
         if (!item.DMATHANGID || quantity <= 0) throw new Error('So luong san pham khong hop le');
@@ -105,9 +105,9 @@ router.post('/', async (req, res) => {
         if (!products.length) throw new Error('San pham khong ton tai hoac da ngung ban');
         const product = products[0];
         if (requested.get(item.DMATHANGID) > Number(product.TON_KHO || 0)) throw new Error(`${product.NAME} khong du ton kho`);
-        if(DKHOXUATID && !checked.has(item.DMATHANGID)){await require('../services/stock').requireAvailable(query,[{DMATHANGID:item.DMATHANGID,DKHOHANGID:DKHOXUATID,SOLUONG:requested.get(item.DMATHANGID)}]);checked.add(item.DMATHANGID);}
+        if(DKHOXUATID && !checked.has(item.DMATHANGID)){await require('../services/stock.js').requireAvailable(query,[{DMATHANGID:item.DMATHANGID,DKHOHANGID:DKHOXUATID,SOLUONG:requested.get(item.DMATHANGID)}]);checked.add(item.DMATHANGID);}
         const price = item.DONGIA === undefined ? Number(product.GIABAN || 0) : Number(item.DONGIA);
-        if (price !== Number(product.GIABAN || 0)) require('../permissionPolicy').assert(req.accessUser, 'PRICING', 4);
+        if (price !== Number(product.GIABAN || 0)) require('../permissionPolicy.js').assert(req.accessUser, 'PRICING', 4);
         if (item.DONGIA === null || (typeof item.DONGIA === 'string' && !item.DONGIA.trim())
           || (item.DONGIA !== undefined && !['number', 'string'].includes(typeof item.DONGIA))
           || !Number.isFinite(price) || price < 0 || price > Number.MAX_SAFE_INTEGER) {
@@ -126,16 +126,16 @@ router.post('/', async (req, res) => {
       if (billReduction.fixed != null) discountPolicy.discountSource = 'Giảm giá bằng tiền trên phiếu';
       const totals = policy.calculate(normalized, rates, billReduction.percent, billReduction.fixed);
       const { subtotal, discountRate, discount, tax, serviceFee, total } = totals;
-      const payment=require('../services/salePayment').calculate(total,req.body,DKHACHHANGID);
-      const paymentSettings = await require('../services/paymentSettings').load('sales', query);
-      if (paymentSettings.requireBill) require('../permissionPolicy').assert(req.accessUser,'SALES',17);
-      require('../services/paymentSettings').assertDebt(paymentSettings, payment.debt);
+      const payment=require('../services/salePayment.js').calculate(total,req.body,DKHACHHANGID);
+      const paymentSettings = await require('../services/paymentSettings.js').load('sales', query);
+      if (paymentSettings.requireBill) require('../permissionPolicy.js').assert(req.accessUser,'SALES',17);
+      require('../services/paymentSettings.js').assertDebt(paymentSettings, payment.debt);
       if(req.body.DTAIKHOANNGANHANGID){
         const [bank]=await query('SELECT ID FROM DTAIKHOANNGANHANG WHERE ID=? AND STATUS=1',[req.body.DTAIKHOANNGANHANGID]);
         if(!bank)throw Object.assign(new Error('Tài khoản ngân hàng không còn hoạt động.'),{status:400});
       }
       const id = uuidv4();
-      const code = await require('../services/documentNumbers').nextInTransaction('BanPhuTung',query,execute);
+      const code = await require('../services/documentNumbers.js').nextInTransaction('BanPhuTung',query,execute);
       const method = Number(LOAITHANHTOAN || 0);
 
       await execute(`

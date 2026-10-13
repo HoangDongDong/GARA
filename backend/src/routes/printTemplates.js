@@ -4,15 +4,15 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const db = require('../db');
-const config = require('../config');
-const { documentTypes, buildCatalog } = require('../services/garagePrintCatalog');
-const { templateFilter } = require('../services/systemConfigOptions');
-const webDesigner = require('../services/webReportDesigner');
+const db = require('../db.js');
+const config = require('../config.js');
+const { documentTypes, buildCatalog } = require('../services/garagePrintCatalog.js');
+const { templateFilter } = require('../services/systemConfigOptions.js');
+const webDesigner = require('../services/webReportDesigner.js');
 
 const router = express.Router();
 router.use((req,res,next)=>{
-  if(require('../tenancy').enabled() && ['POST','PUT','PATCH'].includes(req.method) && !/^\/[^/]+\/(?:default|assignment)$/.test(req.path))return res.status(403).json({error:'Bản SaaS hiện dùng mẫu in chuẩn. Chỉnh sửa/tải mẫu tùy ý sẽ mở sau khi bộ dựng báo cáo được cách ly.'});
+  if(require('../tenancy.js').enabled() && ['POST','PUT','PATCH'].includes(req.method) && !/^\/[^/]+\/(?:default|assignment|web-content|web-preview)$/.test(req.path) && !(req.method==='POST'&&req.path==='/'&&req.body?.sourceTemplateId))return res.status(403).json({error:'Hãy sửa mẫu bằng trình thiết kế trên web. SaaS không nhận mã lệnh hoặc tệp FRX tùy ý.'});
   next();
 });
 const MAX_TEMPLATE_BYTES = 20 * 1024 * 1024;
@@ -92,6 +92,7 @@ router.put('/:id/web-content', async (req, res) => {
       if (!row) throw webDesigner.fail('Không tìm thấy mẫu in.', 404);
       const current = await webDesigner.readBlob(row.TEMPLATE);
       if (!current || webDesigner.revision(current) !== req.body.version) throw webDesigner.fail('Mẫu đã được người khác thay đổi. Tải .frx để giữ bản đang sửa, sau đó đóng và mở lại mẫu mới nhất.', 409);
+      if(require('../tenancy.js').enabled())require('../services/tenantTemplateEdits.js').check(current.toString('utf8'),req.body.content);
       if (!current.equals(content)) {
         webDesigner.backup(req.params.id, current);
         await execute('UPDATE STEMPLATE SET TEMPLATE=?,USERMODIFIEDID=?,TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?', [content, req.accessUser?.ID || null, req.params.id]);
@@ -114,6 +115,11 @@ router.post('/:id/web-preview', async (req, res) => {
   try {
     const [row] = await db.query('SELECT ID FROM STEMPLATE WHERE ID=?', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Không tìm thấy mẫu in.' });
+    if(require('../tenancy.js').enabled()){
+      const original=await db.queryBlob('SELECT TEMPLATE FROM STEMPLATE WHERE ID=?',[req.params.id],'TEMPLATE');
+      if(!original)throw webDesigner.fail('Không tìm thấy mẫu in.',404);
+      require('../services/tenantTemplateEdits.js').check(original.toString('utf8'),req.body?.content);
+    }
     const pdf = await webDesigner.preview(req.body?.content, req.body?.payload);
     res.set({ 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store' }).send(pdf);
   } catch (error) { res.status(error.status || 500).json({ error: error.message }); }
@@ -129,6 +135,11 @@ router.post('/', async (req, res) => {
     const content = Buffer.from(xml, 'utf8');
     if (content.length > MAX_TEMPLATE_BYTES) return res.status(413).json({ error: 'Mẫu FastReport vượt quá giới hạn 20 MB.' });
     if (!xml.replace(/^\uFEFF/, '').trimStart().startsWith('<?xml') || !/<Report\b/i.test(xml)) return res.status(400).json({ error: 'Tệp không phải mẫu FastReport XML (.frx) hợp lệ.' });
+    if(require('../tenancy.js').enabled()){
+      const original=await db.queryBlob('SELECT TEMPLATE FROM STEMPLATE WHERE ID=?',[req.body.sourceTemplateId],'TEMPLATE');
+      if(!original)throw webDesigner.fail('Không tìm thấy mẫu gốc trong cửa hàng.',404);
+      require('../services/tenantTemplateEdits.js').check(original.toString('utf8'),xml);
+    }
     const id = crypto.randomUUID();
     await db.transaction(async (query, execute) => {
       const [setting] = await query('SELECT ID,OTHERCONFIG FROM SCONFIG WHERE NAME=? AND STATUS=30 WITH LOCK', [type.key]);
@@ -150,11 +161,13 @@ router.get('/', async (req, res) => {
       data: templates,
       categories,
       meta: {
-        database: require('../tenancy').enabled() ? require('../tenancy').current().code : path.basename(config.firebird.database),
+        database: require('../tenancy.js').enabled() ? require('../tenancy.js').current().code : path.basename(config.firebird.database),
         total: rows.length,
         categories: categories.length,
-        designerAvailable: !require('../tenancy').enabled() && process.platform === 'win32' && fs.existsSync(designerExecutable),
-        customDesignerAvailable: !require('../tenancy').enabled(),
+        designerAvailable: !require('../tenancy.js').enabled() && process.platform === 'win32' && fs.existsSync(designerExecutable),
+        customDesignerAvailable: true,
+        layoutOnlyDesigner: require('../tenancy.js').enabled(),
+        customDesignerUnavailableReason: '',
       },
     });
   } catch (error) {
@@ -164,7 +177,7 @@ router.get('/', async (req, res) => {
 
 router.post('/:id/designer', async (req, res) => {
   try {
-    if (require('../tenancy').enabled()) return res.status(403).json({ error: 'Hãy dùng trình thiết kế mẫu trên web cho cửa hàng trực tuyến.' });
+    if (require('../tenancy.js').enabled()) return res.status(403).json({ error: 'Hãy dùng trình thiết kế mẫu trên web cho cửa hàng trực tuyến.' });
     if (process.platform !== 'win32' || !fs.existsSync(designerExecutable)) {
       return res.status(503).json({
         error: 'FastReport Designer chưa được build trên máy chủ. Có thể dùng trình sửa XML dự phòng.',
@@ -185,7 +198,7 @@ router.post('/:id/designer', async (req, res) => {
       templateId: req.params.id,
       templateName: rows[0].NAME,
       userId: req.accessUser?.ID || null,
-      tenant: require('../tenancy').key(),
+      tenant: require('../tenancy.js').key(),
       status: 'opening',
       message: 'Đang mở FastReport Designer...',
       startedAt: new Date().toISOString(),
@@ -241,7 +254,7 @@ router.post('/:id/designer', async (req, res) => {
 
 router.get('/designer-sessions/:sessionId', (req, res) => {
   const session = designerSessions.get(req.params.sessionId);
-  if (!session || session.tenant !== require('../tenancy').key() || session.userId !== req.accessUser?.ID) return res.status(404).json({ error: 'Phiên FastReport Designer không còn tồn tại.' });
+  if (!session || session.tenant !== require('../tenancy.js').key() || session.userId !== req.accessUser?.ID) return res.status(404).json({ error: 'Phiên FastReport Designer không còn tồn tại.' });
   res.json({ data: session });
 });
 

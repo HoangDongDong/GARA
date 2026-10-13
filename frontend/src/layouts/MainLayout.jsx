@@ -25,7 +25,12 @@ import {
   Menu,
   X,
   ClipboardCheck,
-  Folders
+  Folders,
+  Phone,
+  Calendar,
+  ChevronDown,
+  MapPin,
+  User
 } from 'lucide-react';
 
 const NAV = [
@@ -189,75 +194,218 @@ export default function MainLayout() {
       )}
 
       {/* ===== TOP HEADER BAR ===== */}
+      {/* ===== TOP HEADER BAR ===== */}
       <header className="app-header">
-        <div className="header-left">
-          <div className="header-logo" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
-            <div className="logo-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" strokeWidth="2">
-                <rect x="2" y="7" width="20" height="10" rx="2"/>
-                <path d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2"/>
-                <line x1="12" y1="11" x2="12" y2="13"/>
+        {/* Desktop Header Content (>= 768px) */}
+        <div className="header-desktop-wrap">
+          {/* 1. Pure Vector Brand Block */}
+          <div className="header-brand-block" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
+            <div className="brand-k-logo">
+              <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+                <path d="M4 27L8.5 5h5L9 27H4z" fill="#CC1100" />
+                <path d="M10 16l8.5-11h6L15.5 16H10z" fill="#CC1100" />
+                <path d="M14 14.5l9.5 12.5h-6.2l-6.8-9L14 14.5z" fill="#CC1100" />
               </svg>
             </div>
-            <div className="logo-text">
-              <span className="logo-name">KAZUKO <strong>Auto</strong></span>
-              <span className="logo-sub">Auto</span>
+            <div className="brand-text-col">
+              <span className="brand-title">KAZUKO AUTO</span>
+              <span className="brand-slogan">Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!</span>
             </div>
           </div>
-          <div className="header-slogan">
-            <span className="slogan-main">Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!</span>
-            <span className="slogan-company">CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM</span>
-            <span className="slogan-address">925/15 Âu Cơ - Tân Sơn Nhì - TPHCM</span>
-          </div>
-        </div>
-        <div className="header-center">
-          <div className="header-garage-name">
-            <span className="garage-icon"><CarFront size={20} color="#E65100" /></span>
-            <div>
-              <div className="garage-title">KAZUKO AUTO</div>
-              <div className="garage-desc">Hệ thống quản lý sửa chữa ô tô - phụ tùng</div>
-            </div>
-          </div>
-        </div>
-        <div className="header-right">
-          <div className="header-datetime">
-            <div className="header-date">{dateStr}</div>
-            <div className="header-time">{timeStr}</div>
-          </div>
-          <div className="header-user" onClick={() => setMenuOpen(!menuOpen)} ref={menuRef}>
-            <div className="user-avatar">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
-                <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/>
-              </svg>
-            </div>
-            <div className="user-info-header">
-              <div className="user-name">{displayName}</div>
-              <div className="user-role">{roleName}</div>
-            </div>
 
-            {menuOpen && (
-              <div className="header-dropdown">
-                <div className="dropdown-header">
-                  <div className="dropdown-name">{displayName}</div>
-                  <div className="dropdown-email">{roleName}</div>
-                </div>
-                <button className="dropdown-item" onClick={() => {}}>👤 Hồ sơ cá nhân</button>
-                <button className="dropdown-item" onClick={() => {}}>🔑 Đổi mật khẩu</button>
-                <div className="dropdown-divider" />
-                <button className="dropdown-item danger" onClick={logout}>🚪 Đăng xuất</button>
+          {/* 2. Pure Vector S-Wave Banner */}
+          <div className="header-wave-banner">
+            <svg className="wave-left-svg" viewBox="0 0 48 50" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveLeftGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#BA2400" />
+                  <stop offset="100%" stopColor="#CC2800" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 0 L 48 0 C 34 0 25 10 20 23 C 14 36 7 46 0 50 Z" fill="#FFFFFF" />
+              <path d="M 48 0 C 34 0 25 10 20 23 C 14 36 7 46 0 50 L 48 50 Z" fill="url(#waveLeftGrad)" />
+              <path d="M 48 0 C 34 0 25 10 20 23 C 14 36 7 46 0 50" stroke="#F7CEBA" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <path d="M 48 0 C 35 1 27 11 22 23 C 16 35 9 45 3 49" stroke="#F39E75" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.8" />
+            </svg>
+
+            <div className="wave-center-content">
+              <div className="company-title">CÔNG TY TNHH THƯƠNG MẠI KAZUKO VIỆT NAM</div>
+              <div className="company-addr">
+                <MapPin size={11} className="header-addr-pin" />
+                <span>925/15 Âu Cơ - Tân Sơn Nhì - TP.HCM</span>
               </div>
-            )}
+            </div>
+
+            <svg className="wave-right-svg" viewBox="0 0 48 50" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveRightGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#F4511E" />
+                  <stop offset="100%" stopColor="#FF5722" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 0 L 40 0 C 42 12 36 26 24 36 C 14 44 6 48 0 50 Z" fill="url(#waveRightGrad)" />
+              <path d="M 40 0 C 42 12 36 26 24 36 C 14 44 6 48 0 50" stroke="#F7CEBA" strokeWidth="3" strokeLinecap="round" fill="none" />
+            </svg>
           </div>
 
-          {/* Nút Hamburger menu - vị trí góc phải trên mobile giống moonphim */}
-          <button 
-            type="button" 
-            className="mobile-menu-btn" 
-            onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            aria-label="Mở danh mục menu"
-          >
-            <Menu size={22} color="white" />
-          </button>
+          {/* 3. Middle Speeding Car & Heading Slogan */}
+          <div className="header-car-slogan-section">
+            <div className="header-speed-car">
+              <svg viewBox="0 0 165 42" width="142" height="36" fill="none">
+                {/* 5 Motion Speed Trail Lines */}
+                <line x1="24" y1="15" x2="56" y2="15" stroke="#D83A00" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="14" y1="19" x2="50" y2="19" stroke="#D83A00" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="2"  y1="23" x2="58" y2="23" stroke="#D83A00" strokeWidth="2.2" strokeLinecap="round" />
+                <line x1="16" y1="27" x2="54" y2="27" stroke="#D83A00" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="26" y1="31" x2="60" y2="31" stroke="#D83A00" strokeWidth="1.6" strokeLinecap="round" />
+
+                {/* Car Body Outline */}
+                <path 
+                  d="M 50 25 C 57 18 71 10.5 92 10 C 110 10 123 15 131 21 C 139 21.5 150 24 154 27.5 C 157 30.5 155 33.5 151 34 C 146 34 144 30.5 137 30.5 C 129 30.5 126 34 120 34 L 78 34 C 74 34 71 30.5 64 30.5 C 56 30.5 53 34 47 34 L 43 33.5 C 41 31 43 27 47 25" 
+                  stroke="#D83A00" 
+                  strokeWidth="1.8" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+
+                {/* Cabin / Windows */}
+                <path 
+                  d="M 72 13.5 C 80 11.2 93 11.2 105 12.8 C 114 14.8 121 18.5 125 21.5 L 69 21.5 C 70 17.5 71 15 72 13.5 Z" 
+                  stroke="#D83A00" 
+                  strokeWidth="1.4" 
+                  strokeLinejoin="round" 
+                />
+                {/* Window B-pillar divider */}
+                <line x1="97" y1="12" x2="96" y2="21.5" stroke="#D83A00" strokeWidth="1.4" />
+
+                {/* Wheels */}
+                <circle cx="58" cy="30.5" r="5.2" stroke="#D83A00" strokeWidth="1.8" />
+                <circle cx="58" cy="30.5" r="2.2" stroke="#D83A00" strokeWidth="1.2" />
+
+                <circle cx="132" cy="30.5" r="5.2" stroke="#D83A00" strokeWidth="1.8" />
+                <circle cx="132" cy="30.5" r="2.2" stroke="#D83A00" strokeWidth="1.2" />
+
+                {/* Underbody rocker line */}
+                <line x1="68" y1="34" x2="122" y2="34" stroke="#D83A00" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* Slogan text */}
+            <div className="header-middle-slogan">
+              <span className="slogan-line-1">Quản lý chuyên nghiệp</span>
+              <span className="slogan-line-2">Vận hành hiệu quả</span>
+            </div>
+
+            {/* Chevrons */}
+            <div className="header-chevrons">
+              <svg viewBox="0 0 34 24" width="28" height="20" fill="none">
+                <path d="M 4 4 L 11 12 L 4 20" stroke="#F06A35" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+                <path d="M 12 4 L 19 12 L 12 20" stroke="#F06A35" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+                <path d="M 20 4 L 27 12 L 20 20" stroke="#F06A35" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Right Info Bar - Sát vào mép sóng banner */}
+          <div className="header-info-bar">
+            <div className="header-hotline-item">
+              <div className="header-icon-circle">
+                <Phone size={15} color="white" />
+              </div>
+              <div className="header-text-group">
+                <div className="header-item-title">Hotline</div>
+                <div className="header-item-val">
+                  <span>0917 66 4444</span>
+                  <span className="hotline-secondary"> - 0967 04 1111</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="header-divider" />
+
+            <div className="header-time-item">
+              <div className="header-icon-square">
+                <Calendar size={15} color="white" />
+              </div>
+              <div className="header-text-group">
+                <div className="header-item-title">{dateStr}</div>
+                <div className="header-item-val">{timeStr}</div>
+              </div>
+            </div>
+
+            <div className="header-divider" />
+
+            <div className="header-user-item" onClick={() => setMenuOpen(!menuOpen)} ref={menuRef}>
+              <div className="header-icon-circle">
+                <User size={16} color="white" />
+              </div>
+              <div className="header-text-group">
+                <div className="header-user-name">{displayName}</div>
+                <div className="header-user-role">{roleName}</div>
+              </div>
+              <ChevronDown size={14} className="header-chevron" />
+
+              {menuOpen && (
+                <div className="header-dropdown">
+                  <div className="dropdown-header">
+                    <div className="dropdown-name">{displayName}</div>
+                    <div className="dropdown-email">{roleName}</div>
+                  </div>
+                  <button className="dropdown-item" onClick={() => {}}>👤 Hồ sơ cá nhân</button>
+                  <button className="dropdown-item" onClick={() => {}}>🔑 Đổi mật khẩu</button>
+                  <div className="dropdown-divider" />
+                  <button className="dropdown-item danger" onClick={logout}>🚪 Đăng xuất</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Header (< 768px - Tự động co dãn chuẩn điện thoại) */}
+        <div className="header-mobile-wrap">
+          <div className="mobile-brand-block" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
+            <div className="mobile-logo-icon">
+              <svg viewBox="0 0 36 36" width="24" height="24" fill="none">
+                <path d="M4 4h7v13l11-13h9L18.5 17.5 31 32h-9.5l-10.5-13V32H4V4z" fill="#CC1100" />
+              </svg>
+            </div>
+            <div className="mobile-brand-text">
+              <span className="mobile-brand-title">KAZUKO AUTO</span>
+            </div>
+          </div>
+
+          <div className="mobile-header-actions">
+            {/* User on mobile */}
+            <div className="mobile-user-trigger" onClick={() => setMenuOpen(!menuOpen)}>
+              <div className="mobile-user-avatar">
+                <User size={15} color="white" />
+              </div>
+              <span className="mobile-user-name">{displayName}</span>
+
+              {menuOpen && (
+                <div className="header-dropdown">
+                  <div className="dropdown-header">
+                    <div className="dropdown-name">{displayName}</div>
+                    <div className="dropdown-email">{roleName}</div>
+                  </div>
+                  <button className="dropdown-item" onClick={() => {}}>👤 Hồ sơ cá nhân</button>
+                  <button className="dropdown-item" onClick={() => {}}>🔑 Đổi mật khẩu</button>
+                  <div className="dropdown-divider" />
+                  <button className="dropdown-item danger" onClick={logout}>🚪 Đăng xuất</button>
+                </div>
+              )}
+            </div>
+
+            {/* Hamburger button on mobile */}
+            <button 
+              type="button" 
+              className="mobile-menu-btn" 
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              aria-label="Mở menu điều hướng"
+            >
+              <Menu size={22} color="#D43900" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -301,16 +449,46 @@ export default function MainLayout() {
           </nav>
 
           <div className="sidebar-bottom">
+            {/* Vector car illustration */}
+            <div className="sidebar-car-wrap">
+              <svg viewBox="0 0 160 48" width="100%" height="42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path 
+                  d="M 6 34 C 8 34 13 34 17 33 C 20 30 24 27 29 27 C 35 27 39 30 42 33 L 110 33 C 113 30 117 27 123 27 C 129 27 133 30 136 33 L 152 33 C 155 33 156 31 154 29 C 150 25 143 23 134 22 C 125 21 115 18 105 13 C 94 7 78 7 57 7 C 43 7 34 11 26 16 C 20 20 11 23 7 27 C 5 29 5 32 6 34 Z" 
+                  stroke="#FFD54F" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+                <path 
+                  d="M 49 9 L 84 9 C 96 9 104 13 111 20 L 40 20 C 42 15 45 10 49 9 Z" 
+                  stroke="#FFD54F" 
+                  strokeWidth="1.2" 
+                  strokeLinejoin="round"
+                />
+                <line x1="76" y1="9" x2="74" y2="20" stroke="#FFD54F" strokeWidth="1.2" />
+                <circle cx="29" cy="33" r="6.5" stroke="#FFD54F" strokeWidth="1.5" />
+                <circle cx="29" cy="33" r="3" stroke="#FFD54F" strokeWidth="1" />
+                <circle cx="123" cy="33" r="6.5" stroke="#FFD54F" strokeWidth="1.5" />
+                <circle cx="123" cy="33" r="3" stroke="#FFD54F" strokeWidth="1" />
+                <path d="M 6 28 L 9 26" stroke="#FFE082" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M 152 27 L 148 27" stroke="#FF8A65" strokeWidth="2" strokeLinecap="round" />
+                <line x1="2" y1="41" x2="158" y2="41" stroke="rgba(255,213,79,0.3)" strokeWidth="1" strokeDasharray="3 3" />
+              </svg>
+            </div>
+
             <div className="sidebar-brand-bottom">
-              <div className="brand-logo-bottom">K</div>
-              <div>
-                <div className="brand-name-bottom">KAZUKO AUTO</div>
-                <div className="brand-desc-bottom">Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!</div>
-              </div>
+              <div className="brand-name-bottom">KAZUKO AUTO</div>
+              <div className="brand-desc-bottom">Giải Pháp Công Nghệ - Nâng Tầm Quản Lý!</div>
             </div>
             <div className="sidebar-contact">
-              <div>📞 Hotline: <strong>0917 66 4444</strong></div>
-              <div>🔧 Hỗ trợ kỹ thuật: <strong>0917 66 4444</strong></div>
+              <div className="sidebar-contact-row">
+                <Phone size={12} className="contact-icon" />
+                <span>Hotline: <strong>0917 66 4444</strong></span>
+              </div>
+              <div className="sidebar-contact-row">
+                <span className="zalo-badge">Zalo</span>
+                <span>Zalo: <strong>0917 66 4444</strong></span>
+              </div>
             </div>
           </div>
         </aside>

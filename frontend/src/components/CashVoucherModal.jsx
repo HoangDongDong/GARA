@@ -1,11 +1,12 @@
-import { can } from '../utils/permissions';
+import CustomerCreateModal from './CustomerCreateModal';
+import { can } from '../utils/permissions.js';
 import { useEffect, useRef, useState } from 'react';
-import api from '../api';
+import api from '../api.js';
 import DocumentNumberField from './DocumentNumberField';
 import MasterDataFormModal from './MasterDataFormModal';
 import EmployeeFormModal from './EmployeeFormModal';
 import { catalog } from '../services';
-import { catalogDefinitions } from '../pages/catalogDefinitions';
+import { catalogDefinitions } from '../pages/catalogDefinitions.js';
 import { openDocumentPrint } from './DocumentPrintDialog';
 import {
   Receipt,
@@ -876,10 +877,11 @@ export default function CashVoucherModal({ onClose, onSaved }) {
           </div>
         )}
       </section>
-      {addResource && addResource !== 'employees' && <MasterDataFormModal
+      {addResource && !['employees','customers'].includes(addResource) && <MasterDataFormModal
         definition={addDefinition}
         mode="add" form={addForm} setForm={setAddForm} saving={adding} error={addError}
         onSubmit={saveAdded} onClose={() => { if (!adding) setAddResource(null); }} />}
+      {addResource === 'customers' && <CustomerCreateModal onClose={() => setAddResource(null)} onCreated={(id,rows,created) => applyCreated('customers',rows.find(row => row.ID === id) || created)}/> }
       <EmployeeFormModal open={addResource === 'employees'} onClose={() => setAddResource(null)}
         onCreated={(id, rows) => { const row = rows.find((item) => item.ID === id); if (row) applyCreated('employees', row); }}
         notify={(message) => setNotice(message)} />

@@ -1,6 +1,6 @@
 import axios from 'axios';
-import {prepareRequest,finishRequest} from './utils/requestSafety';
-import {sessionToken} from './utils/sessionGuard';
+import {prepareRequest,finishRequest} from './utils/requestSafety.js';
+import {sessionToken} from './utils/sessionGuard.js';
 
 const api = axios.create({
   baseURL: '/api',

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {getCashbookSnapshot,loadCashbook} from '../services/cashbookData';
+import {getCashbookSnapshot,loadCashbook} from '../services/cashbookData.js';
 import {
   ChevronDown,
   ChevronRight,

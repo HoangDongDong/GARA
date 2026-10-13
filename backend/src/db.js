@@ -11,13 +11,13 @@ try {
 
 const firebird = require('node-firebird');
 const { v4: uuidv4 } = require('uuid');
-const config = require('./config');
+const config = require('./config.js');
 
 // Use the driver's pool in the API; standalone scripts retain short-lived
 // connections so migrations and CLI checks exit without holding open sockets.
 let pooling = false;
 const pools = new Map();
-const tenancy = require('./tenancy');
+const tenancy = require('./tenancy.js');
 const originalDetach = Symbol('originalDetach');
 function enablePool() {
   pooling = true;

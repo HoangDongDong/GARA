@@ -1,5 +1,5 @@
-const db = require('../db');
-const { loadFuelOptions } = require('./fuelOptions');
+const db = require('../db.js');
+const { loadFuelOptions } = require('./fuelOptions.js');
 
 const fields = (text) => text.split(' ');
 const master = (table, extra = '') => ({ table, fields: fields(`NAME NOTE ${extra}`.trim()), required: ['NAME'], uniqueName: true });
@@ -58,7 +58,7 @@ const stockSql = `
         U.NAME AS UNIT_NAME, V.NAME AS LOCATION_NAME, S.DKHOHANGID,
         SUM(S.QUANTITY) AS TON_KHO
  FROM (
-   ${require('./stock').movements}
+   ${require('./stock.js').movements}
    UNION ALL
    SELECT M.ID, V.DKHOHANGID, CAST(0 AS DOUBLE PRECISION) FROM DMATHANG M LEFT JOIN DVITRIKHO V ON V.ID=M.DVITRIKHOID
  ) S JOIN DMATHANG M ON M.ID=S.DMATHANGID
@@ -98,8 +98,8 @@ async function save(resource, id, body, actor) {
   const allowed = new Set(def.fields);
   if (Object.keys(body).some((key) => !allowed.has(key))) throw failure('Dữ liệu có trường không thuộc danh mục.');
   const payload = {};
-  require('./pricingPolicy').validateMaster(body);
-  require('./repairCommissions').validateConfig(body);
+  require('./pricingPolicy.js').validateMaster(body);
+  require('./repairCommissions.js').validateConfig(body);
   for (const [key, value] of Object.entries(body)) {
     if (value != null && typeof value !== 'string' && typeof value !== 'number') throw failure('Giá trị không hợp lệ.');
     if (typeof value === 'number' && !Number.isFinite(value)) throw failure('Giá trị số không hợp lệ.');
@@ -109,6 +109,9 @@ async function save(resource, id, body, actor) {
   return db.transaction(async (query, execute, uuid) => {
     const current = id ? (await query(`SELECT ${def.fields.join(', ')} FROM ${def.table} WHERE ID=?`, [id]))[0] : null;
     if (id && !current) throw failure('Bản ghi không còn tồn tại.', 404);
+    const autoKey = {customers:'KhachHang',services:'DichVu',parts:'MatHang'}[resource];
+    if (!id && autoKey && !payload[def.code]) payload[def.code] = await require('./documentNumbers.js').nextInTransaction(autoKey, query, execute);
+    if (resource === 'parts') payload.BARCODE = payload.CODE || current?.CODE;
     const combined = { ...current, ...payload };
     if ((def.required || ['NAME']).some((field) => !String(combined[field] ?? '').trim())) throw failure('Vui lòng điền đầy đủ các trường bắt buộc.');
     const numericFields = ['GIA', 'THOIGIAN', 'CHOPHEPAMKHO', 'LOAI'];

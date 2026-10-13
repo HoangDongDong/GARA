@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import api from '../api';
+import api from '../api.js';
 export default function PrintAgentControls({types,onChange}){
  const [config,setConfig]=useState({stations:[],printers:[],routes:[]}),[open,setOpen]=useState(false),[ticket,setTicket]=useState(''),[error,setError]=useState('');
  const admin=Number(JSON.parse(localStorage.getItem('garage_user')||'{}').ISADMIN)===1;

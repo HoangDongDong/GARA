@@ -1,8 +1,8 @@
 const path = require('path');
 const crypto = require('crypto');
 const firebird = require('node-firebird');
-const config = require('../config');
-const tenancy = require('../tenancy');
+const config = require('../config.js');
+const tenancy = require('../tenancy.js');
 const root = () => path.resolve(process.env.SAAS_DATA_ROOT || path.join(path.dirname(config.firebird.database), 'saas'));
 const database = () => path.resolve(process.env.SAAS_PLATFORM_DATABASE || path.join(root(), 'platform-v1.fdb'));
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });

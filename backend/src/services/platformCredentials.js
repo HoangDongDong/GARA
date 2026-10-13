@@ -1,5 +1,5 @@
 const fs=require('fs'),path=require('path');
-const security=require('../authSecurity');
+const security=require('../authSecurity.js');
 const file=()=>path.join(process.env.AUTH_SECURITY_DIR||path.resolve(__dirname,'../../storage/security'),'platform-admin-password');
 function passwordHash(){if(process.env.SAAS_ADMIN_PASSWORD_HASH)return process.env.SAAS_ADMIN_PASSWORD_HASH;try{return fs.readFileSync(file(),'utf8').trim();}catch(error){if(error.code==='ENOENT')return null;throw error;}}
 function setup(req,password){

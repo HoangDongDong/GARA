@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 
 function group(rows, fallback) {
   const partners = new Map();

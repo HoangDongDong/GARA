@@ -1674,3 +1674,5 @@
 .pos-checkout-buttons .btn-pos-draft { background: #fff; color: #e65100; border: 1px solid #e65100; }
 .pos-checkout-buttons .btn-pos-draft:hover { background: #fff7ed; }
 .pos-line-tax input { margin-top: 3px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; }
+
+.pos-products-box .pos-box-header{flex-wrap:wrap;gap:8px}.pos-products-box .pos-box-title{flex:1;min-width:0}.pos-products-box .pos-create-part{margin-left:auto;flex-shrink:0}.pos-products-box .pos-sort-wrap{flex-basis:100%;min-width:0;flex-wrap:nowrap}.pos-products-box .pos-sort-wrap>span{white-space:nowrap}.pos-products-box .pos-sort-select{flex:1;min-width:0;width:auto}.pos-create-part{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:0;border-radius:4px;background:#E65100;color:#fff;font:inherit;font-weight:600;white-space:nowrap;cursor:pointer}.pos-create-part:disabled{opacity:.5;cursor:default}

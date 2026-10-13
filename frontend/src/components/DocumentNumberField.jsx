@@ -1,4 +1,4 @@
-import useDocumentNumber from '../hooks/useDocumentNumber';
+import useDocumentNumber from '../hooks/useDocumentNumber.js';
 export default function DocumentNumberField({type,label='Số phiếu',savedCode=''}) {
   const number=useDocumentNumber(type,!savedCode);
   return <div><label style={{fontSize:11,fontWeight:600,display:'block',marginBottom:3}}>{label}

@@ -1,7 +1,7 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { printTemplates } from '../services';
-import { MM, number, layoutFrx, editFrx, addObject, removeObject, removeTablePart, fontOf, pathOf, samplePayload, copyObjects, pasteObjects, reportMoveAttributes, resizeObjectAttributes, editObjects } from './frxDesigner';
+import { MM, number, layoutFrx, editFrx, addObject, removeObject, removeTablePart, fontOf, pathOf, samplePayload, copyObjects, pasteObjects, reportMoveAttributes, resizeObjectAttributes, editObjects } from './frxDesigner.js';
 import './WebReportDesigner.css';
 import ReportPdfPreview from './ReportPdfPreview';
 
@@ -143,7 +143,7 @@ export default function WebReportDesigner({ template, onClose, onSaved }) {
       let result;
       if (copy) {
         if (!template.CONFIG_NAME) throw new Error('Mẫu chưa gắn loại phiếu. Hãy gắn loại phiếu trước khi lưu bản sao.');
-        result = await printTemplates.create(name.trim(), xml, template.CONFIG_NAME);
+        result = await printTemplates.create(name.trim(), xml, template.CONFIG_NAME, template.ID);
         setNotice('Đã tạo mẫu mới. Bạn vẫn đang chỉnh mẫu gốc.');
       } else {
         result = await printTemplates.saveWebContent(template.ID, xml, version);

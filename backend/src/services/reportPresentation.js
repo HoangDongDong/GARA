@@ -1,6 +1,6 @@
-const db = require('../db');
-const { decodeConfigImage } = require('./configImageStorage');
-const { validateLogo } = require('./companyLogo');
+const db = require('../db.js');
+const { decodeConfigImage } = require('./configImageStorage.js');
+const { validateLogo } = require('./companyLogo.js');
 
 async function companyPresentation() {
   const rows = await db.query("SELECT NAME,TEXTVALUE FROM SCONFIG WHERE NAME IN ('CompanyName','CompanyAddress','CompanyPhone','CompanyEmail') AND STATUS=30");

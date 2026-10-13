@@ -14,8 +14,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const db = require('../db');
-const { templateFilter } = require('./systemConfigOptions');
+const db = require('../db.js');
+const { templateFilter } = require('./systemConfigOptions.js');
 
 const SALES_FORM_NAME = 'Hóa đơn bán hàng';
 const rendererExecutable = process.env.FASTREPORT_RENDERER_EXE || path.resolve(
@@ -33,7 +33,7 @@ const companyCaches = new Map();
 
 async function company() {
   const now = Date.now();
-  const tenancy = require('../tenancy'), key = tenancy.key();
+  const tenancy = require('../tenancy.js'), key = tenancy.key();
   for (const [id, entry] of companyCaches) if (now - entry.time > 60000) companyCaches.delete(id);
   const cached = companyCaches.get(key);
   let _companyCache = cached?.value || null;
@@ -103,7 +103,7 @@ async function buildSalesPayload(orderId, user) {
      WHERE CT.TDONHANGID=? AND CT.STATUS=1
      ORDER BY CT.TIMECREATED`, [orderId]);
 
-  const lineDiscounts = require('./salesLineDiscountPrint').prepare(header, details);
+  const lineDiscounts = require('./salesLineDiscountPrint.js').prepare(header, details);
   const table0 = lineDiscounts.rows.map((row) => {
     const { M_NAME, M_CODE, DV_NAME, ...rest } = clean(row);
     return {
@@ -184,7 +184,7 @@ function runRenderer(templatePath, dataPath, outputPath) {
 }
 
 async function renderSalesInvoice(orderId, { templateId, user, accessUser } = {}) {
-  const printing = require('./documentPrint');
+  const printing = require('./documentPrint.js');
   const result = await printing.render(printing.typeByKey('MauHoaDonBanHang'),orderId,{templateId},user,accessUser);
   return { pdf: result.pdf, template: { id: result.template.ID, name: result.template.NAME }, orderName: result.name };
 }

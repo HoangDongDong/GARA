@@ -39,7 +39,7 @@ Content-Type: application/json
 
 Dịch vụ cần chấp nhận gửi đúng người nhận, trả 2xx khi nhận yêu cầu hợp lệ, thiết lập tên miền gửi/SPF/DKIM theo nhà cung cấp. Adapter phải ánh xạ payload nếu provider yêu cầu thêm trường from hoặc cấu trúc khác. Đây là tích hợp gửi, chưa có theo dõi delivery/bounce. Test hiện mô phỏng HTTP; cần thử email thật trước khi mở đăng ký. API không trả mã xác minh cho người đăng ký.
 
-8. Chạy `node tools/saas-preflight.js`. Cấu hình thiếu báo PENDING và exit 1. Sau khi kiểm tra đạt, bật SAAS_ENABLED=true cho pilot, vẫn giữ đăng ký công khai false đến khi thử email/pilot hoàn thành. Đăng nhập bằng tên tài khoản; danh bạ nền tảng tự nhận diện cửa hàng; người dùng cần đăng nhập lại, agent cần ghép lại.
+8. Chạy `node ../Test/firebird/tools/saas-preflight.js`. Cấu hình thiếu báo PENDING và exit 1. Sau khi kiểm tra đạt, bật SAAS_ENABLED=true cho pilot, vẫn giữ đăng ký công khai false đến khi thử email/pilot hoàn thành. Đăng nhập bằng tên tài khoản; danh bạ nền tảng tự nhận diện cửa hàng; người dùng cần đăng nhập lại, agent cần ghép lại.
 
 ## Chuẩn bị service, HTTPS và lịch backup
 
@@ -64,7 +64,7 @@ Các lệnh vận hành:
 ```powershell
 npm run saas:worker
 npm run saas:backup
-node tools/saas-backup-verify.js <backup-id>
+node ../Test/firebird/tools/saas-backup-verify.js <backup-id>
 ```
 
 Lệnh verify restore sang file mới trong restore-checks, không ghi đè database đang dùng. Bản restore được giữ riêng để kiểm tra, operator xử lý lưu giữ theo chính sách. Cần thêm lịch verify, offsite, mã hóa, cảnh báo backup thất bại và quy trình phục hồi định kỳ.

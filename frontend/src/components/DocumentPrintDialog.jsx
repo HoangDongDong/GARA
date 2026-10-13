@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Printer, X } from 'lucide-react';
-import api from '../api';
+import api from '../api.js';
 import './DocumentPrintDialog.css';
 import PrintAgentControls from './PrintAgentControls';
-import { createPrintJobKey } from './printJobKey';
+import { createPrintJobKey } from './printJobKey.js';
 export const openDocumentPrint = options => window.dispatchEvent(new CustomEvent('garage:print', { detail: options }));
 const contexts = {
  '/tiep-nhan':['MauPhieuTiepNhan','MauBaoGia'], '/sua-chua':['MauPhieuSuaChua','MauPhieuTamTinh','MauBaoGia','MauPhieuTiepNhan','MauHoaDonSuaChua','MauPhieuBanGiao','MauPhieuXuatKho'],

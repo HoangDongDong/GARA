@@ -1,4 +1,4 @@
-const db=require('../db');
+const db=require('../db.js');
 const round=value=>Math.round(Number(value || 0)*100)/100;
 function build(cash,documents,details,receipts) {
   const rows=[];

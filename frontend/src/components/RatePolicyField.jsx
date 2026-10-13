@@ -1,4 +1,4 @@
-import useChargeRates from '../hooks/useChargeRates';
+import useChargeRates from '../hooks/useChargeRates.js';
 import './RatePolicyField.css';
 export default function RatePolicyField({ label, value, onChange, inheritLabel = 'Theo cấu hình', inheritedRate, inheritedSource, disabled }) {
   const own = value != null && value !== '';

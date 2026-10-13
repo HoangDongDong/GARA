@@ -1,11 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const charges = require('../services/defaultChargeRates');
-const policy = require('../services/pricingPolicy');
-router.use('/:id/supplements', require('./repairSupplements'));
+const db = require('../db.js');
+const charges = require('../services/defaultChargeRates.js');
+const policy = require('../services/pricingPolicy.js');
+const repairQuotes = require('../services/repairQuotes.js');
+router.post('/:id/quote', async (req, res) => {
+  try {
+    require('../permissionPolicy.js').assert(req.accessUser, 'REPAIR', 17);
+    const quoteId = await db.transaction(async (query, execute, uuid) => {
+      await execute('UPDATE TLENHSUACHUA SET ID=ID WHERE ID=? AND STATUS=1', [req.params.id]);
+      return repairQuotes.ensure(query, execute, uuid, req.params.id, req.accessUser.ID);
+    });
+    res.json({ok:true,quoteId});
+  } catch (error) { res.status(error.status || 500).json({error:error.message}); }
+});
+router.use('/:id/supplements', require('./repairSupplements.js'));
 router.get('/charge-rates', async (req, res) => {
-  try { res.json({ data: { ...await charges.loadForRepairs(), ...await require('../services/paymentSettings').load('repair') } }); }
+  try { res.json({ data: { ...await charges.loadForRepairs(), ...await require('../services/paymentSettings.js').load('repair') } }); }
   catch (error) { res.status(error.status || 500).json({ error: error.message }); }
 });
 
@@ -59,7 +70,7 @@ router.post('/tiep-nhan', async (req, res) => {
     if (active.length) return res.status(409).json({ error: 'Xe dang co quy trinh sua chua chua hoan thanh' });
 
     const id = db.uuidv4();
-    const ma = await require('../services/documentNumbers').nextNumber('TiepNhan');
+    const ma = await require('../services/documentNumbers.js').nextNumber('TiepNhan');
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     await db.execute(
       `INSERT INTO TTIEPNHANXE
@@ -93,8 +104,8 @@ router.patch('/tiep-nhan/:id/status', async (req, res) => {
 // ===== TLENHSUACHUA =====
 router.get('/:id/assignments', async (req, res) => {
   try {
-    const data = await require('../services/repairCommissions').preview(db.query, req.params.id);
-    if (!require('../permissionPolicy').has(req.accessUser, 'COMMISSIONS')) {
+    const data = await require('../services/repairCommissions.js').preview(db.query, req.params.id);
+    if (!require('../permissionPolicy.js').has(req.accessUser, 'COMMISSIONS')) {
       data.total = null;
       data.details = [];
     }
@@ -188,7 +199,7 @@ router.post('/', async (req, res) => {
       const id = uuidv4();
       const workflowId = activeFlow?.ID || uuidv4();
       const historyId = uuidv4();
-      const ma = await require('../services/documentNumbers').nextInTransaction('LenhSuaChua',query,execute);
+      const ma = await require('../services/documentNumbers.js').nextInTransaction('LenhSuaChua',query,execute);
       let tongCong = 0;
       let tongPT = 0;
       const defaults = await charges.loadForRepairs(query);
@@ -204,7 +215,7 @@ router.post('/', async (req, res) => {
         if (Number(it.LOAI || 0) === 0) tongPT += amount;
         else tongCong += amount;
         const product = await policy.item(query, it.LOAI, Number(it.LOAI || 0) === 0 ? it.DMATHANGID : it.DDICHVUID);
-        if (price !== Number(product.UNITPRICE || 0)) require('../permissionPolicy').assert(req.accessUser, 'PRICING', 4);
+        if (price !== Number(product.UNITPRICE || 0)) require('../permissionPolicy.js').assert(req.accessUser, 'PRICING', 4);
         normalized.push({ ...it, quantity, price, amount, discountRate: policy.rate(it.TILEGIAMGIA), ...policy.taxPolicy(product, rates, it.TILETHUE) });
       }
       const billReduction = policy.billDiscount(normalized, discountPolicy.discountRate, req.body.TIENGIAMGIAPHIEU);
@@ -261,7 +272,7 @@ router.post('/', async (req, res) => {
       }
 
       // Luu xong tiep nhan va bao gia: cho khach hang xac nhan sua chua.
-      const quoteCompletedState = require('../permissionPolicy').has(req.accessUser, 'APPROVE_QUOTE', 4) ? 1 : 0;
+      const quoteCompletedState = require('../permissionPolicy.js').has(req.accessUser, 'APPROVE_QUOTE', 4) ? 1 : 0;
       if (activeFlow) {
         await execute(
           `UPDATE TTRANGTHAIXE
@@ -298,7 +309,8 @@ router.post('/', async (req, res) => {
           quoteCompletedState, 'Luu tiep nhan va bao gia, cho xac nhan sua chua',
           NOTE || null, activeFlow ? 2 : 1, actor]
       );
-      return { id, workflowId, code: ma, workflowState: quoteCompletedState };
+      const quoteId = await repairQuotes.ensure(query, execute, uuidv4, id, actor);
+      return { id, quoteId, workflowId, code: ma, workflowState: quoteCompletedState };
     });
 
     res.json({ ok: true, ...result });

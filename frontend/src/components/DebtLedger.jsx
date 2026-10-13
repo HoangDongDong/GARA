@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import api from '../api';
+import api from '../api.js';
 import DocumentNumberField from './DocumentNumberField';
 import './DebtLedger.css';
 

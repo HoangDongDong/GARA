@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 const names = ['ChoPhepNhapGiamGia','ChoPhepInTamTinh','HienThiAnhSanPham','BanHangDungDauDocMaVach','BatBuocNhapKhachHang','LamTronTien','MacDinhGiamGia'];
 function validate(name, value) {
   const number = Number(value || 0);
@@ -15,7 +15,7 @@ async function load(query = db.query) {
 }
 function discount(customer, override, settings) {
   if (!settings.allowDiscount && override != null) throw Object.assign(new Error('Cấu hình không cho phép nhập giảm giá.'), { status: 400 });
-  const result = require('./pricingPolicy').discountPolicy(customer, override);
+  const result = require('./pricingPolicy.js').discountPolicy(customer, override);
   return result.discountSource === 'Không có giảm giá mặc định' ? { discountRate:settings.defaultDiscount, discountSource:'Giảm giá mặc định trong cấu hình' } : result;
 }
 module.exports = { load, validate, discount };

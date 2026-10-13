@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db.js');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -192,11 +192,14 @@ router.post('/:resource', async (req, res) => {
   try {
     const def = TABLES[req.params.resource];
     if (!def) return res.status(404).json({ error: 'Resource khong ton tai' });
+    if (req.params.resource === 'services') {
+      return res.json(await require('../services/catalogData.js').save('services', null, req.body, req.accessUser?.ID || 'SYSTEM'));
+    }
 
     const id = uuidv4();
-    require('../services/pricingPolicy').validateMaster(req.body);
-    if (require('../permissionPolicy').hasField(req.body,['HHKIEU','HHGIATRI'])) require('../permissionPolicy').assert(req.accessUser, 'COMMISSIONS', 4);
-    require('../services/repairCommissions').validateConfig(req.body);
+    require('../services/pricingPolicy.js').validateMaster(req.body);
+    if (require('../permissionPolicy.js').hasField(req.body,['HHKIEU','HHGIATRI'])) require('../permissionPolicy.js').assert(req.accessUser, 'COMMISSIONS', 4);
+    require('../services/repairCommissions.js').validateConfig(req.body);
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, ID: id, STATUS: req.body.STATUS ?? 1, USERCREATEDID: actor };
     delete data.TIMECREATED;
@@ -221,9 +224,9 @@ router.put('/:resource/:id', async (req, res) => {
 
     const actor = String(req.get('X-User') || 'SYSTEM').trim() || 'SYSTEM';
     const data = { ...req.body, USERMODIFIEDID: actor };
-    if (require('../permissionPolicy').hasField(data,['HHKIEU','HHGIATRI'])) require('../permissionPolicy').assert(req.accessUser, 'COMMISSIONS', 4);
-    require('../services/pricingPolicy').validateMaster(data);
-    require('../services/repairCommissions').validateConfig(data);
+    if (require('../permissionPolicy.js').hasField(data,['HHKIEU','HHGIATRI'])) require('../permissionPolicy.js').assert(req.accessUser, 'COMMISSIONS', 4);
+    require('../services/pricingPolicy.js').validateMaster(data);
+    require('../services/repairCommissions.js').validateConfig(data);
     delete data.ID;
     delete data.TIMEMODIFIED;
 

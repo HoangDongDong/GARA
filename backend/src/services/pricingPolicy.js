@@ -1,4 +1,4 @@
-const charges = require('./defaultChargeRates');
+const charges = require('./defaultChargeRates.js');
 const round = value => Math.round((value + Number.EPSILON) * 100) / 100;
 function rate(value, label = 'Tỷ lệ') {
   if (value == null || value === '') return null;
@@ -13,12 +13,12 @@ function assertOverride(req, code) {
   const override = req.body.TILEGIAMGIA != null || req.body.TIENGIAMGIA != null || req.body.TIENGIAMGIAPHIEU != null
     || req.body.items?.some(line => line.TILETHUE != null || line.TILEGIAMGIA != null);
   if (override && req.accessUser && Number(req.accessUser.ISADMIN) !== 1
-    && !require('../permissionPolicy').has(req.accessUser, 'PRICING', 4)) {
+    && !require('../permissionPolicy.js').has(req.accessUser, 'PRICING', 4)) {
     throw Object.assign(new Error('Bạn cần quyền Điều chỉnh giá / Thuế / Giảm giá.'), { status: 403 });
   }
 }
 function assertRates(req, defaults) {
-  if (!req.accessUser || require('../permissionPolicy').has(req.accessUser, 'PRICING', 4)) return;
+  if (!req.accessUser || require('../permissionPolicy.js').has(req.accessUser, 'PRICING', 4)) return;
   for (const [key, field] of [['TILETHUE','taxRate'],['TILEPHIDICHVU','serviceRate']]) {
     if (req.body[key] != null && Number(req.body[key]) !== Number(defaults[field])) {
       throw Object.assign(new Error('Bạn chưa có quyền thay đổi thuế hoặc phí dịch vụ mặc định.'), { status: 403 });

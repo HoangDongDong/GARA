@@ -1173,3 +1173,7 @@ table.table {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+.quick-create-button{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;align-self:stretch;min-width:32px;border:1px solid #E65100;border-radius:4px;padding:5px;background:#fff7ed;color:#E65100;cursor:pointer}.quick-create-button:disabled{opacity:.5;cursor:default}.select-with-quick-create{display:flex;align-items:stretch;gap:6}.select-with-quick-create>select{flex:1;min-width:0}
+
+.quick-create-button:has(span){background:#E65100;color:#fff;gap:4px;padding:5px 10px;font-weight:600;white-space:nowrap}

@@ -1,7 +1,7 @@
 const fs=require('fs');
-const db=require('../db');
-const {types}=require('./documentPrint');
-const {templateFilter}=require('./systemConfigOptions');
+const db=require('../db.js');
+const {types}=require('./documentPrint.js');
+const {templateFilter}=require('./systemConfigOptions.js');
 function paper(xml){
  const page=xml.match(/<ReportPage\b[^>]*>/)?.[0]||'';
  const w=Number(page.match(/\bPaperWidth="([^"]+)"/)?.[1]);

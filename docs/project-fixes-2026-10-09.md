@@ -20,7 +20,7 @@
 
 ## Kiểm tra đã hoàn thành
 
-- Bộ kiểm thử backend: **187 bài, 174 đạt, 0 lỗi, 13 bỏ qua theo cấu hình**. Log: `backend/safety-fix-tests.log`.
+- Bộ kiểm thử backend: **187 bài, 174 đạt, 0 lỗi, 13 bỏ qua theo cấu hình**. Log: `Test/artifacts/backend/safety-fix-tests.log`.
 - Kiểm thử frontend: **28 đạt, 0 lỗi**.
 - Kiểm thử nghiệp vụ riêng trên Firebird thật: **1 đạt**, dữ liệu thử nằm trong transaction và được rollback. Kiểm tra tiền nhập, tồn kho, dòng bán trùng và kết quả idempotency lưu dạng BLOB.
 - Build frontend thành công; còn cảnh báo kích thước bundle.

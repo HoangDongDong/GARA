@@ -1,6 +1,6 @@
 const router = require('express').Router();
-const db = require('../db');
-const tenancy = require('../tenancy');
+const db = require('../db.js');
+const tenancy = require('../tenancy.js');
 const screens = new Map();
 function current() { const key = tenancy.key(); const screen = screens.get(key); if (screen && screen.expires <= Date.now()) { screens.delete(key); return null; } return screen; }
 router.get('/', (req, res) => { res.set('Cache-Control','no-store'); res.json({ data: current()?.order || null }); });

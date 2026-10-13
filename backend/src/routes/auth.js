@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { hashPassword, verifyPassword, signToken } = require('../authSecurity');
-const { authenticate, loadAccessUser } = require('../accessControl');
-const tenancy = require('../tenancy');
-router.post('/login', require('../services/loginLimiter').middleware, async (req, res, next) => {
+const db = require('../db.js');
+const { hashPassword, verifyPassword, signToken } = require('../authSecurity.js');
+const { authenticate, loadAccessUser } = require('../accessControl.js');
+const tenancy = require('../tenancy.js');
+router.post('/login', require('../services/loginLimiter.js').middleware, async (req, res, next) => {
   if (!tenancy.enabled()) return next();
   try {
     const code = String(req.body.tenantCode || '').trim().toLowerCase();
     let tenant;
     if(code){
       if (!/^[a-z0-9][a-z0-9-]{2,39}$/.test(code)) return res.status(400).json({ error: 'Mã cửa hàng không hợp lệ.' });
-      tenant=await require('../services/platform').find(code,true);
+      tenant=await require('../services/platform.js').find(code,true);
     }else{
-      const login=await require('../services/loginDirectory').resolve(req.body.username ?? req.body.USERNAME);
+      const login=await require('../services/loginDirectory.js').resolve(req.body.username ?? req.body.USERNAME);
       req.directoryLogin=login;
       tenant=login.tenant;
     }
@@ -44,7 +44,7 @@ router.post('/login', async (req, res) => {
     }
     const user = await loadAccessUser(account.ID);
     res.json({ ok: true, token: signToken(account.ID,user.credentialVersion,{tenantId:req.tenant?.id}), data: {
-      TENANT: req.tenant ? require('../services/platform').publicTenant(req.tenant) : null,
+      TENANT: req.tenant ? require('../services/platform.js').publicTenant(req.tenant) : null,
       ID: user.ID, USERNAME: req.directoryLogin?.LOGINNAME || user.USERNAME, TEN_HIEN_THI: user.EMPLOYEENAME || user.NAME || user.USERNAME,
       ROLE: user.GROUPNAME || (Number(user.ISADMIN) === 1 ? 'Admin' : ''), ISADMIN: Number(user.ISADMIN || 0),
       DNHANVIENID: user.DNHANVIENID, PERMISSIONS: user.permissions,
@@ -52,13 +52,13 @@ router.post('/login', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.post('/logout',authenticate,(req,res)=>{require('../authSecurity').revokeToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));res.json({ok:true});});
+router.post('/logout',authenticate,(req,res)=>{require('../authSecurity.js').revokeToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));res.json({ok:true});});
 
 router.get('/me', authenticate, async (req, res) => {
   try{
   const user = req.accessUser;
-  const [login]=req.tenant ? await require('../services/platform').query('SELECT LOGINNAME FROM SAAS_LOGINS WHERE TENANTID=? AND USERID=?',[req.tenant.id,user.ID]) : [];
-  res.json({ data: { TENANT: req.tenant ? require('../services/platform').publicTenant(req.tenant) : null, ID: user.ID, USERNAME: login?.LOGINNAME || user.USERNAME, TEN_HIEN_THI: user.EMPLOYEENAME || user.NAME || user.USERNAME, ROLE: user.GROUPNAME, ISADMIN: Number(user.ISADMIN || 0), PERMISSIONS: user.permissions } });
+  const [login]=req.tenant ? await require('../services/platform.js').query('SELECT LOGINNAME FROM SAAS_LOGINS WHERE TENANTID=? AND USERID=?',[req.tenant.id,user.ID]) : [];
+  res.json({ data: { TENANT: req.tenant ? require('../services/platform.js').publicTenant(req.tenant) : null, ID: user.ID, USERNAME: login?.LOGINNAME || user.USERNAME, TEN_HIEN_THI: user.EMPLOYEENAME || user.NAME || user.USERNAME, ROLE: user.GROUPNAME, ISADMIN: Number(user.ISADMIN || 0), PERMISSIONS: user.permissions } });
   }catch(error){res.status(503).json({error:'Chưa tải được thông tin tài khoản.'});}
 });
 

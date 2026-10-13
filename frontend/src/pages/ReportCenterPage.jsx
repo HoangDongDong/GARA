@@ -1,8 +1,8 @@
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Download, FileText, Printer, RefreshCw, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import api from '../api';
+import api from '../api.js';
 import './ReportCenterPage.css';
 const localDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const initialFilters=()=>({from:localDate().slice(0,7)+'-01',to:localDate(),q:'',partner:'',plate:'',employee:'',warehouse:'',status:'',account:'',method:'',days:90});

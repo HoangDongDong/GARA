@@ -1,4 +1,4 @@
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

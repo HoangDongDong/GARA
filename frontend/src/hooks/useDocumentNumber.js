@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api';
+import api from '../api.js';
 
 export default function useDocumentNumber(type, enabled = true, context = '') {
   const [result,setResult]=useState({type:'',code:'',error:''});

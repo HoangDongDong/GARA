@@ -21,3 +21,5 @@
 .employee-photo-editor p { font-size: 12px; color: #64748b; }
 .employee-photo-editor button { background: #fff; color: #475569; border: 1px solid #cbd5e1; margin-right: 6px; }
 @media (max-width: 540px) { .employee-form-grid { grid-template-columns: 1fr; }.employee-form-card input, .employee-form-card select, .employee-form-card textarea { font-size: 16px; } }
+
+.employee-form-select-add select{min-width:0}.employee-form-select-add button[aria-label="Thêm vai trò công việc"]{flex-shrink:0;white-space:nowrap}

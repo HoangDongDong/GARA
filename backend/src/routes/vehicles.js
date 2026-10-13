@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { loadFuelOptions } = require('../services/fuelOptions');
+const db = require('../db.js');
+const { loadFuelOptions } = require('../services/fuelOptions.js');
 
 const normalizePlate = (value) => String(value || '').replace(/[-.\s]/g, '').toUpperCase();
 const VEHICLE_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
@@ -117,11 +117,11 @@ router.get('/:id/warranties', async (req, res) => {
 });
 
 // POST /api/vehicles/:id/warranties - tao bao hanh moi cho xe
-router.post('/:id/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save({...req.body,DXEID:req.params.id},req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
+router.post('/:id/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty.js').save({...req.body,DXEID:req.params.id},req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
 
 // POST /api/vehicles/warranties - tao bao hanh (khong can co vehicle truoc)
-router.post('/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save(req.body,req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
-router.put('/warranties/:id',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty').save(req.body,req.accessUser.ID,req.params.id)});}catch(e){res.status(e.status||500).json({error:e.message});}});
+router.post('/warranties',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty.js').save(req.body,req.accessUser.ID)});}catch(e){res.status(e.status||500).json({error:e.message});}});
+router.put('/warranties/:id',async(req,res)=>{try{res.json({ok:true,...await require('../services/warranty.js').save(req.body,req.accessUser.ID,req.params.id)});}catch(e){res.status(e.status||500).json({error:e.message});}});
 
 // GET /api/vehicles/:id/profile - ho so xe tong hop
 

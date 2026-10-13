@@ -1,4 +1,4 @@
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { useEffect, useState } from 'react';
 import { customers, repairOrders } from '../services';
 import { customerPhoneUrl } from './CustomerDetailModal';

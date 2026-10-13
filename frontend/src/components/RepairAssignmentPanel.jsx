@@ -1,7 +1,7 @@
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import api from '../api';
+import api from '../api.js';
 import EmployeeFormModal from './EmployeeFormModal';
 import './RepairAssignmentPanel.css';
 
@@ -15,7 +15,7 @@ function split(total, rows) {
   for (const row of [...parts].sort((a, b) => b.remainder - a.remainder)) if (remainder > 0) { row.cents++; remainder--; }
   return parts.map(row => ({ ...row, amount: row.cents / 100 }));
 }
-export default function RepairAssignmentPanel({ repairId, onChange, disabled, readOnly = false }) {
+export default function RepairAssignmentPanel({ repairId, acceptedTotals, onChange, disabled, readOnly = false }) {
   const [data, setData] = useState(null);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
@@ -38,13 +38,19 @@ export default function RepairAssignmentPanel({ repairId, onChange, disabled, re
   const locked = disabled || readOnly || data?.captured || !can('ASSIGN_REPAIR',4);
   const canCommission = can('COMMISSIONS');
   const employees = useMemo(() => (data?.employees || []).filter(row => normalize(`${row.NAME} ${row.CHUYENMON || ''}`).includes(normalize(search))), [data, search]);
-  const amounts = valid ? split(data.total, rows) : rows;
+  const commissionDetails = acceptedTotals && !data?.captured ? (data?.details || []).flatMap(row => {
+    const line = acceptedTotals.details.find(item => item.id === row.ID);
+    if (!line) return [];
+    return [{...row,HOAHONG:Math.round((row.HHKIEU===1?line.net*row.HHGIATRI/100:row.HHKIEU===2?row.SOLUONG*row.HHGIATRI:0)*100)/100}];
+  }) : data?.details || [];
+  const commissionTotal = Math.round(commissionDetails.reduce((sum,row)=>sum+row.HOAHONG,0)*100)/100;
+  const amounts = valid ? split(commissionTotal, rows) : rows;
   const addEmployee = employee => setRows(current => {
     if (current.some(row => row.employeeId === employee.ID)) return current;
     return equalShares([...current, { employeeId: employee.ID, name: employee.NAME, primary: current.length === 0 }]);
   });
   return <section className="repair-assignment-panel">
-    <div className="repair-assignment-heading"><b>Nhân viên thực hiện & Hoa hồng</b>{data && canCommission && <b>{money(data.total)}</b>}</div>
+    <div className="repair-assignment-heading"><b>Nhân viên thực hiện & Hoa hồng</b>{data && canCommission && <b>{money(commissionTotal)}</b>}</div>
     {error ? <div role="alert" className="repair-assignment-error">{error} <button type="button" onClick={() => setVersion(value => value + 1)}>Tải lại</button></div> : !data ? <p role="status">Đang tải hoa hồng…</p> : <>
       <p className="repair-assignment-hint">{data.captured ? 'Mức hoa hồng và tỷ lệ chia đã được lưu theo phiếu.' : 'Chọn nhân viên cùng thực hiện cả phiếu. Mặc định chia đều; có thể chỉnh tỷ lệ trước khi xác nhận.'}</p>
       {!readOnly && !data.captured && <>
@@ -63,7 +69,7 @@ export default function RepairAssignmentPanel({ repairId, onChange, disabled, re
       </tbody></table></div>
       {!rows.length && <p className="repair-assignment-hint">{readOnly ? 'Phiếu cũ chưa có phân công và hoa hồng đã chốt.' : 'Chưa chọn nhân viên thực hiện.'}</p>}
       {!locked && rows.length > 0 && <div className={valid ? 'repair-assignment-hint' : 'repair-assignment-error'}>Tổng tỷ lệ: {totalShare}%{!valid && ' — cần đủ 100% và một người phụ trách chính.'}<button type="button" onClick={() => setRows(equalShares(rows))}>Chia đều</button></div>}
-      {canCommission && <details className="repair-assignment-breakdown"><summary>Hoa hồng từng dịch vụ / phụ tùng</summary><table><thead><tr><th>Hạng mục</th><th>Mức áp dụng</th><th>Hoa hồng</th></tr></thead><tbody>{data.details.map(row => <tr key={row.ID}><td>{row.TEN}</td><td>{row.HHKIEU === 1 ? `${row.HHGIATRI}%` : row.HHKIEU === 2 ? `${money(row.HHGIATRI)} / đơn vị` : 'Không tính'}</td><td>{money(row.HOAHONG)}</td></tr>)}</tbody></table></details>}
+      {canCommission && <details className="repair-assignment-breakdown"><summary>Hoa hồng từng dịch vụ / phụ tùng</summary><table><thead><tr><th>Hạng mục</th><th>Mức áp dụng</th><th>Hoa hồng</th></tr></thead><tbody>{commissionDetails.map(row => <tr key={row.ID}><td>{row.TEN}</td><td>{row.HHKIEU === 1 ? `${row.HHGIATRI}%` : row.HHKIEU === 2 ? `${money(row.HHGIATRI)} / đơn vị` : 'Không tính'}</td><td>{money(row.HOAHONG)}</td></tr>)}</tbody></table></details>}
     </>}
     <EmployeeFormModal open={adding} onClose={() => setAdding(false)} onCreated={(id, employees) => {
       setError('');

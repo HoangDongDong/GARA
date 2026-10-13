@@ -1,5 +1,5 @@
 const fs=require('fs'),path=require('path'),{execFile}=require('child_process');
-const config=require('../src/config');
+const config=require('../src/config.js');
 function executable(){const candidates=[process.env.FB_GBAK,'C:/Program Files/Firebird/Firebird_2_5/bin/gbak.exe','C:/Program Files (x86)/Firebird/Firebird_2_5/bin/gbak.exe'].filter(Boolean);const found=candidates.find(file=>fs.existsSync(file));if(!found)throw Error('Không tìm thấy gbak. Đặt FB_GBAK tới công cụ Firebird phù hợp.');return found;}
 function run(args){return new Promise((resolve,reject)=>execFile(executable(),args,{windowsHide:true,maxBuffer:1024*1024},(err)=>err?reject(new Error('Firebird gbak thất bại; database hiện tại không bị thay đổi.')):resolve()));}
 async function backup(options=config.firebird, destination, metadataOnly=false){

@@ -21,7 +21,7 @@ const documentTypes = [
   { key: 'MauCongNoNhaCungCap', label: 'Công nợ nhà cung cấp', table: 'DNHACUNGCAP', forms: [] },
 ];
 
-const { templateFilter } = require('./systemConfigOptions');
+const { templateFilter } = require('./systemConfigOptions.js');
 
 function buildCatalog(rows, configs) {
   const assigned = new Set();

@@ -1,7 +1,9 @@
-import { compressImage, imagePolicies } from '../utils/compressImage';
+import QuickCreateButton from './QuickCreateButton';
+import CustomerCreateModal from './CustomerCreateModal';
+import { compressImage, imagePolicies } from '../utils/compressImage.js';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Car, FileText, ImageUp, ScanLine, Wrench, XCircle } from 'lucide-react';
-import { customers, masterData, vehicles } from '../services';
+import { catalog, customers, masterData, vehicles } from '../services';
 
 const EMPTY_FORM = {
   BIENSO: '', DKHACHHANGID: '', DHANGXEID: '', DDONGXEID: '', PHIENBAN: '',
@@ -134,7 +136,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
   if (!open) return null;
 
   const createMaster = async (event) => {
-    event.preventDefault();
+    event.preventDefault(); event.stopPropagation();
     const name = subName.trim();
     if (!name) return notify('Vui lòng nhập tên.');
     setSavingSub(true);
@@ -148,8 +150,8 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
         const id = existing?.ID || (await masterData.create('models', { NAME: name, CODE: name.toUpperCase().replace(/\s+/g, '-'), DHANGXEID: form.DHANGXEID, SORTORDER: models.filter((item) => item.DHANGXEID === form.DHANGXEID).length + 1 })).id;
         await reloadOptions(); update('DDONGXEID', id); notify(existing ? 'Dòng xe đã tồn tại và đã được chọn.' : `Đã thêm dòng xe ${name}.`);
       } else if (subForm === 'fuel') {
-        update('NHIENLIEU', name);
-        setFuelOptions((current) => [...new Set([...current, name])]);
+        if (!fuelOptions.some(item => item.toLocaleLowerCase('vi') === name.toLocaleLowerCase('vi'))) await catalog.create('fuels',{NAME:name});
+        await reloadOptions(); update('NHIENLIEU', name);
         notify(`Đã thêm loại nhiên liệu ${name}.`);
       } else {
         const existing = groups.find((item) => item.NAME?.trim().toLowerCase() === name.toLowerCase());
@@ -166,19 +168,8 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     setCustomerForm({ NAME: '', DNHOMKHACHHANGID: retail?.ID || '', MAKHACH: '', DIENTHOAI: '', EMAIL: '', MASOTHUE: '', DIACHI: '' });
   };
 
-  const saveCustomer = async (event) => {
-    event.preventDefault();
-    if (!customerForm.NAME.trim()) return notify('Vui lòng nhập tên khách hàng.');
-    setSavingSub(true);
-    try {
-      const result = await customers.create({ ...customerForm, NAME: customerForm.NAME.trim(), MAKHACH: customerForm.MAKHACH.trim().toUpperCase() || null });
-      await reloadOptions(); update('DKHACHHANGID', result.id); setCustomerForm(null); notify(`Đã thêm khách hàng ${customerForm.NAME.trim()}.`);
-    } catch (e) { notify(e?.response?.data?.error || e.message || 'Không thể thêm khách hàng.'); }
-    finally { setSavingSub(false); }
-  };
-
   const submit = async (event) => {
-    event.preventDefault();
+    event.preventDefault(); event.stopPropagation();
     const plate = form.BIENSO.trim().toUpperCase();
     if (!plate) return setError('Vui lòng nhập biển số xe.');
     if (!form.DHANGXEID || !form.DDONGXEID) return setError('Vui lòng chọn hãng xe và dòng xe.');
@@ -394,7 +385,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
             <label style={fieldLabel}>Hãng xe *<div style={{display:'flex',gap:6}}><select value={form.DHANGXEID} onChange={(e)=>update('DHANGXEID',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chọn hãng xe --</option>{brands.map(x=><option key={x.ID} value={x.ID}>{x.NAME}</option>)}</select><button type="button" onClick={()=>openMaster('brand')} style={addButtonStyle}>＋ Thêm</button></div></label>
             <label style={fieldLabel}>Dòng xe *<div style={{display:'flex',gap:6}}><select disabled={!form.DHANGXEID} value={form.DDONGXEID} onChange={(e)=>update('DDONGXEID',e.target.value)} style={{...fieldInput,background:form.DHANGXEID?'#fff':'#F8FAFC',flex:1,minWidth:0}}><option value="">-- Chọn dòng xe --</option>{models.filter(x=>x.DHANGXEID===form.DHANGXEID).map(x=><option key={x.ID} value={x.ID}>{x.NAME}</option>)}</select><button type="button" disabled={!form.DHANGXEID} onClick={()=>openMaster('model')} style={{...addButtonStyle,opacity:form.DHANGXEID?1:.5,cursor:form.DHANGXEID?'pointer':'not-allowed'}}>＋ Thêm</button></div></label>
             {[['PHIENBAN','Phiên bản'],['NAMSANXUAT','Năm sản xuất'],['MAUXE','Màu xe'],['SOKHUNG','Số khung (VIN)'],['SOMAY','Số máy'],['ODO','ODO hiện tại (km)']].map(([key,label])=><label key={key} style={fieldLabel}>{label}<input type={key==='NAMSANXUAT'||key==='ODO'?'number':'text'} value={form[key]} onChange={(e)=>update(key,e.target.value)} style={fieldInput}/></label>)}
-            <label style={fieldLabel}>Nhiên liệu<div style={{display:'flex',gap:6}}><select value={form.NHIENLIEU} onChange={(e)=>update('NHIENLIEU',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chọn nhiên liệu --</option>{fuelOptions.map(x=><option key={x}>{x}</option>)}</select><button type="button" onClick={()=>openMaster('fuel')} style={addButtonStyle}>＋ Thêm</button></div></label>
+            <label style={fieldLabel}>Nhiên liệu<div style={{display:'flex',gap:6}}><select value={form.NHIENLIEU} onChange={(e)=>update('NHIENLIEU',e.target.value)} style={{...fieldInput,background:'#fff',flex:1,minWidth:0}}><option value="">-- Chọn nhiên liệu --</option>{form.NHIENLIEU && !fuelOptions.includes(form.NHIENLIEU) && <option value={form.NHIENLIEU}>{form.NHIENLIEU}</option>}{fuelOptions.map(x=><option key={x}>{x}</option>)}</select><QuickCreateButton resource="fuels" title="Thêm loại nhiên liệu" label="Thêm" disabled={saving} onCreated={(id,row)=>{setFuelOptions(current=>[...new Set([...current,row.NAME])]);update('NHIENLIEU',row.NAME);}}/></div></label>
             <label style={fieldLabel}>Mức nhiên liệu (%)<div style={{height:34,display:'flex',alignItems:'center',gap:8}}><input type="range" min="0" max="100" step="5" value={form.MUCNHIENLIEU} onChange={(e)=>update('MUCNHIENLIEU',e.target.value)} style={{flex:1,accentColor:'#E65100'}}/><input type="number" min="0" max="100" value={form.MUCNHIENLIEU} onChange={(e)=>update('MUCNHIENLIEU',e.target.value)} style={{...fieldInput,width:56}}/></div></label>
           </div>
           <label style={{...fieldLabel,marginTop:11}}>Ghi chú hồ sơ xe<textarea rows={3} value={form.GHICHU} onChange={(e)=>update('GHICHU',e.target.value)} style={{border:'1px solid #CBD5E1',borderRadius:5,padding:8,fontFamily:'inherit'}}/></label>
@@ -404,6 +395,7 @@ export default function VehicleProfileModal({ open, onClose, onCreated, onUpdate
     </div>
     {cameraOpen && <div onMouseDown={(event)=>event.target===event.currentTarget&&stopCamera()} style={{position:'fixed',inset:0,zIndex:10040,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}><div style={{width:'min(760px,97vw)',background:'#fff',borderRadius:9,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.45)'}}><div style={{background:'#E65100',color:'#fff',padding:'11px 14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}><b style={{display:'flex',alignItems:'center',gap:7}}><Camera size={18}/> QUÉT ĐẦU XE</b><button type="button" onClick={stopCamera} style={{border:0,background:'transparent',color:'#fff',display:'flex',cursor:'pointer'}}><XCircle size={20}/></button></div><div style={{padding:14}}><div style={{position:'relative',aspectRatio:'16/9',background:'#111827',borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>{cameraStream?<video ref={videoRef} playsInline muted style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<div style={{color:'#CBD5E1',textAlign:'center',padding:20}}><Camera size={38} style={{marginBottom:8}}/><div>{cameraError||'Đang mở camera...'}</div></div>}<div style={{position:'absolute',left:'25%',right:'25%',bottom:'15%',height:'22%',border:'2px solid #FB923C',borderRadius:7,boxShadow:'0 0 0 999px rgba(0,0,0,.12)',pointerEvents:'none'}}/></div><div style={{fontSize:11,color:'#64748B',marginTop:8}}>Đặt đầu xe trong khung, giữ rõ biển số và logo/tên xe. Hệ thống ưu tiên đối chiếu hồ sơ đã có theo biển số.</div>{cameraError&&<div style={{marginTop:8,color:'#C62828',fontSize:11}}>{cameraError}</div>}<div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:12,flexWrap:'wrap'}}><button type="button" onClick={()=>{stopCamera(); cameraInputRef.current?.click();}} style={{height:35,padding:'0 14px',border:'1px solid #E65100',color:'#E65100',borderRadius:5,background:'#FFF7ED',display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontWeight:600}}><Camera size={15}/> Mở máy ảnh</button><button type="button" onClick={()=>{stopCamera(); fileInputRef.current?.click();}} style={{height:35,padding:'0 14px',border:'1px solid #CBD5E1',borderRadius:5,background:'#fff',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}><ImageUp size={15}/> Chọn ảnh</button><button type="button" disabled={!cameraStream} onClick={captureAndScan} style={{height:35,padding:'0 16px',border:0,borderRadius:5,background:'#E65100',color:'#fff',fontWeight:700,display:'flex',alignItems:'center',gap:5,cursor:cameraStream?'pointer':'not-allowed',opacity:cameraStream?1:.55}}><Camera size={15}/> Chụp và nhận diện</button></div></div></div></div>}
     {subForm && <div style={{position:'fixed',inset:0,zIndex:10030,background:'rgba(0,0,0,.58)',display:'flex',alignItems:'center',justifyContent:'center'}}><form onSubmit={createMaster} style={{width:420,background:'#fff',borderRadius:7,overflow:'hidden'}}><div style={{background:'#E65100',color:'#fff',padding:11,fontWeight:700}}>THÊM {subForm==='brand'?'HÃNG XE':subForm==='model'?'DÒNG XE':subForm==='fuel'?'LOẠI NHIÊN LIỆU':'NHÓM KHÁCH HÀNG'}</div><div style={{padding:14}}>{subForm==='model'&&<input readOnly value={brands.find(x=>x.ID===form.DHANGXEID)?.NAME||''} style={{...fieldInput,width:'100%',marginBottom:10,background:'#F8FAFC'}}/>}<input autoFocus value={subName} onChange={(e)=>setSubName(e.target.value)} placeholder="Nhập tên..." style={{...fieldInput,width:'100%'}}/><div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:12}}><button type="button" onClick={()=>setSubForm(null)}>Hủy</button><button type="submit" disabled={savingSub}>Lưu</button></div></div></form></div>}
-    {customerForm && <div style={{position:'fixed',inset:0,zIndex:10025,background:'rgba(0,0,0,.55)',display:'flex',alignItems:'center',justifyContent:'center'}}><form onSubmit={saveCustomer} style={{width:'min(560px,96vw)',background:'#fff',borderRadius:7,overflow:'hidden'}}><div style={{background:'#E65100',color:'#fff',padding:11,fontWeight:700}}>THÊM KHÁCH HÀNG</div><div style={{padding:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><label style={{...fieldLabel,gridColumn:'1/-1'}}>Tên khách hàng *<input autoFocus value={customerForm.NAME} onChange={(e)=>setCustomerForm({...customerForm,NAME:e.target.value})} style={fieldInput}/></label><label style={{...fieldLabel,gridColumn:'1/-1'}}>Nhóm khách hàng<div style={{display:'flex',gap:6}}><select value={customerForm.DNHOMKHACHHANGID} onChange={(e)=>setCustomerForm({...customerForm,DNHOMKHACHHANGID:e.target.value})} style={{...fieldInput,flex:1,minWidth:0,background:'#fff'}}><option value="">-- Chọn nhóm --</option>{groups.map(x=><option key={x.ID} value={x.ID}>{x.NAME}</option>)}</select><button type="button" onClick={()=>openMaster('group')} style={addButtonStyle}>＋ Thêm</button></div></label>{[['MAKHACH','Mã khách hàng'],['DIENTHOAI','Số điện thoại'],['EMAIL','Email'],['MASOTHUE','CCCD / Mã số thuế']].map(([key,label])=><label key={key} style={fieldLabel}>{label}<input value={customerForm[key]} onChange={(e)=>setCustomerForm({...customerForm,[key]:e.target.value})} style={fieldInput}/></label>)}<label style={{...fieldLabel,gridColumn:'1/-1'}}>Địa chỉ<textarea rows={3} value={customerForm.DIACHI} onChange={(e)=>setCustomerForm({...customerForm,DIACHI:e.target.value})}/></label><div style={{gridColumn:'1/-1',display:'flex',justifyContent:'flex-end',gap:8}}><button type="button" onClick={()=>setCustomerForm(null)}>Hủy</button><button type="submit" disabled={savingSub}>Thêm khách hàng</button></div></div></form></div>}
+    {customerForm && <CustomerCreateModal onClose={() => setCustomerForm(null)} notify={notify}
+      onCreated={(id,rows) => {setCustomersList(current => [...new Map([...current,...rows].map(row => [row.ID,row])).values()]);update('DKHACHHANGID',id);}}/>}
   </>;
 }

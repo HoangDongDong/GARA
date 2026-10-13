@@ -1,7 +1,8 @@
-import { can, canQuickCreate, workflowPermission } from '../utils/permissions';
+import QuickCreateButton from '../components/QuickCreateButton';
+import { can, canQuickCreate, workflowPermission } from '../utils/permissions.js';
 import PartFormModal from '../components/PartFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
-import useDocumentNumber from '../hooks/useDocumentNumber';
+import useDocumentNumber from '../hooks/useDocumentNumber.js';
 import { useEffect, useState, useMemo } from 'react';
 import { 
   Package, Calendar, Plus, Barcode, FileSpreadsheet, GitFork, 
@@ -480,11 +481,11 @@ export default function NhapKhoPage() {
     event.preventDefault();
     const name = partForm.NAME.trim();
     const code = partForm.CODE.trim();
-    if (!name || !code) {
-      setPartFormError('Vui lòng nhập tên và mã mặt hàng.');
+    if (!name) {
+      setPartFormError('Vui lòng nhập tên mặt hàng.');
       return;
     }
-    if (catalogItems.some((item) => item.code.trim().toUpperCase() === code.toUpperCase())) {
+    if (code && partForm.AUTO_CODE !== code && catalogItems.some((item) => item.code.trim().toUpperCase() === code.toUpperCase())) {
       setPartFormError('Mã mặt hàng đã tồn tại. Vui lòng nhập mã khác.');
       return;
     }
@@ -510,7 +511,7 @@ export default function NhapKhoPage() {
       const created = mapped.find((item) => item.id === result?.id);
       if (created) handleSelectFromCatalog(created);
       setShowAddPartModal(false);
-      showToast(`Đã thêm mặt hàng ${code} - ${name}`);
+      showToast(`Đã thêm mặt hàng ${result.code} - ${name}`);
     } catch (error) {
       setPartFormError(error?.response?.data?.error || error.message || 'Không thể thêm mặt hàng.');
     } finally {
@@ -830,7 +831,7 @@ export default function NhapKhoPage() {
               >
                 <option value="">-- Chọn nhân viên --</option>
                 {staffOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
+              </select><QuickCreateButton resource="employees" title="Thêm nhân viên" onCreated={(id, row, rows) => { setEmployeeRecords(rows); setStaffOptions(rows.map(item => item.NAME)); setReceiptInfo(current => ({...current, staff: row.NAME})); }}/>
             </div>
 
             {/* Cột 1 & 2: Nhà cung cấp * (+ Thêm) */}
@@ -912,7 +913,7 @@ export default function NhapKhoPage() {
               >
                 <option value="">-- Chọn kho nhập --</option>
                 {warehouseOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
+              </select><QuickCreateButton resource="warehouses" title="Thêm kho nhập" onCreated={(id, row) => { setWarehouseRecords(current => [...current, row]); setWarehouseOptions(current => [...current, row.NAME]); setReceiptInfo(current => ({...current, warehouse: row.NAME})); }}/>
             </div>
 
             {/* Cột 1 & 2: Diễn giải */}

@@ -1,7 +1,7 @@
-const db = require('../db');
-const printing = require('./documentPrint');
-const { decodeConfigImage } = require('./configImageStorage');
-const { toVndWords } = require('./legacyPrintExpressions');
+const db = require('../db.js');
+const printing = require('./documentPrint.js');
+const { decodeConfigImage } = require('./configImageStorage.js');
+const { toVndWords } = require('./legacyPrintExpressions.js');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 function paperFor(xml, templateName = '') {
  const page=xml.match(/<ReportPage\b[^>]*>/)?.[0]||'';

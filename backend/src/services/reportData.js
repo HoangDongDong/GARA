@@ -1,6 +1,6 @@
-const db=require('../db');
-const {reports,permitted}=require('./reportCatalog');
-const {dateRange}=require('./employeeCommissions');
+const db=require('../db.js');
+const {reports,permitted}=require('./reportCatalog.js');
+const {dateRange}=require('./employeeCommissions.js');
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const round=x=>Math.round((Number(x)||0)*100)/100;
 const day=x=>!x?'':typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)?x:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(x));
@@ -49,21 +49,21 @@ async function sources(source,f,query=db.query){
   for(const r of await normalize(table)){out.push({...r,code:r.CODE||r.MAKHACH||r.MANHACUNGCAP||r.BIENSO||'',phone:r.DIENTHOAI||'',address:r.DIACHI||'',oem:r.MAOEM||'',group:await label({customers:'DNHOMKHACHHANG',suppliers:'DNHOMNHACUNGCAP',parts:'DNHOMMATHANG',services:'DLOAIDICHVU'}[source]||'DNHOMMATHANG',r.DNHOMKHACHHANGID||r.DNHOMNHACUNGCAPID||r.DNHOMMATHANGID||r.DLOAIDICHVUID),unit:await label('DDONVITINH',r.DDONVITINHID),price:round(r.GIABAN??r.GIA),minimum:Number(r.TONTOITHIEU||0),warehouse:r.DVITRIKHOID?await label('DVITRIKHO',r.DVITRIKHOID):r.warehouse,status:source==='employees'?'Đang làm việc':r.status});}return out;
  }
  if(['receipts','payments','vouchers'].includes(source)){const rows=await normalize('TTHUCHI');const out=[];for(const r of rows){out.push({...r,partner:r.TENDOITUONG||r.partner,reason:await label('DLYDOTHUCHI',r.DLYDOTHUCHID),method:r.DTAIKHOANNGANHANGID?'Chuyển khoản':'Tiền mặt',account:await label('DTAIKHOANNGANHANG',r.DTAIKHOANNGANHANGID),income:Number(r.LOAI)===0?round(r.SOTIEN):0,expense:Number(r.LOAI)===1?round(r.SOTIEN):0});}return out.filter(r=>source==='receipts'?Number(r.LOAI)===0:source==='payments'?Number(r.LOAI)===1:true);}
- if(source==='cash'){const rows=(await require('./cashbook').load(query)).map(r=>({...r,date:day(r.date),name:r.description,method:{cash:'Tiền mặt',transfer:'Chuyển khoản',card:'Thẻ'}[r.method]||r.method}));rows.openingAccounts=(await read('DTAIKHOANNGANHANG')).map(r=>({id:r.ID,name:r.NAME,amount:round(r.SODUDAU)}));return rows;}
+ if(source==='cash'){const rows=(await require('./cashbook.js').load(query)).map(r=>({...r,date:day(r.date),name:r.description,method:{cash:'Tiền mặt',transfer:'Chuyển khoản',card:'Thẻ'}[r.method]||r.method}));rows.openingAccounts=(await read('DTAIKHOANNGANHANG')).map(r=>({id:r.ID,name:r.NAME,amount:round(r.SODUDAU)}));return rows;}
  if(source==='repairs'||source==='receptions'||source==='quotes')return (await normalize({repairs:'TLENHSUACHUA',receptions:'TTIEPNHANXE',quotes:'TBAOGIA'}[source])).map(r=>({...r,status:source==='quotes'?(r.NGAYDUYET?'Đã duyệt':'Chờ duyệt'):({repairs:['Mới','Đang sửa','Tạm dừng','Hoàn thành','Đã giao'],receptions:['Mới','Đang xử lý','Hoàn thành','Đã giao']}[source][Number(r.TRANGTHAI)]||r.status)}));
  if(source==='supplements'){const out=[];for(const r of await normalize('TPHATSINHSUACHUA')){const l=(await map('TLENHSUACHUA')).get(r.TLENHSUACHUAID);out.push({...r,code:l?.NAME||'',plate:(await map('DXE')).get(l?.DXEID)?.BIENSO||'',name:r.LYDO,status:({draft:'Nháp',pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Từ chối',applied:'Đã áp dụng'}[r.TRANGTHAI]||r.status)});}return out;}
  if(source==='workflow'){const states=new Map((await read('TWORKFLOWMAP')).map(r=>[Number(r.STT_WORKFLOW),r.TEN]));await map('TLENHSUACHUA');return (await normalize('TTRANGTHAIXE')).map(r=>({...r,code:r.TLENHSUACHUAID?(maps.TLENHSUACHUA?.get(r.TLENHSUACHUAID)?.NAME||r.TLENHSUACHUAID):r.code,date:day(r.NGAY_TRANGTHAI||r.NGAY_VAO),due:day(r.NGAY_DUKIEN),status:states.get(Number(r.TRANGTHAI))||String(r.TRANGTHAI),stage:Number(r.TRANGTHAI)}));}
  if(source==='warranties')return (await normalize('TBAOHANH')).map(r=>({...r,name:r.KETQUAXULY||r.name,end:day(r.NGAYKETTHUC),amount:round(r.CHIPHI),result:r.KETQUAXULY||'',status:!r.NGAYKETTHUC?'Chưa có hạn':day(r.NGAYKETTHUC)<today()?'Hết hạn':'Còn hạn'}));
  if(source==='maintenance')return (await normalize('TLICHSUBAODUONG')).map(r=>({...r,name:r.LOAIBAODUONG||r.name,date:day(r.NGAY_LANCUOI),due:day(r.NGAY_DUKIEN),odo:r.ODO_DUKIEN,currentOdo:(maps.DXE?.get(r.DXEID))?.ODO}));
  if(source==='commissions'||source==='payroll'){
-  const month=(f.from||today()).slice(0,7);const data=await require('./employeeCommissions').load(query,{from:f.from,to:f.to,month});
+  const month=(f.from||today()).slice(0,7);const data=await require('./employeeCommissions.js').load(query,{from:f.from,to:f.to,month});
   if(source==='commissions')return data.data.map(r=>({id:r.ID,code:r.SO_PHIEU,date:day(r.NGAYPHANCONG),plate:r.BIENSO,partner:r.TEN_KH,employee:r.TEN_NV,employeeKey:r.DNHANVIENID,allocated:round(r.HOAHONG),eligible:r.ELIGIBLE?round(r.HOAHONG):0,pending:r.ELIGIBLE?0:round(r.HOAHONG),TLENHSUACHUAID:r.TLENHSUACHUAID}));
   if(f.to&&f.to.slice(0,7)!==month)throw fail('Bảng lương: chọn khoảng ngày trong cùng một tháng.');
   const out=[];for(const r of data.payroll)out.push({id:r.ID,code:r.TEN_BANG_LUONG,date:`${month}-01`,employee:await label('DNHANVIEN',r.DNHANVIENID),base:round(r.LUONGCOBAN),allocated:round(r.HOAHONG),bonus:round(r.THUONG),deduction:round(r.PHAT),amount:round(r.TONGCONG)});return out;
  }
  if(source==='paymentDetails'){const out=[];for(const r of await read('TCHITIETTHANHTOAN')){const repair=!!r.THOADONSUACHUAID;const doc=(await map(repair?'THOADONSUACHUA':'TDONHANG')).get(r.THOADONSUACHUAID||r.TDONHANGID);if(!doc||!(await read(repair?'THOADONSUACHUA':'TDONHANG')).some(d=>d.ID===doc.ID))continue;out.push({id:r.ID,code:doc.NAME,date:day(r.NGAY),source:repair?'Sửa chữa':'Bán phụ tùng',partner:await label('DKHACHHANG',doc.DKHACHHANGID),method:['Tiền mặt','Chuyển khoản','Thẻ'][r.LOAI],account:await label('DTAIKHOANNGANHANG',r.DTAIKHOANNGANHANGID),amount:round(r.SOTIEN)});}return out;}
  if(/(Debt|Ledger)$/.test(source)){
-  const ledger=await require('./debts').ledger(query);const partners=source.startsWith('customer')?ledger.receivable:ledger.payable;const out=[];
+  const ledger=await require('./debts.js').ledger(query);const partners=source.startsWith('customer')?ledger.receivable:ledger.payable;const out=[];
   for(const p of partners){const hist=p.history.map(h=>({...h,date:day(h.date||h.created)}));let opening=round(hist.filter(h=>f.from&&h.date<f.from).reduce((a,h)=>a+h.total-h.payment,0));const entries=hist.filter(h=>(!f.from||h.date>=f.from)&&(!f.to||h.date<=f.to));let balance=opening;
    for(const h of entries){balance=round(balance+h.total-h.payment);if(source.endsWith('Ledger'))out.push({id:h.id,code:h.code,date:h.date,partner:p.customer,source:h.source,amount:h.total,paid:h.payment,closing:balance});}
    if(source.endsWith('Debt'))out.push({id:p.id,name:p.customer,partner:p.customer,opening,amount:round(entries.reduce((a,h)=>a+h.total,0)),paid:round(entries.reduce((a,h)=>a+h.payment,0)),closing:balance});

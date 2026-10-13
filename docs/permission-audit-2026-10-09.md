@@ -45,5 +45,5 @@ Trong ảnh, nhóm Báo giá có cả Xóa và toàn bộ quyền Tài chính/Nh
 ## Kiểm chứng
 
 - Gọi authorize trực tiếp cho 10 tình huống, không chạm dữ liệu: xác nhận cho qua DELETE parts/customers với REPAIR=8; cho qua GET master-data/suppliers không có quyền; chặn employees và invoice/pay khi chỉ có REPAIR; cho qua invoice/pay với SALES=4; chặn thêm nhanh master-data với SALES=3; xác nhận route chưa khai báo được cho qua.
-- Chạy `node --test tests/documentPrint.test.js tests/reportCenter.test.js tests/pricingPolicy.test.js tests/secondaryPayment.test.js`: 32/34 đạt. Hai ca HTTP local (snapshot report và secondary payment) lỗi `fetch failed`; chưa kết luận được hai ca này trong môi trường hiện tại. Các ca kiểm tra quyền in chứng từ, báo cáo nhạy cảm và chỉnh giá đạt.
+- Chạy `node --test ../Test/backend/tests/documentPrint.test.js tests/reportCenter.test.js tests/pricingPolicy.test.js tests/secondaryPayment.test.js`: 32/34 đạt. Hai ca HTTP local (snapshot report và secondary payment) lỗi `fetch failed`; chưa kết luận được hai ca này trong môi trường hiện tại. Các ca kiểm tra quyền in chứng từ, báo cáo nhạy cảm và chỉnh giá đạt.
 - Chưa sửa mã nguồn ứng dụng, chưa chạy migration hay cập nhật database.

@@ -5,7 +5,7 @@
  * Backend Express dang chay o http://localhost:4000
  * Vite proxy /api -> :4000, nen chi can goi /api/...
  */
-import api from '../api';
+import api from '../api.js';
 
 export const protectedMediaUrl = (path) => {
   if (!path || !String(path).startsWith('/api/')) return path;
@@ -103,7 +103,7 @@ export const printTemplates = {
   saveWebContent: (id, content, version) => api.put(`/print-templates/${encodeURIComponent(id)}/web-content`, { content, version }).then(r => r.data),
   webBackup: (id, backupId) => api.get(`/print-templates/${encodeURIComponent(id)}/web-backups/${encodeURIComponent(backupId)}`).then(r => r.data),
   previewWeb: (id, content, payload) => api.post(`/print-templates/${encodeURIComponent(id)}/web-preview`, { content, payload }, { responseType: 'blob', timeout: 70000 }).then(r => r.data),
-  create: (name, content, configName) => api.post('/print-templates', { name, content, configName }).then(response => response.data),
+  create: (name, content, configName, sourceTemplateId) => api.post('/print-templates', { name, content, configName, sourceTemplateId }).then(response => response.data),
   list: () => api.get('/print-templates').then((response) => response.data),
   openDesigner: (id) => api.post(`/print-templates/${encodeURIComponent(id)}/designer`).then((response) => response.data?.data),
   designerStatus: (sessionId) => api.get(`/print-templates/designer-sessions/${encodeURIComponent(sessionId)}`).then((response) => response.data?.data),
@@ -144,6 +144,7 @@ export const employees = {
   lookup: () => list('employees/lookup'),
   imageUrl: (row) => protectedMediaUrl(`/api/employees/${encodeURIComponent(row.ID)}/image?v=${encodeURIComponent(row.SIMAGEID || '')}`),
   meta: () => api.get('/employees/meta').then(response => response.data.data),
+  createRole: payload => api.post('/employees/roles', payload).then(response => response.data.data),
   commissions: (params) => api.get('/employees/commissions', { params }).then(response => response.data),
   setStatus: (id, status) => api.patch(`/employees/${encodeURIComponent(id)}/status`, { status }).then(response => response.data),
   list:   (params) => list('employees', params),

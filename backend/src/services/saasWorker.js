@@ -1,17 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const platform = require('./platform');
-const tenancy = require('../tenancy');
-const db = require('../db');
-const seed = require('./tenantSeed');
-const backup = require('../../tools/database-backup');
-const config = require('../config');
+const platform = require('./platform.js');
+const tenancy = require('../tenancy.js');
+const db = require('../db.js');
+const seed = require('./tenantSeed.js');
+const backup = require('../../tools/database-backup.js');
+const config = require('../config.js');
 function manifest() {
   const value = JSON.parse(fs.readFileSync(path.join(platform.root(), 'template-current.json'), 'utf8'));
   const file = path.resolve(value.backup);
   const templateRoot = path.join(platform.root(), 'templates') + path.sep;
-  if (!file.toLowerCase().startsWith(templateRoot.toLowerCase()) || ![3,4].includes(value.seedVersion) || crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') !== value.sha256) throw Error('Template chưa được kiểm tra hoặc hash không khớp.');
+  if (!file.toLowerCase().startsWith(templateRoot.toLowerCase()) || ![3,4,5,6].includes(value.seedVersion) || crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') !== value.sha256) throw Error('Template chưa được kiểm tra hoặc hash không khớp.');
   return value;
 }
 async function claim() {
@@ -34,7 +34,11 @@ async function processOne() {
     if (!fs.existsSync(tenant.database)) await backup.restore(baseline.backup, tenant.database);
     await tenancy.run(tenant, async () => {
       const [ready] = await db.query("SELECT COUNT(*) AS N FROM SNUMBERCOUNTER");
-      if (Number(ready.N) !== require('./documentNumbers').definitions.length) throw Error('Database chưa khôi phục đầy đủ; cần kiểm tra riêng, không tự ghi đè.');
+      if (![require('./documentNumbers.js').definitions.length, 13, require('./documentNumbers.js').allDefinitions.length].includes(Number(ready.N))) throw Error('Database chưa khôi phục đầy đủ; cần kiểm tra riêng, không tự ghi đè.');
+      await require('../../../Test/firebird/migrate_document_numbers.js')();
+      await require('./employeeRoles.js').initialize(db);
+      await require('./fuelOptions.js').initializeFuelCatalog(db);
+      await require('./storeProfiles.js').initializeStoreProfiles(db);
       await seed.owner(db, row);
       await db.ping();
     });

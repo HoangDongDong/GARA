@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import './LoginPage.css';
 import { auth } from '../services';
-import api from '../api';
-import { registrationLogin, clearRegistrationLogin } from '../utils/registrationLogin';
+import api from '../api.js';
+import { registrationLogin, clearRegistrationLogin } from '../utils/registrationLogin.js';
 
 export default function LoginPage() {
   const [params] = useSearchParams();

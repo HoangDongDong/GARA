@@ -1,7 +1,7 @@
-const db = require('./db');
-const { verifyToken } = require('./authSecurity');
+const db = require('./db.js');
+const { verifyToken } = require('./authSecurity.js');
 
-const { MODE, has, workflowCode, masterReaders, quickCreate, assertQuickFields, redact } = require('./permissionPolicy');
+const { MODE, has, workflowCode, masterReaders, quickCreate, assertQuickFields, redact } = require('./permissionPolicy.js');
 
 function permissionForMethod(method) {
   if (method === 'GET' || method === 'HEAD') return MODE.VIEW;
@@ -63,7 +63,7 @@ async function loadAccessUser(userId) {
     );
     rows.forEach((item) => { permissions[item.CODE] = Number(item.MODE || 0); });
   }
-  const credentialVersion=require('./authSecurity').credentialVersion(user.PASSWORD || user.NOTE);
+  const credentialVersion=require('./authSecurity.js').credentialVersion(user.PASSWORD || user.NOTE);
   delete user.PASSWORD;delete user.NOTE;
   return { ...user, permissions, credentialVersion };
 }
@@ -79,10 +79,10 @@ async function authenticate(req, res, next) {
     const token = headerToken || mediaToken;
     const payload = verifyToken(token);
     if (!payload || (payload.aud && payload.aud !== 'garage')) return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
-    const tenancy = require('./tenancy');
+    const tenancy = require('./tenancy.js');
     if (tenancy.enabled()) {
       if (!payload.tid) return res.status(401).json({ error: 'Vui lòng đăng nhập lại và chọn mã cửa hàng.' });
-      const tenant = await require('./services/platform').find(payload.tid);
+      const tenant = await require('./services/platform.js').find(payload.tid);
       req.tenant = tenant;
       return await tenancy.run(tenant, () => completeAuthentication());
     }
@@ -123,6 +123,7 @@ function authorize(req, res, next) {
   if (!codes.length) return res.status(403).json({ error: 'Chức năng này chưa được khai báo phân quyền.' });
   // Chuyển trạng thái là cập nhật nghiệp vụ hiện có, dù endpoint dùng POST.
   const bit = path === '/api/secondary-payment' && req.method === 'PUT' ? MODE.ADD
+    : /^\/api\/repair-orders\/[^/]+\/quote$/.test(path) && req.method === 'POST' ? MODE.VIEW | MODE.PRINT
     : path === '/api/workflow/transition' || (at('/api/invoices') && req.method === 'POST') ? MODE.EDIT : permissionForMethod(req.method);
   const allowed = codes.some(code => has(req.accessUser, code, bit));
   if (!allowed) return res.status(403).json({ error: 'Bạn không có quyền thực hiện chức năng này.' });
@@ -130,8 +131,8 @@ function authorize(req, res, next) {
     return res.status(403).json({ error: 'Cần quyền xem hóa đơn sửa chữa hoặc tài chính để thanh toán.' });
   }
   if (at('/api/parts') && !['GET','HEAD'].includes(req.method)) {
-    if (require('./permissionPolicy').hasField(req.body,['HHKIEU','HHGIATRI']) && !has(req.accessUser,'COMMISSIONS',MODE.EDIT)) return res.status(403).json({ error: 'Bạn chưa có quyền cấu hình hoa hồng.' });
-    if (require('./permissionPolicy').hasField(req.body,['GIANHAP','GIAVON']) && !has(req.accessUser,'COST')) return res.status(403).json({ error: 'Bạn chưa có quyền giá nhập / giá vốn.' });
+    if (require('./permissionPolicy.js').hasField(req.body,['HHKIEU','HHGIATRI']) && !has(req.accessUser,'COMMISSIONS',MODE.EDIT)) return res.status(403).json({ error: 'Bạn chưa có quyền cấu hình hoa hồng.' });
+    if (require('./permissionPolicy.js').hasField(req.body,['GIANHAP','GIAVON']) && !has(req.accessUser,'COST')) return res.status(403).json({ error: 'Bạn chưa có quyền giá nhập / giá vốn.' });
   }
   if (at('/api/master-data') && req.method === 'POST' && !has(req.accessUser, 'CATALOG', MODE.ADD)) {
     try { assertQuickFields(req.body); } catch (error) { return res.status(403).json({ error: error.message }); }

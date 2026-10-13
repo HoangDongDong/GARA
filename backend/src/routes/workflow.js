@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../db.js');
 router.get('/supplements', async (req, res) => {
   try {
-    const rows = await require('../services/repairSupplements').listQueue(db.query);
+    const rows = await require('../services/repairSupplements.js').listQueue(db.query);
     res.json({ data: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -420,7 +420,7 @@ router.post('/transition', async (req, res) => {
         await execute('UPDATE TLENHSUACHUA SET ID=ID WHERE ID=?', [current.TLENHSUACHUAID]);
         const latest = await query('SELECT TRANGTHAI FROM TTRANGTHAIXE WHERE ID=?', [current.ID]);
         if (Number(latest[0]?.TRANGTHAI) !== Number(current.TRANGTHAI)) throw Object.assign(new Error('Trạng thái đã thay đổi, vui lòng tải lại.'), { statusCode: 409 });
-        if (targetState >= 3) await require('../services/repairSupplements').assertResolved(query, current.TLENHSUACHUAID);
+        if (targetState >= 3) await require('../services/repairSupplements.js').assertResolved(query, current.TLENHSUACHUAID);
       }
       if (targetState === 4) {
         const paid = await query(
@@ -440,7 +440,9 @@ router.post('/transition', async (req, res) => {
       if (targetState === 2) {
         if (req.accessUser && Number(req.accessUser.ISADMIN) !== 1 && (Number(req.accessUser.permissions?.REPAIR || 0) & 4) !== 4) throw Object.assign(new Error('Cần quyền Sửa để xác nhận phân công.'), { statusCode: 403 });
         if (!current.TLENHSUACHUAID) throw Object.assign(new Error('Cần lập báo giá trước khi phân công sửa chữa.'), { statusCode: 400 });
-        primaryEmployee = await require('../services/repairCommissions').capture(query, execute, uuidv4,
+        await require('../services/repairQuotes.js').confirm(query, execute, uuidv4,
+          current.TLENHSUACHUAID, req.body.acceptedItemIds, actor);
+        primaryEmployee = await require('../services/repairCommissions.js').capture(query, execute, uuidv4,
           current.TLENHSUACHUAID, req.body.assignments, req.accessUser?.ID || 'SYSTEM');
       }
 
@@ -490,8 +492,8 @@ router.post('/transition', async (req, res) => {
           );
           const issuedPartIds = new Set(issuedRows.map((row) => row.DMATHANGID));
           const pendingParts=partRows.filter(part=>!issuedPartIds.has(part.DMATHANGID));
-          await require('../services/stock').lock(execute,pendingParts.map(part=>part.DMATHANGID));
-          await require('../services/stock').requireAvailable(query,pendingParts);
+          await require('../services/stock.js').lock(execute,pendingParts.map(part=>part.DMATHANGID));
+          await require('../services/stock.js').requireAvailable(query,pendingParts);
           for (const part of partRows) {
             if (issuedPartIds.has(part.DMATHANGID)) continue;
             await execute(

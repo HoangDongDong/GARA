@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-router.use('/center', require('./reportCenter'));
+const db = require('../db.js');
+router.use('/center', require('./reportCenter.js'));
 
 /**
  * Bao cao tong quan.
@@ -25,7 +25,7 @@ router.get('/dashboard', async (req, res) => {
               COALESCE(SUM(TON_KHO * COALESCE(GIANHAP,0)),0) AS GIA_TRI
          FROM (
            SELECT M.ID, M.GIANHAP,
-                  ${require('../services/stock').expression('M.ID')} AS TON_KHO
+                  ${require('../services/stock.js').expression('M.ID')} AS TON_KHO
              FROM DMATHANG M
             WHERE M.STATUS=1 AND M.TAMKHOA=0
          )`

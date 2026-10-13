@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { definitions } = require('./documentNumbers');
-const { documentTypes } = require('./garagePrintCatalog');
+const { allDefinitions: definitions } = require('./documentNumbers.js');
+const { documentTypes } = require('./garagePrintCatalog.js');
 const functions = [
   ['DASHBOARD','Tổng quan'],['REPAIR','Sửa chữa - Dịch vụ'],['SALES','Bán hàng'],['INVENTORY','Nhập kho'],['SUPPLIERS','Nhà cung cấp'],['CUSTOMERS','Khách hàng'],['VEHICLES','Hồ sơ xe'],['WARRANTY','Bảo hành'],['FINANCE','Thu - Chi / Công nợ'],['EMPLOYEES','Nhân viên'],['REPORTS','Báo cáo'],['ADMIN','Quản trị - Phân quyền'],['SETTINGS','Cấu hình'],['CATALOG','Danh mục'],['COST','Giá nhập / Giá vốn'],['PAYROLL','Lương'],['COMMISSIONS','Hoa hồng'],['PAYMENTS','Thanh toán'],['PRICING','Điều chỉnh giá'],['EXPORT','Xuất dữ liệu'],['APPROVE_QUOTE','Duyệt báo giá'],['APPROVE_SUPPLEMENT','Duyệt phát sinh'],['ASSIGN_REPAIR','Phân công'],['HANDOVER','Giao xe'],
 ];
@@ -44,7 +44,10 @@ async function initialize(db) {
     }
   });
   // Assert every table outside the explicit seed allowlist is empty.
-  const allowed = new Set(['SCONFIGGROUP','SCONFIG','SNUMBERCOUNTER','SFUNCTION','TWORKFLOWMAP','DKHOHANG','STEMPLATE']);
+  await require('./employeeRoles.js').initialize(db);
+  await require('./fuelOptions.js').initializeFuelCatalog(db);
+  await require('./storeProfiles.js').initializeStoreProfiles(db);
+  const allowed = new Set(['DNHIENLIEU','DVAITRONHANVIEN','SCONFIGGROUP','SCONFIG','SNUMBERCOUNTER','SFUNCTION','TWORKFLOWMAP','DKHOHANG','STEMPLATE']);
   const tables = await db.query('SELECT TRIM(RDB$RELATION_NAME) AS NAME FROM RDB$RELATIONS WHERE COALESCE(RDB$SYSTEM_FLAG,0)=0 AND RDB$VIEW_BLR IS NULL');
   for (const table of tables) {
     const name = table.NAME;

@@ -4,7 +4,7 @@
 
 Đọc mã nguồn backend, frontend, các dịch vụ tiền/kho/in ấn, xác thực và phân quyền hiện tại, bao gồm các thay đổi chưa commit. Đây là rà soát mã nguồn và kiểm tra độc lập, chưa phải kiểm thử toàn bộ giao diện bằng tài khoản thật hoặc đánh giá hạ tầng triển khai. Không sửa nghiệp vụ, không ghi dữ liệu thật, không tạo token đăng nhập.
 
-Chạy 40 bài kiểm thử liên quan phân quyền, giá, nhập kho, công nợ và sổ quỹ: **38 đạt, 0 lỗi, 2 kiểm thử Firebird bỏ qua theo cấu hình**. Log: `backend/project-audit-tests.log`. Các kiểm thử hiện có đạt không chứng minh những tình huống thiếu kiểm thử bên dưới đã an toàn.
+Chạy 40 bài kiểm thử liên quan phân quyền, giá, nhập kho, công nợ và sổ quỹ: **38 đạt, 0 lỗi, 2 kiểm thử Firebird bỏ qua theo cấu hình**. Log: `Test/artifacts/backend/project-audit-tests.log`. Các kiểm thử hiện có đạt không chứng minh những tình huống thiếu kiểm thử bên dưới đã an toàn.
 
 Kiểm tra trực tiếp các route với DB giả lập xác nhận:
 

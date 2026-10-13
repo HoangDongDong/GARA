@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const printing = require('../services/documentPrint');
+const printing = require('../services/documentPrint.js');
 
 router.get('/types', async (req, res) => {
   try {

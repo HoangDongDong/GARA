@@ -118,12 +118,14 @@
 .suachua-action-buttons-row button {
   transition: all 0.15s ease-in-out;
 }
+
 .suachua-action-buttons-row button:active {
   transform: scale(0.98);
 }
 
 /* ===== TỐI ƯU GIAO DIỆN MOBILE (<= 768px) ===== */
 @media (max-width: 768px) {
+
   /* Container trang cho phép cuộn tự nhiên theo app-content, có khoảng đệm cuối lớn để nội dung cuộn lên không bị che */
   .suachua-page-container {
     height: auto !important;

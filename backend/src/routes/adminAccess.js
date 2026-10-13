@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const { hashPassword } = require('../authSecurity');
-const directory=require('../services/loginDirectory');
+const db = require('../db.js');
+const { hashPassword } = require('../authSecurity.js');
+const directory=require('../services/loginDirectory.js');
 
 const clean = (value) => String(value ?? '').trim();
 const duplicateError = (error) => String(error?.message || '').toLowerCase().includes('unique');
@@ -22,8 +22,8 @@ router.get('/overview', async (req, res) => {
                        (SELECT FIRST 1 u.ID FROM SUSER u WHERE u.DNHANVIENID=n.ID AND u.STATUS=1) AS USERID
                   FROM DNHANVIEN n WHERE n.STATUS=1 ORDER BY n.NAME`),
     ]);
-    if(require('../tenancy').enabled()){
-      const logins=await require('../services/platform').query('SELECT USERID,LOGINNAME FROM SAAS_LOGINS WHERE TENANTID=?',[require('../tenancy').key()]);
+    if(require('../tenancy.js').enabled()){
+      const logins=await require('../services/platform.js').query('SELECT USERID,LOGINNAME FROM SAAS_LOGINS WHERE TENANTID=?',[require('../tenancy.js').key()]);
       const names=new Map(logins.map(row=>[row.USERID,row.LOGINNAME]));
       for(const user of users)user.USERNAME=names.get(user.ID)||user.USERNAME;
     }
@@ -77,7 +77,7 @@ router.put('/groups/:id/permissions', async (req, res) => {
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     const groups = await db.query(`SELECT NAME FROM SGROUPUSER WHERE ID=? AND STATUS=1`, [req.params.id]);
     if (!groups.length) return res.status(404).json({ error: 'Không tìm thấy chức vụ.' });
-    const masks = require('../permissionPolicy').masks;
+    const masks = require('../permissionPolicy.js').masks;
     const restricted = await db.query(`SELECT ID FROM SFUNCTION WHERE CODE IN ('ADMIN','SETTINGS')`);
     const restrictedIds = new Set(restricted.map((item) => item.ID));
     await db.transaction(async (query, execute, uuid) => {

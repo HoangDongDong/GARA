@@ -1,9 +1,9 @@
-const db=require('../db');
+const db=require('../db.js');
 const fail=message=>Object.assign(new Error(message),{statusCode:400});
 async function options(){
   const entries=await Promise.all([
     db.query('SELECT ID,NAME,LOAI FROM DLYDOTHUCHI WHERE STATUS=1 ORDER BY NAME'),
-    require('./bankBalances').load(),
+    require('./bankBalances.js').load(),
     ...['DKHACHHANG','DNHACUNGCAP','DNHANVIEN','DCUAHANG'].map(table=>db.query(`SELECT ID,NAME,DIACHI FROM ${table} WHERE STATUS=1 ORDER BY NAME`)),
   ]);
   return Object.fromEntries(['categories','accounts','customers','suppliers','employees','stores'].map((key,i)=>[key,entries[i]]));
@@ -33,7 +33,7 @@ async function create(input,actor,transaction=db.transaction){
       await execute('UPDATE DTAIKHOANNGANHANG SET STATUS=STATUS WHERE ID=? AND STATUS=1',[accountId]);
       if(!(await query('SELECT ID FROM DTAIKHOANNGANHANG WHERE ID=? AND STATUS=1',[accountId])).length)throw fail('Tài khoản không còn hoạt động.');
     }
-    const id=uuid(),code=await require('./documentNumbers').nextInTransaction(type===0?'Thu':'Chi',query,execute,new Date(input.date));
+    const id=uuid(),code=await require('./documentNumbers.js').nextInTransaction(type===0?'Thu':'Chi',query,execute,new Date(input.date));
     await execute(`INSERT INTO TTHUCHI (ID,NAME,NOTE,STATUS,USERCREATEDID,TIMECREATED,NGAY,DKHACHHANGID,DNHACUNGCAPID,DNHANVIENID,DCUAHANGID,SOTIEN,LOAI,DLYDOTHUCHID,DTAIKHOANNGANHANGID,TENDOITUONG,DIACHIDOITUONG,CHUNGTUGOC,GHICHU,KHONGDOICONGNO)
       VALUES (?,?,?,1,?,CURRENT_TIMESTAMP,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [id,code,input.reason.trim(),actor,new Date(input.date),input.partnerType==='customer'?input.partnerId:null,input.partnerType==='supplier'?input.partnerId:null,input.partnerType==='employee'?input.partnerId:null,input.storeId,amount,type,input.categoryId,accountId,input.partnerName.trim(),input.address.trim(),input.originalDocument.trim(),input.note.trim(),input.noDebtChange?1:0]);

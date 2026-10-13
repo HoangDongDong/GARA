@@ -1,4 +1,4 @@
-import { can, canQuickCreate } from '../utils/permissions';
+import { can, canQuickCreate } from '../utils/permissions.js';
 import SupplierFormModal from '../components/SupplierFormModal';
 import { openDocumentPrint } from '../components/DocumentPrintDialog';
 import { useEffect, useMemo, useState } from 'react';

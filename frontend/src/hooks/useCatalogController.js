@@ -1,7 +1,7 @@
-import { can } from '../utils/permissions';
+import { can } from '../utils/permissions.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { catalog, customers, suppliers, parts } from '../services';
-import { catalogDefinitions, masterFormDefinitions, displayCatalogValue } from '../pages/catalogDefinitions';
+import { catalogDefinitions, masterFormDefinitions, displayCatalogValue } from '../pages/catalogDefinitions.js';
 
 export const ALL = '__all__';
 export const UNGROUPED = '__ungrouped__';
@@ -99,11 +99,13 @@ export default function useCatalogController() {
     if (!editor || saving || editor.unavailable) return;
     const payload = Object.fromEntries(editor.definition.fields.map((field) => {
       const value = editor.record[field.key];
-      if (field.type === 'time') return [field.key, value ? `1970-01-01T${value}:00` : null];
+      if (field.type === 'time') return [field.key, value ? `1970-01-01T${value.split(':').map(part=>part.padStart(2,'0')).join(':')}:00` : null];
       if (field.type === 'number') return [field.key, Number(value || 0)];
       return [field.key, typeof value === 'string' ? value.trim() || null : value];
     }));
-    if (editor.definition.fields.some((field) => field.required && !String(payload[field.key] ?? '').trim())) { setFormError('Vui lòng điền các trường bắt buộc.'); return; }
+    if (editor.definition.fields.some((field) => field.required && !(type === 'parts' && editor.mode === 'add' && field.key === 'CODE') && !String(payload[field.key] ?? '').trim())) { setFormError('Vui lòng điền các trường bắt buộc.'); return; }
+    if (type === 'customers' && !editor.isGroup && editor.mode === 'add') payload.AUTO_CODE = editor.record.AUTO_CODE;
+    if (type === 'parts' && !editor.isGroup && editor.mode === 'add') payload.AUTO_CODE = editor.record.AUTO_CODE;
     if (type === 'parts' && !editor.isGroup && editor.record.ANH !== undefined) payload.ANH = editor.record.ANH;
     const service = !editor.isGroup ? { customers, suppliers, parts }[type] || catalog : catalog;
     if (!can('COST')) { delete payload.GIANHAP; delete payload.GIAVON; }

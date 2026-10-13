@@ -13,7 +13,7 @@ function database() {
   const tenant = current();
   if (tenant) return tenant.database;
   if (enabled()) failMissing();
-  return require('./config').firebird.database;
+  return require('./config.js').firebird.database;
 }
 function storageDirectory(root) { return enabled() || current() ? path.join(root, key()) : root; }
 function writable(tenant, now = Date.now()) {

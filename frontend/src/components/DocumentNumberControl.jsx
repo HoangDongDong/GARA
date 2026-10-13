@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api';
+import api from '../api.js';
 
 export default function DocumentNumberControl(props) {
   const [preview,setPreview]=useState(null);

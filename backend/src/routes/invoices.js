@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const charges = require('../services/defaultChargeRates');
-const policy = require('../services/pricingPolicy');
-const repairPayment = require('../services/repairPayment');
+const db = require('../db.js');
+const charges = require('../services/defaultChargeRates.js');
+const policy = require('../services/pricingPolicy.js');
+const repairPayment = require('../services/repairPayment.js');
 
 /**
  * GARAGE.FDB - THOADONSUACHUA:
@@ -77,11 +77,11 @@ router.post('/', async (req, res) => {
       const discount = totals.discount;
       const payments = ['TIENMAT', 'CHUYENKHOAN', 'THE'].map(key => Number(req.body[key] ?? 0));
       const { paid, remaining } = repairPayment.calculate(totals.total, payments, req.body.ALLOW_DEBT, order.DKHACHHANGID);
-      const paymentSettings = await require('../services/paymentSettings').load('repair', query);
-      if (paymentSettings.requireBill && !['REPAIR','FINANCE'].some(code => require('../permissionPolicy').has(req.accessUser,code,17))) throw Object.assign(new Error('Cần quyền Xem và In hóa đơn khi bill bắt buộc.'), { status: 403 });
-      require('../services/paymentSettings').assertDebt(paymentSettings, remaining);
+      const paymentSettings = await require('../services/paymentSettings.js').load('repair', query);
+      if (paymentSettings.requireBill && !['REPAIR','FINANCE'].some(code => require('../permissionPolicy.js').has(req.accessUser,code,17))) throw Object.assign(new Error('Cần quyền Xem và In hóa đơn khi bill bắt buộc.'), { status: 403 });
+      require('../services/paymentSettings.js').assertDebt(paymentSettings, remaining);
       const id = uuidv4();
-      const code = await require('../services/documentNumbers').nextInTransaction('HoaDonSuaChua', query, execute);
+      const code = await require('../services/documentNumbers.js').nextInTransaction('HoaDonSuaChua', query, execute);
       await execute(`INSERT INTO THOADONSUACHUA
          (ID, NAME, NGAY, DXEID, DKHACHHANGID, TLENHSUACHUAID,
           TIENPHUTUNG, TIENCONG, TIENDICHVU,
@@ -124,9 +124,9 @@ router.patch('/:id/pay', async (req, res) => {
       throw Object.assign(new Error('Không được giảm số tiền đã thu trên hóa đơn.'), { status: 409 });
     }
     const { remaining, paid } = repairPayment.calculate(Number(invoice.TONGCONG || 0), [cash, transfer, card], req.body.ALLOW_DEBT, invoice.DKHACHHANGID);
-    const paymentSettings = await require('../services/paymentSettings').load('repair', query);
-    if (paymentSettings.requireBill && !['REPAIR','FINANCE'].some(code => require('../permissionPolicy').has(req.accessUser,code,17))) throw Object.assign(new Error('Cần quyền Xem và In hóa đơn khi bill bắt buộc.'), { status: 403 });
-    require('../services/paymentSettings').assertDebt(paymentSettings, remaining);
+    const paymentSettings = await require('../services/paymentSettings.js').load('repair', query);
+    if (paymentSettings.requireBill && !['REPAIR','FINANCE'].some(code => require('../permissionPolicy.js').has(req.accessUser,code,17))) throw Object.assign(new Error('Cần quyền Xem và In hóa đơn khi bill bắt buộc.'), { status: 403 });
+    require('../services/paymentSettings.js').assertDebt(paymentSettings, remaining);
     await execute(
       `UPDATE THOADONSUACHUA
           SET TIENMAT=?, CHUYENKHOAN=?, THE=?, CONLAI=?, CONGNO=?, DATHANHTOAN=?,

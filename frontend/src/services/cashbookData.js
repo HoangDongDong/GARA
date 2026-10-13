@@ -1,4 +1,4 @@
-import api from '../api';
+import api from '../api.js';
 
 // Memory only, scoped to the signed-in session. Cached rows render immediately
 // when returning to the page; every load still checks the server for changes.

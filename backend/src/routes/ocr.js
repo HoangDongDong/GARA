@@ -1,6 +1,6 @@
 const express = require('express');
-const config = require('../config');
-const db = require('../db');
+const config = require('../config.js');
+const db = require('../db.js');
 
 const router = express.Router();
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;

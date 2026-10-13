@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('../db.js');
 const definitions = [
   ['TiepNhan','Tiếp nhận xe','TTIEPNHANXE','TN',true],
   ['LenhSuaChua','Lệnh sửa chữa','TLENHSUACHUA','LSC',true],
@@ -11,6 +11,13 @@ const definitions = [
   ['Chi','Phiếu chi','TTHUCHI','PC',false],
   ['BangLuong','Bảng lương','TBANGLUONG','BL',false],
 ].map(([key,label,table,prefix,active]) => ({key,label,table,active,name:`SoPhieu${key}`,pattern:`${prefix}(yy)/(*****)`}));
+const masterDefinitions = [
+  {key:'MatHang',label:'Mã mặt hàng / mã vạch',table:'DMATHANG',field:'CODE',name:'MaMatHang',pattern:'MH(*****)'},
+  {key:'KhachHang',label:'Mã khách hàng',table:'DKHACHHANG',field:'MAKHACH',name:'MaKhachHang',pattern:'KH(*****)'},
+  {key:'DichVu',label:'Mã dịch vụ',table:'DDICHVU',field:'CODE',name:'MaDichVu',pattern:'DV(*****)'},
+  {key:'NhanVien',label:'Mã nhân viên',table:'DNHANVIEN',field:'CODE',name:'MaNhanVien',pattern:'NV(*****)'},
+];
+const allDefinitions = [...definitions, ...masterDefinitions];
 const fail = message => Object.assign(new Error(message), {status:400,statusCode:400});
 function parsePattern(value) {
   const pattern = String(value ?? '').trim();
@@ -32,7 +39,7 @@ function periodFor(pattern,date=new Date()) {
   return pattern.includes('(dd)')?full:pattern.includes('(MM)')?full.slice(0,6):/\(yyyy\)|\(yy\)/.test(pattern)?full.slice(0,4):'ALL';
 }
 async function nextInTransaction(key,query,execute,date=new Date(),reserve=true) {
-  const type = definitions.find(t=>t.key===key);
+  const type = allDefinitions.find(t=>t.key===key);
   if (!type) throw fail('Loại số phiếu không hợp lệ.');
   const [config] = await query('SELECT TEXTVALUE FROM SCONFIG WHERE NAME=? AND STATUS=30',[type.name]);
   const pattern = parsePattern(config?.TEXTVALUE || type.pattern).pattern;
@@ -48,7 +55,7 @@ async function nextInTransaction(key,query,execute,date=new Date(),reserve=true)
   let code;
   do {
     code = formatNumber(pattern,++sequence,date);
-  } while ((await query(`SELECT FIRST 1 ID FROM ${type.table} WHERE NAME=?`,[code])).length);
+  } while ((await query(`SELECT FIRST 1 ID FROM ${type.table} WHERE ${type.field ? `UPPER(TRIM(${type.field}))` : 'NAME'}=?`,[type.field ? code.toUpperCase() : code])).length);
   if (reserve) await execute('UPDATE SNUMBERCOUNTER SET PERIODKEY=?,SEQ=? WHERE CODE=?',[period,sequence,key]);
   return code;
 }
@@ -56,4 +63,4 @@ async function nextNumber(key,date) {
   return db.transaction((query,execute)=>nextInTransaction(key,query,execute,date));
 }
 const previewNumber = (key,date) => nextInTransaction(key,db.query,null,date,false);
-module.exports={definitions,parsePattern,formatNumber,periodFor,nextInTransaction,nextNumber,previewNumber};
+module.exports={definitions,masterDefinitions,allDefinitions,parsePattern,formatNumber,periodFor,nextInTransaction,nextNumber,previewNumber};

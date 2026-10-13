@@ -1,8 +1,8 @@
 const crypto = require('crypto');
-const platform = require('./platform');
-const { hashPassword } = require('../authSecurity');
+const platform = require('./platform.js');
+const { hashPassword } = require('../authSecurity.js');
 const fail = platform.fail;
-const directory=require('./loginDirectory');
+const directory=require('./loginDirectory.js');
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const instant = () => process.env.SAAS_REGISTRATION_MODE === 'instant';
 const registrationReady = () => process.env.SAAS_REGISTRATION_ENABLED === 'true' && (instant() || mailReady());

@@ -31,8 +31,10 @@ Lưu mẫu không tự chọn mẫu đó làm mặc định. Khổ giấy và l�
 
 ## Kiểm tra
 
-Tại frontend: `node --test tests/frxDesigner.test.mjs`, `npm run build`.
+Tại frontend: `node --test ../Test/backend/tests/frxDesigner.test.mjs`, `npm run build`.
 
-Tại backend: `node --test tests/webReportDesigner.test.js tests/webReportDesignerRoutes.test.js`.
+Tại backend: `node --test ../Test/backend/tests/webReportDesigner.test.js tests/webReportDesignerRoutes.test.js`.
 
 API mới dưới `/api/print-templates/:id`: `GET/PUT web-content`, `POST web-preview`, `GET web-backups/:backupId`. Các endpoint dùng middleware xác thực/phân quyền chung của ứng dụng. Preview không ghi mẫu vào database; giới hạn hai tiến trình renderer đồng thời và 60 giây mỗi lần render.
+- SaaS: mỗi cửa hàng mở, lưu và sao lưu mẫu trong database/thư mục của cửa hàng đang đăng nhập. Cho phép chỉnh bố cục trên web, xem PDF và lưu bản sao từ mẫu của chính cửa hàng. Máy chủ đối chiếu với mẫu gốc trước khi lưu/preview: giữ nguyên script, sự kiện, kết nối, dictionary và biểu thức thực thi; chỉ cho chỉnh hình học, font, màu, ảnh nhúng và chữ/trường dữ liệu đã có. Không nhận FRX tùy ý hoặc sửa XML trên SaaS. Quyền cấu hình và chế độ chỉ đọc khi hết hạn vẫn áp dụng.
+- Chuẩn A5: Tahoma; DocTitle và nhãn/số tổng cộng 14 pt, tiêu đề cột 9 pt, nội dung còn lại 10 pt. Giữ kiểu đậm/nghiêng/gạch chân, binding và script; tăng chiều cao tối thiểu khi cần để tránh cắt chữ. `node ../Test/firebird/tools/normalize-a5-typography.js` kiểm kê; thêm `--apply` cập nhật mẫu hiện có kèm backup, tạo và kiểm chứng seed mới cho đăng ký. Bộ sinh `documentPaperSizes` cũng dùng chuẩn này cho A5.

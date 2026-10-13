@@ -1,4 +1,4 @@
-const debts=require('./debts');
+const debts=require('./debts.js');
 const day=value=>value instanceof Date ? `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}` : String(value||'').slice(0,10);
 function summarize(history,from,to) {
   let opening=0; const rows=[];

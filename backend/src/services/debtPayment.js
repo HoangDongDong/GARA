@@ -1,6 +1,6 @@
-const db = require('../db');
-const debts = require('./debts');
-const numbers = require('./documentNumbers');
+const db = require('../db.js');
+const debts = require('./debts.js');
+const numbers = require('./documentNumbers.js');
 const fail = message => Object.assign(new Error(message), {statusCode:400});
 
 async function create(input, actor, transaction = db.transaction) {

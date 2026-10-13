@@ -1,6 +1,6 @@
 const router=require('express').Router();
-const {definitions,previewNumber}=require('../services/documentNumbers');
-const permissions={TiepNhan:['REPAIR'],LenhSuaChua:['REPAIR'],BaoGia:['REPAIR'],HoaDonSuaChua:['REPAIR','FINANCE','SALES'],BanPhuTung:['SALES'],NhapKho:['INVENTORY'],BaoHanh:['WARRANTY'],Thu:['FINANCE'],Chi:['FINANCE'],BangLuong:['EMPLOYEES']};
+const {allDefinitions:definitions,previewNumber}=require('../services/documentNumbers.js');
+const permissions={MatHang:['CATALOG','SALES','INVENTORY'],KhachHang:['CUSTOMERS','CATALOG','REPAIR','SALES'],DichVu:['CATALOG','REPAIR'],NhanVien:['EMPLOYEES'],TiepNhan:['REPAIR'],LenhSuaChua:['REPAIR'],BaoGia:['REPAIR'],HoaDonSuaChua:['REPAIR','FINANCE','SALES'],BanPhuTung:['SALES'],NhapKho:['INVENTORY'],BaoHanh:['WARRANTY'],Thu:['FINANCE'],Chi:['FINANCE'],BangLuong:['EMPLOYEES']};
 router.get('/:type/next',async(req,res)=>{
   try{
     const key=req.params.type,user=req.accessUser;

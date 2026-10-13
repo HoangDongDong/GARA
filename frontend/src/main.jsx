@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import axios from 'axios';
 import App from './App.jsx';
 import './styles/global.css';
-import {sessionToken} from './utils/sessionGuard';
+import {sessionToken} from './utils/sessionGuard.js';
 // A different login in another tab must discard forms from the previous store.
 window.addEventListener('storage', event => { if(event.key==='garage_token' && event.oldValue!==event.newValue) window.location.reload(); });
 

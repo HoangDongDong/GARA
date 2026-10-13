@@ -11,12 +11,12 @@
  */
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-const config = require('../config');
-const { validateLogo } = require('../services/companyLogo');
-const { decodeConfigImage, encodeConfigImage } = require('../services/configImageStorage');
-const { templateFilter, templateOptions } = require('../services/systemConfigOptions');
-const paymentAccountConfig = require('../services/paymentAccountConfig');
+const db = require('../db.js');
+const config = require('../config.js');
+const { validateLogo } = require('../services/companyLogo.js');
+const { decodeConfigImage, encodeConfigImage } = require('../services/configImageStorage.js');
+const { templateFilter, templateOptions } = require('../services/systemConfigOptions.js');
+const paymentAccountConfig = require('../services/paymentAccountConfig.js');
 
 
 // ---- helpers ----
@@ -52,14 +52,14 @@ router.get('/', async (req, res) => {
 // GET /api/system-config/db-info  — thông tin kết nối DB thực (không expose mật khẩu)
 router.get('/db-info', async (req, res) => {
   try {
-    const fb = { ...config.firebird, database: require('../tenancy').database() };
+    const fb = { ...config.firebird, database: require('../tenancy.js').database() };
     const pingOk = await db.ping().then(() => true).catch(() => false);
     res.json({
       dbType: 'Firebird 2.5',
-      host: require('../tenancy').enabled() ? undefined : fb.host || '127.0.0.1',
-      port: require('../tenancy').enabled() ? undefined : fb.port || 3050,
-      database: require('../tenancy').enabled() ? require('../tenancy').current().code : fb.database || '',
-      user: require('../tenancy').enabled() ? undefined : fb.user || 'SYSDBA',
+      host: require('../tenancy.js').enabled() ? undefined : fb.host || '127.0.0.1',
+      port: require('../tenancy.js').enabled() ? undefined : fb.port || 3050,
+      database: require('../tenancy.js').enabled() ? require('../tenancy.js').current().code : fb.database || '',
+      user: require('../tenancy.js').enabled() ? undefined : fb.user || 'SYSDBA',
       connected: pingOk,
     });
   } catch (e) {
@@ -70,7 +70,7 @@ router.get('/db-info', async (req, res) => {
 // Preview only: never reserves or consumes a document number.
 router.post('/number-preview', (req,res) => {
   try {
-    const {parsePattern,formatNumber,periodFor}=require('../services/documentNumbers');
+    const {parsePattern,formatNumber,periodFor}=require('../services/documentNumbers.js');
     const {pattern,digits}=parsePattern(req.body.pattern);
     res.json({first:formatNumber(pattern,1),last:formatNumber(pattern,10**digits-1),reset:periodFor(pattern)==='ALL'?'Liên tục':pattern.includes('(dd)')?'Mỗi ngày':pattern.includes('(MM)')?'Mỗi tháng':'Mỗi năm'});
   } catch(e){res.status(400).json({error:e.message});}
@@ -160,10 +160,10 @@ async function updateItems(items, userId) {
       const rows = await query(`SELECT ID, NAME, DATATYPE, OTHERCONFIG FROM SCONFIG WHERE ${item.id ? 'ID' : 'NAME'}=? AND (STATUS <> -1 OR STATUS IS NULL)`, [item.id || item.name]);
       if (rows.length !== 1) throw inputError(`Không tìm thấy cấu hình duy nhất: ${item.id || item.name}`);
       const row = rows[0];
-      require('../services/defaultChargeRates').validate(row.NAME, item.value);
-      require('../services/salesSettings').validate(row.NAME, item.value);
-      require('../services/salesPrintVisibility').validate(row.NAME, item.value);
-      if (require('../services/documentNumbers').definitions.some(type=>type.name===row.NAME)) require('../services/documentNumbers').parsePattern(item.value);
+      require('../services/defaultChargeRates.js').validate(row.NAME, item.value);
+      require('../services/salesSettings.js').validate(row.NAME, item.value);
+      require('../services/salesPrintVisibility.js').validate(row.NAME, item.value);
+      if (require('../services/documentNumbers.js').allDefinitions.some(type=>type.name===row.NAME)) require('../services/documentNumbers.js').parsePattern(item.value);
       if (seen.has(row.ID)) throw inputError(`Cấu hình bị trùng: ${row.NAME}`);
       seen.add(row.ID);
       const [column, value] = typedValue(row, item.value);
@@ -177,7 +177,7 @@ async function updateItems(items, userId) {
       await execute(`UPDATE SCONFIG SET ${column}=?, USERMODIFIEDID=?, TIMEMODIFIED=CURRENT_TIMESTAMP WHERE ID=?`, [value, userId, row.ID]);
     }
   });
-  require('../services/salesPrint')._invalidateCompanyCache?.();
+  require('../services/salesPrint.js')._invalidateCompanyCache?.();
 }
 
 // PUT /api/system-config/bulk  body: [{ name, value }]

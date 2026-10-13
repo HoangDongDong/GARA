@@ -1,7 +1,7 @@
-import { currentFinanceMonth, financeDay, financeOverview } from '../utils/financeOverview';
-import { can } from '../utils/permissions';
+import { currentFinanceMonth, financeDay, financeOverview } from '../utils/financeOverview.js';
+import { can } from '../utils/permissions.js';
 import { useState, useEffect, useCallback } from 'react';
-import api from '../api';
+import api from '../api.js';
 import DebtLedger from '../components/DebtLedger';
 import CashVoucherModal from '../components/CashVoucherModal';
 import { 

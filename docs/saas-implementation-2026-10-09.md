@@ -23,8 +23,8 @@ Database quản lý nền tảng: `D:\Garage\saas\platform-v1.fdb`. Cửa hàng 
 
 ## Kiểm chứng
 
-- Toàn bộ backend: **192 bài, 179 đạt, 0 lỗi, 13 bỏ qua theo cấu hình**, có bật kiểm thử SaaS Firebird thật. Log: `backend/saas-tests.log`.
-- Frontend: **31 đạt, 0 lỗi**, gồm cách ly nháp/khóa retry và chặn biểu mẫu tab cũ gửi bằng token cửa hàng mới. Log: `frontend/saas-tests.log`.
+- Toàn bộ backend: **192 bài, 179 đạt, 0 lỗi, 13 bỏ qua theo cấu hình**, có bật kiểm thử SaaS Firebird thật. Log: `Test/artifacts/backend/saas-tests.log`.
+- Frontend: **31 đạt, 0 lỗi**, gồm cách ly nháp/khóa retry và chặn biểu mẫu tab cũ gửi bằng token cửa hàng mới. Log: `Test/artifacts/frontend/saas-tests.log`.
 - Build frontend thành công; vẫn có cảnh báo bundle lớn.
 - Kiểm thử Firebird SaaS riêng sau đó đạt: đăng ký/xác minh được mô phỏng email, khởi tạo hai database thật, request đồng thời không lẫn dữ liệu, cùng ID tài khoản/khách hàng vẫn cách ly, cache công ty và file backup mẫu riêng biệt, snapshot báo cáo không đọc chéo.
 - Đã kiểm thử API quản trị gia hạn/khóa, chặn ghi sau hết hạn, token sai audience và token thiếu tenant; backup/restore tenant thử thành công và ghi nhận xác minh.
@@ -40,7 +40,7 @@ Trong lúc tạo database nền tảng thử ban đầu bằng driver, Firebird 
 - Định danh người dùng còn theo từng tenant/SUSER; chưa có identity/membership chung để một người chuyển giữa nhiều doanh nghiệp mà không đăng nhập lại. Đã bổ sung danh bạ tên đăng nhập duy nhất để tự chọn cửa hàng; chưa có một identity tham gia nhiều doanh nghiệp.
 - Có dùng thử và gia hạn thủ công; chưa có catalog giá/gói thương mại, hạn mức tài khoản/dung lượng theo gói hoặc thanh toán online.
 - Có phiên bản schema trên tenant và mẫu sạch hiện tại; chưa có hệ thống rollout migration tự động cho toàn bộ tenant. Cần hoàn thiện trước khi phát hành các lần nâng cấp schema tiếp theo.
-- Bản SaaS chỉ dùng bộ mẫu in chuẩn. API chỉnh sửa/tải FRX tùy ý và preview nội dung tùy ý bị chặn khi bật SaaS, vì bộ dựng FastReport cần được cách ly trước khi nhận template do khách cung cấp. Cửa hàng cục bộ vẫn giữ trình thiết kế hiện tại.
+- Bản SaaS cho phép mỗi cửa hàng chỉnh bố cục mẫu của mình trên web, lưu và lưu bản sao trong database riêng. Save/preview/copy kiểm tra thay đổi so với mẫu gốc phía máy chủ: giữ script, sự kiện, dictionary, kết nối và biểu thức thực thi; chỉ sửa hình học, font, màu, ảnh nhúng, chữ và trường dữ liệu đã có. Tải FRX tùy ý và sửa XML vẫn bị chặn; chưa có sandbox hệ điều hành để nhận mã lệnh tùy ý. Cửa hàng cục bộ vẫn giữ trình thiết kế hiện tại.
 - Backup hiện lưu trong thư mục riêng; cần quyền truy cập, mã hóa/offsite, chính sách lưu giữ và cảnh báo vận hành trước production. Lịch backup chưa được cài trên máy hiện tại.
 - Chưa triển khai nhiều chi nhánh, trả hàng/hoàn tiền, kiểm kê/chuyển kho hoặc các nghiệp vụ mới khác trong báo cáo rà soát.
 

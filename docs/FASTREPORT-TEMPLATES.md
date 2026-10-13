@@ -28,7 +28,7 @@ SCONFIG lưu các mục `SalesPrintShow_<key>`: 30 = hiện, 0 = ẩn. Khóa g�
 
 FRX mới khai báo Parameter boolean `PrintShow_<key>` và đặt `VisibleExpression="[PrintShow_<key>]"` trên **TableRow**, hoặc trên cả nhãn và giá trị TextObject của cùng một dòng trong ReportSummaryBand. Renderer loại bỏ dòng ẩn và dồn nội dung phía sau lên trước khi Prepare. Không đặt điều kiện trên toàn bảng hoặc band chứa tổng cộng. Mẫu gộp các thông tin trong một dòng nên dùng các chuỗi tổng hợp chung như SummaryText; backend lọc phần giảm giá/thuế theo cấu hình.
 
-`node migrate_sales_print_visibility.js` thêm các tùy chọn và kết nối 10 mẫu bán hàng hiện có; giữ lựa chọn đã lưu và sao lưu nội dung FRX trước khi sửa. Không cần chạy migration này cho từng mẫu mới khi FRX đã khai báo bộ khóa chung. `node print-verification/check-custom-visibility.cjs` kiểm tra giao diện lưu/tải lại và xuất PDF, rồi khôi phục cấu hình trước kiểm tra.
+`node ../Test/firebird/migrate_sales_print_visibility.js` thêm các tùy chọn và kết nối 10 mẫu bán hàng hiện có; giữ lựa chọn đã lưu và sao lưu nội dung FRX trước khi sửa. Không cần chạy migration này cho từng mẫu mới khi FRX đã khai báo bộ khóa chung. `node print-verification/check-custom-visibility.cjs` kiểm tra giao diện lưu/tải lại và xuất PDF, rồi khôi phục cấu hình trước kiểm tra.
 
 ## Kiểm tra và giới hạn
 

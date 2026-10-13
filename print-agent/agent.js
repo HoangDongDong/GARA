@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
 const {execFile}=require('node:child_process');
-const {recoverLedger}=require('./ledger');
+const {recoverLedger}=require('./ledger.js');
 const ROOT=__dirname,DATA=process.env.GARA_AGENT_DATA||path.join(ROOT,'data');fs.mkdirSync(DATA,{recursive:true});
 const PORT=Number(process.env.GARA_AGENT_PORT||3790),VERSION='0.1.0';
 const HELPER=process.env.GARA_PRINT_HELPER||[

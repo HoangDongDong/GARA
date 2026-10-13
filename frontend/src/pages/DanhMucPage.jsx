@@ -1,6 +1,6 @@
-import { can, currentUser } from '../utils/permissions';
+import { can, currentUser } from '../utils/permissions.js';
 import { Folder, Folders, Layers, Search, Plus, Pencil, Ban, RotateCcw, Info, ChevronRight } from 'lucide-react';
-import useCatalogController, { ALL, UNGROUPED } from '../hooks/useCatalogController';
+import useCatalogController, { ALL, UNGROUPED } from '../hooks/useCatalogController.js';
 import CatalogForms from '../components/CatalogForms';
 import {useState} from 'react';
 import Cashbook from '../components/Cashbook';

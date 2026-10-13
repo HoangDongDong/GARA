@@ -1,7 +1,7 @@
-const express=require('express'),service=require('../services/printAgent');
+const express=require('express'),service=require('../services/printAgent.js');
 const wrap=fn=>async(req,res)=>{try{await fn(req,res);}catch(e){res.status(e.status||500).json({error:e.message});}};
 const agent=express.Router(),users=express.Router();
-const tenancy=require('../tenancy');
+const tenancy=require('../tenancy.js');
 agent.use(async(req,res,next)=>{
   if(!tenancy.enabled())return next();
   try{
@@ -10,7 +10,7 @@ agent.use(async(req,res,next)=>{
     const split=credential.indexOf('.');
     const id=credential.slice(0,split),raw=credential.slice(split+1);
     if(split<1||!(/^[a-f0-9-]{36}$/.test(id)||id==='legacy')||!raw)throw Object.assign(Error('Agent cần được ghép lại với cửa hàng.'),{status:401});
-    const tenant=await require('../services/platform').find(id);
+    const tenant=await require('../services/platform.js').find(id);
     if(!pairing&&!['/heartbeat'].includes(req.path)&&!tenancy.writable(tenant))throw Object.assign(Error('Gói sử dụng đã hết hạn.'),{status:402});
     if(pairing){if(!tenancy.writable(tenant))throw Object.assign(Error('Gói sử dụng đã hết hạn.'),{status:402});req.body.ticket=raw;}
     else req.headers.authorization='Bearer '+raw;

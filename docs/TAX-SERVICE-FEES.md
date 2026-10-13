@@ -31,9 +31,9 @@ Chạy trong thư mục `backend`:
 ```powershell
 npm run migrate:default-charge-rates
 npm run migrate:applied-charge-rates
-node --test tests/appliedChargeRates.test.js tests/defaultChargeRates.test.js tests/salesPrices.test.js
+node --test ../Test/backend/tests/appliedChargeRates.test.js tests/defaultChargeRates.test.js tests/salesPrices.test.js
 $env:TEST_FIREBIRD='1'
-node --test tests/appliedChargeRates.integration.test.js
+node --test ../Test/backend/tests/appliedChargeRates.integration.test.js
 ```
 
 Các migration có thể chạy lại và giữ nguyên giá trị đã lưu. Kiểm tra Firebird tạo dữ liệu trong transaction rồi rollback toàn bộ. Đặt thêm `RENDER_CHARGES=1` để tạo PDF kiểm tra trong `backend/tmp/pdfs`.

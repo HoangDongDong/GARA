@@ -1,14 +1,14 @@
 const router = require('express').Router();
-const catalog = require('../services/catalogData');
+const catalog = require('../services/catalogData.js');
 router.use((req, res, next) => {
   try {
-    const policy = require('../permissionPolicy');
+    const policy = require('../permissionPolicy.js');
     const read = ['GET', 'HEAD'].includes(req.method);
     if (/^\/(?:resources\/)?(banks|funds|stores|cashReasons)(\/|$)/i.test(req.path)) {
       if (Number(req.accessUser?.ISADMIN) !== 1) return res.status(403).json({ error: 'Chỉ Admin được quản lý cấu hình tài chính và cửa hàng.' });
     }
-    if (!read && require('../permissionPolicy').hasField(req.body,['HHKIEU','HHGIATRI'])) policy.assert(req.accessUser, 'COMMISSIONS', 4);
-    if (!read && require('../permissionPolicy').hasField(req.body,['GIANHAP','GIAVON'])) policy.assert(req.accessUser, 'COST');
+    if (!read && require('../permissionPolicy.js').hasField(req.body,['HHKIEU','HHGIATRI'])) policy.assert(req.accessUser, 'COMMISSIONS', 4);
+    if (!read && require('../permissionPolicy.js').hasField(req.body,['GIANHAP','GIAVON'])) policy.assert(req.accessUser, 'COST');
     next();
   } catch (error) { res.status(403).json({ error: error.message }); }
 });

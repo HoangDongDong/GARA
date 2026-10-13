@@ -1,5 +1,5 @@
 // Import login routing only. Store passwords and business rows remain in each tenant DB.
-const platform=require('../src/services/platform'),tenancy=require('../src/tenancy'),db=require('../src/db'),directory=require('../src/services/loginDirectory');
+const platform=require('../src/services/platform.js'),tenancy=require('../src/tenancy.js'),db=require('../src/db.js'),directory=require('../src/services/loginDirectory.js');
 async function migrate(){
   const rows=await platform.query("SELECT ID,SLUG,NAME,DBPATH,STATE,ENDSAT FROM SAAS_TENANTS WHERE STATE IN ('active','suspended') ORDER BY ID");
   rows.sort((a,b)=>(a.ID==='legacy'?-1:b.ID==='legacy'?1:0));

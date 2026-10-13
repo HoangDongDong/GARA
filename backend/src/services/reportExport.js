@@ -14,7 +14,7 @@ function xlsx(result){const cols=result.report.columns;const lines=[[result.repo
 // Layout adapted from DATA.fdb SREPORT -> SREPORTTEMPLATE (cash and stock forms).
 // Legacy script/query content is never executed; garage report snapshots supply all values.
 function buildPrintTemplate(result, layout, company) {
- const {periodCaption,filterCaption,signatureDate}=require('./reportPresentation');
+ const {periodCaption,filterCaption,signatureDate}=require('./reportPresentation.js');
  const width=layout==='portrait'?718.2:1046.5;
  const cols=[{key:'__index',label:'STT',type:'number'},...result.report.columns];
  const weights=cols.map(c=>c.key==='__index'?0.45:['name','partner','address','reason'].includes(c.key)?2.1:c.type==='date'?1.1:['money','number'].includes(c.type)?1.15:1.3);
@@ -44,8 +44,8 @@ function buildPrintTemplate(result, layout, company) {
  return {template,tables};
 }
 async function pdf(result,layout='landscape') {
- const {runRenderer}=require('./salesPrint');
- const company=await require('./reportPresentation').companyPresentation();
+ const {runRenderer}=require('./salesPrint.js');
+ const company=await require('./reportPresentation.js').companyPresentation();
  const {template,tables}=buildPrintTemplate(result,layout,company);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'garage-report-'));
  try {
